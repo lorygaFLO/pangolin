@@ -1,15 +1,23 @@
 steps:
+  - type: dispatcher
+    name: "0_dispatcher"
+    registry_path: "config/0_dispatcher.yaml"
+    report_path: "0_dispatcher"
+    input_folder_path: "input"
+    output_folder_path: null
+    rm_from_input_folder: false
+
   - type: transform
     name: "1_transform"
     registry_path: "config/1_transform_registry.yaml"
-    report_path: "transform_reports"
-    input_folder_path: "input"
-    output_folder_path: null  
+    report_path: "1_transform"
+    input_folder_path: "0_dispatcher"
+    output_folder_path: null
 
   - type: validate
     name: "2_validation"
     registry_path: "config/2_validation_registry.yaml"
-    report_path: "validation_reports"
+    report_path: "1_transform"
     input_folder_path: "1_transform"
     output_folder_path: "delivery"  
 

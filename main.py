@@ -6,6 +6,8 @@ Every step must have an execute attribute
 
 from engine.data_validator import Validator
 from engine.data_transformer import DataTransformer
+from engine.file_dispatcher import FileDispatcher
+
 from config.settings import *
 import yaml
 
@@ -32,7 +34,15 @@ def step_factory(step_type, **kwargs):
             registry_path=kwargs['registry_path'],
             report_path=kwargs['report_path'],
             input_folder_path=kwargs['input_folder_path'],
-            output_folder_path=kwargs.get('output_folder_path') or kwargs['name'] 
+            output_folder_path=kwargs.get('output_folder_path') or kwargs['name'] # Default to step name
+        )
+    elif step_type == 'dispatcher':
+        return FileDispatcher(
+            name=kwargs['name'],
+            registry_path=kwargs['registry_path'],
+            report_path=kwargs['report_path'],
+            input_folder_path=kwargs['input_folder_path'],
+            output_folder_path=kwargs.get('output_folder_path') or kwargs['name'],  # Default to step name
         )
     else:
         raise ValueError(f"Unsupported step type: {step_type}")

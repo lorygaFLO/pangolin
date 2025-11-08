@@ -10,8 +10,9 @@ import os
 import fnmatch
 import pandas as pd
 from typing import Dict, List, Tuple, Optional
-from utils.import_configs import get_registry
 from config.settings import *
+import yaml
+
 class DataHandler:
     def __init__(self, registry_path: str, input_folder_path: str, output_folder_path: str):
         """
@@ -38,18 +39,43 @@ class DataHandler:
 
 
         self.registry_path = registry_path
-        self.registry = get_registry(registry_path)
+        self.registry = self.get_registry(registry_path)
         
         if os.path.basename(self.S.PATH_INPUT).endswith(input_folder_path):
             self.input_folder_path = os.path.join(self.S.DATAPATH, input_folder_path)
         else:
             self.input_folder_path = os.path.join(self.S.PATH_STAGING_RUN, input_folder_path)
         if os.path.basename(self.S.PATH_DELIVERY).endswith(output_folder_path):
-            self.output_folder_path =self.S.PATH_DELIVERY_RUN
+            self.output_folder_path = self.S.PATH_DELIVERY_RUN
         else:
-            self.output_folder_path = os.path.join(self.S.DATAPATH, output_folder_path)
+            self.output_folder_path = os.path.join(self.S.PATH_STAGING_RUN, output_folder_path)
         
         self.delimiter = self.S.CSV_DELIMITER
+
+
+    def get_registry(self, file_path='config/registry.yaml'):
+        """
+        Loads and returns the registry configuration from a YAML file.
+        Args:
+            file_path (str): The relative or absolute path to the registry YAML file.
+                             Defaults to 'config/registry.yaml'. If a relative path
+                             is provided, it is resolved relative to the base path
+                             defined in `S.BASEPATH`.
+        Returns:
+            dict: A dictionary containing the parsed contents of the registry YAML file.
+        Raises:
+            FileNotFoundError: If the specified file does not exist.
+            yaml.YAMLError: If there is an error parsing the YAML file.
+        """
+
+        if not os.path.isabs(file_path):
+            file_path = os.path.join(self.S.BASEPATH, file_path)
+        
+        with open(file_path, 'r') as file:
+            registry = yaml.safe_load(file)
+        
+        return registry
+
 
     def match_file(self, file_path: str) -> Tuple[Optional[str], Optional[str]]:
         """
@@ -158,8 +184,8 @@ class DataHandler:
                 error_files[file_path] = read_messages
                 continue
 
-            # Match the file to a pattern
-            matched_pattern, match_error = self.match_file(file_path)
+            # Match the file to a pattern - we remove self.S.PATH_INPUT to make sure the full path in the machine will not affect the match in registry
+            matched_pattern, match_error = self.match_file(file_path.replace(self.S.PATH_INPUT, ""))
             if matched_pattern:
                 # DO NOT save to output here!
                 # self.save_to_output(file_path, data)

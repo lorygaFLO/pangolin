@@ -1,0 +1,129 @@
+import sys
+import os
+
+# Aggiungi la radice del progetto al percorso
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+import random
+from faker import Faker
+import pandas as pd
+from datetime import datetime, timedelta
+from config.settings import *
+
+
+fake = Faker()
+
+def generate_sales_data(num_records: int = 100, num_products: int = 10, num_stores: int = 5) -> pd.DataFrame:
+    """
+    Genera dati di test per sales.
+    
+    Args:
+        num_records: numero di record da generare
+        num_products: numero di prodotti unici
+        num_stores: numero di store unici
+    
+    Returns:
+        DataFrame con colonne: product_id, product_version, product_name, price, store_id, sellout_price, date, quantity
+    """
+    
+    # Genera prodotti base
+    products = {
+        i: {
+            "name": fake.word().capitalize() + " " + fake.word().capitalize(),
+            "version": f"v{random.randint(1, 5)}.{random.randint(0, 9)}"
+        }
+        for i in range(1, num_products + 1)
+    }
+    
+    # Genera date settimanali per il 2025
+    start_date = datetime(2025, 1, 1)
+    end_date = datetime(2025, 12, 31)
+    weekly_dates = []
+    current_date = start_date
+    while current_date <= end_date:
+        weekly_dates.append(current_date.date())
+        current_date += timedelta(weeks=1)
+    
+    data = []
+    
+    for _ in range(num_records):
+        product_id = random.randint(1, num_products)
+        store_id = random.randint(1, num_stores)
+        
+        # Prezzo base del prodotto (varia poco tra store)
+        base_price = round(random.uniform(10, 500), 2)
+        store_variation = random.uniform(0.95, 1.05)  # ±5% di variazione per store
+        price = round(base_price * store_variation, 2)
+        
+        # Sellout price: più alto del price (con variabilità 5-15%)
+        markup = random.uniform(1.05, 1.15)
+        sellout_price = round(price * markup, 2)
+        
+        data.append({
+            "product_id": product_id,
+            "product_version": products[product_id]["version"],
+            "product_name": products[product_id]["name"],
+            "price": price,
+            "store_id": store_id,
+            "sellout_price": sellout_price,
+            "date": random.choice(weekly_dates),
+            "quantity": random.randint(1, 100)
+        })
+    
+    return pd.DataFrame(data)
+
+
+# Esempio di utilizzo
+if __name__ == "__main__":
+
+    S = get_settings()
+
+    ##CASE1##
+    sales_df = generate_sales_data(num_records=500, num_products=8, num_stores=3)
+    sales_df.to_csv(os.path.join(S.PATH_INPUT, "US_sales_data_case1_all_correct.csv"), index=False)
+    ##CASE2##
+    sales_df = generate_sales_data(num_records=200, num_products=3, num_stores=3)
+    sales_df.to_csv(os.path.join(S.PATH_INPUT, "FR_sales_data_case2_all_correct.csv"), index=False)
+    ##CASE3##
+    sales_df = generate_sales_data(num_records=200, num_products=3, num_stores=3)
+    sales_df
+    # Convert some values in the 'price' column to strings with "test"
+    indices_to_modify = random.sample(range(len(sales_df)), k=5)  # Select 5 random indices
+    for idx in indices_to_modify:
+        sales_df.at[idx, 'price'] = "test"
+    sales_df.to_csv(os.path.join(S.PATH_INPUT, "FR_sales_data_case3_price_is_string.csv"), index=False)
+    
+    ##CASE4##
+    sales_df = generate_sales_data(num_records=200, num_products=3, num_stores=3)
+    # Convert some values in the 'price' column to strings with "test"
+    indices_to_modify = random.sample(range(len(sales_df)), k=5)  # Select 5 random indices
+    for idx in indices_to_modify:
+        sales_df.at[idx, 'quantity'] = "test"
+    sales_df.to_csv(os.path.join(S.PATH_INPUT, "US_sales_data_case4_quantity_is_string.csv"), index=False)
+    
+    ##CASE5##
+    # no nation, dispatcher does not know where to dispatch
+    sales_df = generate_sales_data(num_records=100, num_products=8, num_stores=5)
+    sales_df.to_csv(os.path.join(S.PATH_INPUT, "sales_data_case5_no_nation.csv"), index=False)
+
+    ##CASE6##
+    #duplicates are present
+    sales_df = generate_sales_data(num_records=200, num_products=3, num_stores=3)
+    # Duplicate some rows
+    duplicates = sales_df.sample(n=10, random_state=1)
+    sales_df = pd.concat([sales_df, duplicates], ignore_index=True)
+    sales_df.to_csv(os.path.join(S.PATH_INPUT, "US_sales_data_case6_with_duplicates.csv"), index=False)
+
+    ##CASE7##
+    #missing values are present
+    sales_df = generate_sales_data(num_records=200, num_products=3, num_stores=3)
+    # Introduce missing values randomly in 'price' and 'quantity' columns
+    for col in ['price', 'quantity']:
+        indices_to_modify = random.sample(range(len(sales_df)), k=5)
+        for idx in indices_to_modify:
+            sales_df.at[idx, col] = pd.NA
+    sales_df.to_csv(os.path.join(S.PATH_INPUT, "FR_sales_data_case7_with_missing_values.csv"), index=False)
+
+    print("Test files generated in:", S.PATH_INPUT)
+
+

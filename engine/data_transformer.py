@@ -31,10 +31,10 @@ class DataTransformer:
             raise ValueError("Step name must be provided. In this way you can identify the step in the logs")
         
         self.name = name
-        self.output_folder_path = output_folder_path or name  # Default to step name
+        output_folder_path = output_folder_path or name  # Default to step name
 
         self.handler = DataHandler(registry_path, input_folder_path, output_folder_path)
-        self.output_folder_path = os.path.join(self.S.PATH_STAGING_RUN, output_folder_path)
+        self.output_folder_path = self.handler.output_folder_path
         self.reporter = Reporter(report_path)
 
     def save_transformed_file(self, data: Any, original_path: str) -> str:
