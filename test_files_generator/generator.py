@@ -80,10 +80,10 @@ if __name__ == "__main__":
 
     ##CASE1##
     sales_df = generate_sales_data(num_records=500, num_products=8, num_stores=3)
-    sales_df.to_csv(os.path.join(S.PATH_INPUT, "US_sales_data_case1_all_correct.csv"), index=False)
+    sales_df.to_csv(os.path.join(S.PATH_INPUT, "US_sales_data_case1_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
     ##CASE2##
     sales_df = generate_sales_data(num_records=200, num_products=3, num_stores=3)
-    sales_df.to_csv(os.path.join(S.PATH_INPUT, "FR_sales_data_case2_all_correct.csv"), index=False)
+    sales_df.to_csv(os.path.join(S.PATH_INPUT, "FR_sales_data_case2_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
     ##CASE3##
     sales_df = generate_sales_data(num_records=200, num_products=3, num_stores=3)
     sales_df
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     indices_to_modify = random.sample(range(len(sales_df)), k=5)  # Select 5 random indices
     for idx in indices_to_modify:
         sales_df.at[idx, 'price'] = "test"
-    sales_df.to_csv(os.path.join(S.PATH_INPUT, "FR_sales_data_case3_price_is_string.csv"), index=False)
+    sales_df.to_csv(os.path.join(S.PATH_INPUT, "FR_sales_data_case3_price_is_string.csv"), index=False, sep=S.CSV_DELIMITER)
     
     ##CASE4##
     sales_df = generate_sales_data(num_records=200, num_products=3, num_stores=3)
@@ -99,12 +99,12 @@ if __name__ == "__main__":
     indices_to_modify = random.sample(range(len(sales_df)), k=5)  # Select 5 random indices
     for idx in indices_to_modify:
         sales_df.at[idx, 'quantity'] = "test"
-    sales_df.to_csv(os.path.join(S.PATH_INPUT, "US_sales_data_case4_quantity_is_string.csv"), index=False)
+    sales_df.to_csv(os.path.join(S.PATH_INPUT, "US_sales_data_case4_quantity_is_string.csv"), index=False, sep=S.CSV_DELIMITER)
     
     ##CASE5##
     # no nation, dispatcher does not know where to dispatch
     sales_df = generate_sales_data(num_records=100, num_products=8, num_stores=5)
-    sales_df.to_csv(os.path.join(S.PATH_INPUT, "sales_data_case5_no_nation.csv"), index=False)
+    sales_df.to_csv(os.path.join(S.PATH_INPUT, "sales_data_case5_no_nation.csv"), index=False, sep=S.CSV_DELIMITER)
 
     ##CASE6##
     #duplicates are present
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     # Duplicate some rows
     duplicates = sales_df.sample(n=10, random_state=1)
     sales_df = pd.concat([sales_df, duplicates], ignore_index=True)
-    sales_df.to_csv(os.path.join(S.PATH_INPUT, "US_sales_data_case6_with_duplicates.csv"), index=False)
+    sales_df.to_csv(os.path.join(S.PATH_INPUT, "US_sales_data_case6_with_duplicates.csv"), index=False, sep=S.CSV_DELIMITER)
 
     ##CASE7##
     #missing values are present
@@ -122,7 +122,7 @@ if __name__ == "__main__":
         indices_to_modify = random.sample(range(len(sales_df)), k=5)
         for idx in indices_to_modify:
             sales_df.at[idx, col] = pd.NA
-    sales_df.to_csv(os.path.join(S.PATH_INPUT, "FR_sales_data_case7_with_missing_values.csv"), index=False)
+    sales_df.to_csv(os.path.join(S.PATH_INPUT, "FR_sales_data_case7_with_missing_values.csv"), index=False, sep=S.CSV_DELIMITER)
 
     print("Test files generated in:", S.PATH_INPUT)
 

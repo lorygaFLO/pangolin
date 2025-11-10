@@ -62,6 +62,10 @@ class SETTINGS:
     """
 
     def __init__(self):
+        
+        self.BACKEND_ENGINE = _as_str(os.getenv("BACKEND_ENGINE"))  # pandas, polars, duckdb
+        self.DUCKDB_CHUNK_SIZE = _as_int(os.getenv("DUCKDB_CHUNK_SIZE"), default=100000)
+        
         # Stable per-instance timestamp for the entire run
         # Format is friendly for filenames
         self.RUN_ID = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
@@ -88,7 +92,6 @@ class SETTINGS:
             self.DATAPATH = os.path.abspath(os.path.join(self.BASEPATH, "data"))
 
         # IO options
-        self.USE_POLARS = _as_bool(os.getenv("USE_POLARS"), default=True)
         self.DISABLE_REPORTS = _as_bool(os.getenv("DISABLE_REPORTS"), default=False)
         self.CSV_DELIMITER = _as_str(os.getenv("CSV_DELIMITER"), ";")
         self.OUTPUT_FORMAT = (_as_str(os.getenv("OUTPUT_FORMAT"), "parquet") or "parquet").lower()

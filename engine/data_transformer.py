@@ -11,6 +11,7 @@ import os
 from typing import Dict, Any, Literal
 from utils.transformers import TRANSFORMERS_DICT
 from engine.data_handler import DataHandler
+from engine.file_handler import FileHandler
 from engine.reporter import Reporter
 from config.settings import *
 
@@ -33,9 +34,11 @@ class DataTransformer:
         self.name = name
         output_folder_path = output_folder_path or name  # Default to step name
 
-        self.handler = DataHandler(registry_path, input_folder_path, output_folder_path)
-        self.output_folder_path = self.handler.output_folder_path
+        self.file_handler = FileHandler(registry_path, input_folder_path, output_folder_path)
+        self.data_handler = DataHandler(folder_path=self.file_handler.input_folder_path)
         self.reporter = Reporter(report_path)
+
+        self.output_folder_path = self.file_handler.output_folder_path
 
     def save_transformed_file(self, data: Any, original_path: str) -> str:
         """
@@ -60,16 +63,10 @@ class DataTransformer:
 
         # Create output directory if it doesn't exist
         os.makedirs(self.output_folder_path, exist_ok=True)
-
-        # Save file in specified format
-        try:
-            if self.S.OUTPUT_FORMAT == 'csv':
-                data.to_csv(output_path, index=False)
-            else:  # parquet
-                data.to_parquet(output_path, index=False)
-            return output_path
-        except Exception as e:
-            raise RuntimeError(f"Error saving transformed file: {str(e)}")
+        # Save file using the appropriate method
+        self.data_handler.write_file(data, output_path, file_format=self.S.OUTPUT_FORMAT)
+        
+        return
 
     def execute(self, file_paths=None, output_format: Literal['csv', 'parquet'] = 'parquet') -> Dict[str, Dict[str, Any]]:
         """
@@ -83,7 +80,7 @@ class DataTransformer:
         Returns:
             Dict[str, Dict[str, Any]]: Dictionary of transformation results
         """
-        to_process_files, error_files = self.handler.to_process_files(file_paths)
+        to_process_files, error_files = self.file_handler.to_process_files(file_paths)
         transformation_results = {}
 
         # Report any files that couldn't be processed
@@ -95,10 +92,10 @@ class DataTransformer:
             print(f"Transforming {file_path}")
             messages = []
             
-            transforms = self.handler.registry[pattern]["transforms"]
+            transforms = self.file_handler.registry[pattern]["transforms"]
             sorted_transforms = sorted(transforms, key=lambda x: x["order"])
             
-            modified_data = data.copy()
+            modified_data = self.data_handler.copy(data)
             transform_log = []
 
             for transform in sorted_transforms:
