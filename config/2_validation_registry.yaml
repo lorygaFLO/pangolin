@@ -34,11 +34,9 @@
     value_range:
       price:
         min: 0
-        max: 100
+        max: 1000
       sellout_price:
         min: 0
-      Value3:
-        max: 100
 
 "*product_mapping*":
   validators:

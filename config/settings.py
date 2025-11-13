@@ -2,6 +2,7 @@ from __future__ import annotations
 from dotenv import load_dotenv, find_dotenv
 import os
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 # Load .env from project root (or nearest parent)
@@ -61,11 +62,27 @@ class SETTINGS:
     - No singleton pattern
     """
 
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
     def __init__(self):
-        
-        self.BACKEND_ENGINE = _as_str(os.getenv("BACKEND_ENGINE"))  # pandas, polars, duckdb
+        if self._initialized:
+            return
+
+        self.BACKEND_ENGINE = _as_str(os.getenv("BACKEND_ENGINE"))  
         self.DUCKDB_CHUNK_SIZE = _as_int(os.getenv("DUCKDB_CHUNK_SIZE"), default=100000)
         
+        # Validate backend
+        if self.BACKEND_ENGINE not in ['polars']:
+            raise ValueError(f"Invalid BACKEND_ENGINE: {self.BACKEND_ENGINE}. Only polars supported in this release.")
+        
+
+
         # Stable per-instance timestamp for the entire run
         # Format is friendly for filenames
         self.RUN_ID = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
@@ -82,14 +99,14 @@ class SETTINGS:
         backups_folder = _as_str(os.getenv("BACKUP"), "backup")
 
         # Compute BASE_PATH (fallback to cwd)
-        self.BASEPATH = os.path.abspath(base_path) if base_path else os.path.abspath(os.getcwd())
+        self.BASEPATH = Path(os.path.abspath(base_path)) if base_path else Path(os.path.abspath(os.getcwd()))
 
         # Compute DATA_PATH
         # If DATA_PATH is absolute, keep it; if relative, place it under BASE_PATH; else use BASE_PATH/data
         if data_path:
-            self.DATAPATH = data_path if _is_abs(data_path) else os.path.abspath(os.path.join(self.BASEPATH, data_path))
+            self.DATAPATH = Path(data_path) if _is_abs(data_path) else self.BASEPATH / data_path
         else:
-            self.DATAPATH = os.path.abspath(os.path.join(self.BASEPATH, "data"))
+            self.DATAPATH = self.BASEPATH / "data"
 
         # IO options
         self.DISABLE_REPORTS = _as_bool(os.getenv("DISABLE_REPORTS"), default=False)
@@ -106,28 +123,19 @@ class SETTINGS:
         self.REPORTS = reports_folder   
         self.PATH_BACKUP = backups_folder
 
-        self.PATH_INPUT = _resolve_under(self.DATAPATH, self.INPUT)
-        self.PATH_STAGING = _resolve_under(self.DATAPATH, self.STAGING)
-        self.PATH_DELIVERY = _resolve_under(self.DATAPATH, self.DELIVERY)
-        self.PATH_REPORTS = _resolve_under(self.DATAPATH, self.REPORTS)
-        self.PATH_BACKUP = _resolve_under(self.DATAPATH, self.PATH_BACKUP)
+        self.PATH_INPUT = self.DATAPATH / self.INPUT
+        self.PATH_STAGING = self.DATAPATH / self.STAGING
+        self.PATH_DELIVERY = self.DATAPATH / self.DELIVERY
+        self.PATH_REPORTS = self.DATAPATH / self.REPORTS
+        self.PATH_BACKUP = self.DATAPATH / self.PATH_BACKUP
 
         # Optional run-scoped output/report folders
-        self.PATH_REPORTS_RUN = os.path.abspath(os.path.join(self.PATH_REPORTS, self.RUN_ID))
-        self.PATH_STAGING_RUN = os.path.abspath(os.path.join(self.PATH_STAGING, self.RUN_ID))
-        self.PATH_DELIVERY_RUN = os.path.abspath(os.path.join(self.PATH_DELIVERY, self.RUN_ID))
-        self.PATH_BACKUP_RUN = os.path.abspath(os.path.join(self.PATH_BACKUP, self.RUN_ID))
+        self.PATH_REPORTS_RUN = self.PATH_REPORTS / self.RUN_ID
+        self.PATH_STAGING_RUN = self.PATH_STAGING / self.RUN_ID
+        self.PATH_DELIVERY_RUN = self.PATH_DELIVERY / self.RUN_ID
+        self.PATH_BACKUP_RUN = self.PATH_BACKUP / self.RUN_ID
 
-        # #Ensure directories exist
-        self.create_directories(
-            self.PATH_INPUT,
-            self.PATH_STAGING,
-            self.PATH_DELIVERY,
-            self.PATH_REPORTS,
-            self.PATH_REPORTS_RUN,
-            self.PATH_STAGING_RUN,
-            self.PATH_DELIVERY_RUN,
-        )
+        self._initialized = True
 
     @staticmethod
     def create_directories(*paths: str) -> None:

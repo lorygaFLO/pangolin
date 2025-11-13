@@ -1,63 +1,57 @@
-import pandas as pd
 import polars as pl
-from typing import Union, List
+from typing import List
 
 
 
 def strings_strip_whitespace(
-    df: Union[pd.DataFrame, pl.DataFrame], 
+    df: pl.DataFrame, 
     columns: List[str], 
     strip_whitespace: bool = True, 
-    messages: str = None ,
-) -> Union[pd.DataFrame, pl.DataFrame]:
+    messages: list = None,
+) -> pl.DataFrame:
     """
     Clean string columns by applying various transformations.
     
     Parameters:
     df: Input DataFrame
-    messages: string with messages to print
+    messages: list with messages to print
     columns: List of column names containing strings
     strip_whitespace: Whether to strip leading/trailing whitespace
     
     Returns:
     DataFrame with cleaned strings
     """
-    if not isinstance(df, (pd.DataFrame, pl.DataFrame)):
-        raise TypeError("df must be either a pandas or polars DataFrame")
+    if not isinstance(df, pl.DataFrame):
+        raise TypeError("df must be polars DataFrame")
     
-    result_df = df.copy()
+    result_df = df.clone()
     
-    if isinstance(df, pd.DataFrame):
-        for col in columns:
-            if col in df.columns:
-                if strip_whitespace:
-                    result_df[col] = df[col].str.strip()
+    if strip_whitespace:
+        for column in columns:
+            if column in result_df.columns:
+                result_df = result_df.with_columns(
+                    pl.col(column).str.strip_chars().alias(column)
+                )
 
-    else:  # polars DataFrame
-        for col in columns:
-            if col in df.columns:
-                expr = pl.col(col)
-                if strip_whitespace:
-                    expr = expr.str.strip_chars()
-
-    messages.append(f"{strings_strip_whitespace.__name__}: string columns {columns} transformed.")
+    if messages is not None:
+        messages.append(f"{strings_strip_whitespace.__name__}: string columns {columns} transformed.")
     
     return result_df
 
 
 
 def case_transform(
-    df: Union[pd.DataFrame, pl.DataFrame], 
+    df: pl.DataFrame, 
     columns: List[str], 
     to_uppercase: bool = False,
     to_lowercase: bool = False,
-    messages: str = None
-) -> Union[pd.DataFrame, pl.DataFrame]:
+    messages: list = None
+) -> pl.DataFrame:
     """
     Transform string columns to upper or lower case.
     
     Parameters:
-    df: Input DataFrame (pandas or polars)
+    df: Input DataFrame (polars)
     columns: List of column names containing strings
     to_uppercase: Whether to convert strings to uppercase
     to_lowercase: Whether to convert strings to lowercase
@@ -65,8 +59,8 @@ def case_transform(
     Returns:
     DataFrame with transformed strings
     """
-    if not isinstance(df, (pd.DataFrame, pl.DataFrame)):
-        raise TypeError("df must be either a pandas or polars DataFrame")
+    if not isinstance(df, pl.DataFrame):
+        raise TypeError("df must be a polars DataFrame")
     
     if to_uppercase and to_lowercase:
         raise ValueError("Cannot set both to_uppercase and to_lowercase to True")
@@ -74,30 +68,25 @@ def case_transform(
     if not (to_uppercase or to_lowercase):
         raise ValueError("At least one of to_uppercase or to_lowercase must be True")
     
-    result_df = df.copy()
+    result_df = df.clone()
     
-    if isinstance(df, pd.DataFrame):
-        for col in columns:
-            if col in df.columns:
-                if to_uppercase:
-                    result_df[col] = df[col].str.upper()
-                if to_lowercase:
-                    result_df[col] = df[col].str.lower()
-    else:  # polars DataFrame
-        for col in columns:
-            if col in df.columns:
-                expr = pl.col(col)
-                if to_uppercase:
-                    expr = expr.str.to_uppercase()
-                if to_lowercase:
-                    expr = expr.str.to_lowercase()
-                result_df = result_df.with_columns(expr.alias(col))
+    for col in columns:
+        if col in result_df.columns:
+            if to_uppercase:
+                result_df = result_df.with_columns(
+                    pl.col(col).str.to_uppercase().alias(col)
+                )
+            if to_lowercase:
+                result_df = result_df.with_columns(
+                    pl.col(col).str.to_lowercase().alias(col)
+                )
     
-    messages.append(f"{case_transform.__name__}: string columns {columns} transformed.")
+    if messages is not None:
+        messages.append(f"{case_transform.__name__}: string columns {columns} transformed.")
 
     return result_df
 
-def blank(df: Union[pd.DataFrame, pl.DataFrame], messages: str = None) -> Union[pd.DataFrame, pl.DataFrame]:
+def blank(df: pl.DataFrame, messages: list = None) -> pl.DataFrame:
     """
     Transform string columns to upper or lower case.
     
@@ -108,12 +97,13 @@ def blank(df: Union[pd.DataFrame, pl.DataFrame], messages: str = None) -> Union[
     Returns:
     DataFrame with transformed strings
     """
-    if not isinstance(df, (pd.DataFrame, pl.DataFrame)):
-        raise TypeError("df must be either a pandas or polars DataFrame")
+    if not isinstance(df, pl.DataFrame):
+        raise TypeError("df must be a polars DataFrame")
 
-    result_df = df.copy()
+    result_df = df.clone()
     
-    messages.append(f"{blank.__name__} No operation has been correctly made.")
+    if messages is not None:
+        messages.append(f"{blank.__name__} No operation has been correctly made.")
 
     return result_df
 
@@ -124,4 +114,4 @@ TRANSFORMERS_DICT = {
     "strings_strip_whitespace": strings_strip_whitespace,
     "case_transform": case_transform,
     "blank": blank,
-} 
+}
