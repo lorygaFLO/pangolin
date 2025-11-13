@@ -4,10 +4,7 @@
 # Python
 **/__pycache__/
 
-data/input/
-data/delivery/
-data/reports/
-data/staging/
+data/
 
 venvDataIngestion2/
 .env
