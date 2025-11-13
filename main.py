@@ -11,7 +11,7 @@ from engine.file_dispatcher import FileDispatcher
 from config.settings import *
 import yaml
 
-def load_pipeline_config(config_path):
+def load_pipeline_structure(config_path):
     """Load pipeline configuration from a YAML file."""
     with open(config_path, 'r') as file:
         return yaml.safe_load(file)
@@ -22,25 +22,26 @@ def step_factory(step_type, **kwargs):
         return DataTransformer(
             name=kwargs['name'],
             registry_path=kwargs['registry_path'],
-            report_path=kwargs['report_path'],
-            input_folder_path=kwargs['input_folder_path'],
-            output_folder_path=kwargs.get('output_folder_path') or kwargs['name']  # Default to step name
+            report_folder=kwargs['report_folder'],
+            input_folder=kwargs['input_folder'],
+            output_folder=kwargs.get('output_folder') or kwargs['name']  # Default to step name
         )
     elif step_type == 'validate':
         return Validator(
             name=kwargs['name'],
             registry_path=kwargs['registry_path'],
-            report_path=kwargs['report_path'],
-            input_folder_path=kwargs['input_folder_path'],
-            output_folder_path=kwargs.get('output_folder_path') or kwargs['name'] # Default to step name
+            report_folder=kwargs['report_folder'],
+            input_folder=kwargs['input_folder'],
+            output_folder=kwargs.get('output_folder') or kwargs['name'] # Default to step name
         )
     elif step_type == 'dispatcher':
         return FileDispatcher(
             name=kwargs['name'],
             registry_path=kwargs['registry_path'],
-            report_path=kwargs['report_path'],
-            input_folder_path=kwargs['input_folder_path'],
-            output_folder_path=kwargs.get('output_folder_path') or kwargs['name'],  # Default to step name
+            report_folder=kwargs['report_folder'],
+            input_folder=kwargs['input_folder'],
+            output_folder=kwargs.get('output_folder') or kwargs['name'],  # Default to step name
+            rm_from_input_folder=kwargs.get('rm_from_input_folder', False)
         )
     else:
         raise ValueError(f"Unsupported step type: {step_type}")
@@ -51,12 +52,9 @@ def run():
     print("Process started with RUN_ID:", S.RUN_ID)
 
     # Load pipeline configuration
-    pipeline_config = load_pipeline_config('config/pipeline_config.yaml')
+    pipeline_structure = load_pipeline_structure('config/pipeline_structure.yaml')
 
-    for step in pipeline_config['steps']:
-        if step is None:  # Skip None steps
-            print("Skipping a None step...")
-            continue
+    for step in pipeline_structure['steps']:
 
         step_type = step['type']
         step_name = step['name']

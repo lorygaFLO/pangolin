@@ -1,0 +1,49 @@
+# Usa _settings_key per linkare a Settings
+input:
+  _description: "Folder with input files"
+  _settings_key: "INPUT"  # Prende path da S.INPUT
+  # _path viene ignorato se c'è _settings_key
+
+staging:
+  _description: "Processing area"
+  _settings_key: "STAGING"  # Prende path da S.STAGING
+  _timestamped: true
+  0_dispatcher:
+    _pattern_matching: true
+  1_transform:
+    _pattern_matching: true
+  2_validation:
+    _pattern_matching: true
+
+delivery:
+  _description: "Output finale"
+  _settings_key: "DELIVERY"  # Prende path da S.DELIVERY
+  _timestamped: true
+  sales_final:
+    _filename: "sales_final.csv"
+  sales_report:
+    _filename: "sales_report.xlsx"
+
+backup:
+  _description: "Backup files"
+  _settings_key: "BACKUP"  # Prende path da S.BACKUP
+  _timestamped: true
+
+reports:
+  _description: "Report files"
+  _settings_key: "REPORTS"  # Prende path da S.REPORTS
+  _timestamped: true
+  validation_report:
+    _filename: "validation_report.html"
+
+# Cartelle custom (non in Settings)
+static:
+  _description: "Static support files"
+  _path: "support"  # Path fisso
+  mappings:
+    _filename: "product_mapping.csv"
+    _required: true
+
+cache:
+  _description: "Cache temporanea"
+  _path: "cache"  # Path fisso
