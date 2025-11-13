@@ -68,8 +68,10 @@ class Reporter:
         report_filename = self._create_report_filename(input_file_path)
         report_path = self.report_path / report_filename
         
+        
+        report_type = "Report"
         with open(report_path, 'w') as report_file:
-            report_file.write(f"Validation Report for: {input_file_path}\n")
+            report_file.write(f"{report_type} for: {input_file_path}\n")
             report_file.write("=" * 50 + "\n\n")
             for message in messages:
                 report_file.write(message + '\n')
