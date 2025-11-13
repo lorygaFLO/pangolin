@@ -1,2 +1,10 @@
  - dispatcher should be able to save a a file with match "*FR*sales*.csv" 
  in netsted folder structure like FR\SALES\sales_filename.csv
+
+ - when the output file is produced the system should save take a varibel 
+ that indicate if saving with the original one, always in csv or as parquet.
+ we could insert a paraemeter in the pipeline to define to define that or in settings or both
+
+ - when in pipeline structure the input folder is deafult the systemuser the input folder indicated in the settings.
+
+ - remove _settings_key from data structure

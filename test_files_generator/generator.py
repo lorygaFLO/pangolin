@@ -14,7 +14,7 @@ from config.settings import *
 
 fake = Faker()
 
-def generate_product_registry(num_products: int = 10) -> dict:
+def generate_product_mapping(num_products: int = 10) -> dict:
     """
     Genera l'anagrafica prodotti con dettagli.
     
@@ -44,7 +44,7 @@ def generate_product_registry(num_products: int = 10) -> dict:
     
     return products
 
-def save_product_registry(products: dict):
+def save_product_mapping(products: dict):
     """
     Salva l'anagrafica prodotti nella cartella static/mappings.
     
@@ -55,16 +55,18 @@ def save_product_registry(products: dict):
     static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'static', 'mappings')
     os.makedirs(static_dir, exist_ok=True)
     
-    # # Salva come JSON
-    # json_path = os.path.join(static_dir, 'product_registry.json')
-    # with open(json_path, 'w', encoding='utf-8') as f:
-    #     json.dump(products, f, indent=2, ensure_ascii=False)
+    # Salva come JSON
+    json_path = os.path.join(static_dir, 'product_mapping.json')
+    with open(json_path, 'w', encoding='utf-8') as f:
+        json.dump(products, f, indent=2, ensure_ascii=False)
     
-    # Salva anche come CSV per comodità
-    csv_path = os.path.join(static_dir, 'product_registry.csv')
+    # Salva anche come CSV per comodità - USA IL DELIMITATORE DA SETTINGS
+    csv_path = os.path.join(static_dir, 'product_mapping.csv')
     df_products = pd.DataFrame.from_dict(products, orient='index')
-    df_products.index.name = 'product_id'
-    df_products.to_csv(csv_path)
+    # IMPORTANTE: reset_index per rendere product_id una colonna normale
+    df_products.reset_index(inplace=True)
+    df_products.rename(columns={'index': 'product_id'}, inplace=True)
+    df_products.to_csv(csv_path, sep=S.CSV_DELIMITER, index=False)  # index=False per non salvare l'indice numerico
     
 def generate_sales_data(num_records: int = 100, num_products: int = 10, num_stores: int = 5) -> pd.DataFrame:
     """
@@ -122,8 +124,8 @@ if __name__ == "__main__":
     
     # Genera e salva l'anagrafica prodotti
     max_products = 100  # Numero massimo di prodotti nell'anagrafica
-    product_registry = generate_product_registry(num_products=max_products)
-    save_product_registry(product_registry)
+    product_registry = generate_product_mapping(num_products=max_products)
+    save_product_mapping(product_registry)
 
     ##CASE1##
     sales_df = generate_sales_data(num_records=500, num_products=8, num_stores=3)
@@ -184,7 +186,14 @@ if __name__ == "__main__":
     # Set an exaggerated value for 'quantity'
     sales_df.at[random.randint(0, len(sales_df) - 1), 'quantity'] = 10000
     sales_df.to_csv(os.path.join(S.PATH_INPUT, "FR_sales_data_case9_out_of_scale.csv"), index=False, sep=S.CSV_DELIMITER)
-
+    ##CASE10##
+    # Empty file with only column headers
+    empty_df = pd.DataFrame(columns=["product_id", "price", "store_id", "sellout_price", "date", "quantity"])
+    empty_df.to_csv(os.path.join(S.PATH_INPUT, "sales_data_case10_empty_file.csv"), index=False, sep=S.CSV_DELIMITER)
+    # Empty file
+    empty_df = pd.DataFrame()
+    empty_df.to_csv(os.path.join(S.PATH_INPUT, "sales_data_case10_empty_file.csv"), index=False, sep=S.CSV_DELIMITER)
+    
     print("Test files generated in:", S.PATH_INPUT)
 
 

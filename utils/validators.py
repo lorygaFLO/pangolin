@@ -3,7 +3,8 @@ import polars as pl
 import numpy as np
 import re
 from typing import List
-
+from engine.data_facility import DataFacility
+D = DataFacility()
 
 def always_true_validator(df, messages, params=None):
     """
@@ -296,6 +297,43 @@ def check_hierarchy(df, messages, params):
 
     return is_valid
 
+def validate_product_ids(df, messages, params):
+    """
+    Validate that product IDs in the dataframe exist in the provided product master data.
+
+    Parameters:
+    df (polars.DataFrame): The dataframe to check.
+    messages (list): List to store validation messages.
+    params (dict): Dictionary containing:
+        - product_id_column: Name of the column in df containing product IDs
+        - product_master: Polars DataFrame containing the product master data with a 'product_id' column
+
+    Returns:
+    bool: True if all product IDs exist in the product master, False otherwise.
+    """
+    product_id_column = params.get('product_id_column')
+    product_id_master_column = params.get('product_id_master_column')
+
+    if not D.static.mappings.product_mapping.exists():
+        messages.append("Product master data is not available.")
+        return False
+    else:
+        product_master = D.static.mappings.product_mapping.read()
+    if not isinstance(df, pl.DataFrame):
+        raise TypeError("df must be a polars DataFrame")
+
+    if product_id_master_column not in product_master.columns:
+        messages.append("Column 'product_id' not found in product master data.")
+        return False
+
+    missing_ids = df.filter(~df[product_id_column].is_in(product_master[product_id_master_column]))[product_id_column]
+
+    if len(missing_ids) > 0:
+        messages.append(f"Missing product IDs: {missing_ids.unique().to_list()}")
+        return False
+
+    return True
+
 
 
 
@@ -311,4 +349,5 @@ VALIDATORS_DICT = {
     "value_range": value_range,
     "check_null_values": check_null_values,
     "check_hierarchy": check_hierarchy,
+    "validate_product_ids": validate_product_ids,
 }

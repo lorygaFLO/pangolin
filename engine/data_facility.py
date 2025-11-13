@@ -40,6 +40,7 @@ class DataNode:
             # Inizializza figli
             for key, value in config.items():
                 if not key.startswith('_'):
+                    # Passa il path corretto ai figli
                     self._children[key] = DataNode(key, value, self.path, d_root)
     
     def _infer_format(self, filename: str) -> str:
@@ -63,7 +64,7 @@ class DataNode:
         Risolve path con priorità:
         1. _settings_key: usa valore da Settings
         2. _path: usa path fisso
-        3. default: usa nome come sottocartella
+        3. default: usa parent_path per file, parent_path/name per folder
         """
         # NUOVO: Se c'è _settings_key, usa Settings
         if '_settings_key' in self.config:
@@ -83,12 +84,15 @@ class DataNode:
         elif '_path' in self.config:
             base = S.DATAPATH / self.config['_path']  # S.DATAPATH is already a Path
         
-        # Default: sottocartella con nome del nodo
+        # Default: usa parent_path per file, parent_path/name per folder
         else:
-            base = self.parent_path / self.name
+            if self.is_file:
+                base = self.parent_path
+            else:
+                base = self.parent_path / self.name
         
         # Gestione timestamping
-        if self.config.get('_timestamped') or self._parent_is_timestamped(): # self._parent_is_timestamped() could create problmes
+        if self.config.get('_timestamped') or self._parent_is_timestamped():
             if S.RUN_ID not in str(base):
                 base = base / S.RUN_ID
         

@@ -8,12 +8,14 @@ staging:
   _description: "Processing area"
   _settings_key: "STAGING"  # Prende path da S.STAGING
   _timestamped: true
-  0_dispatcher:
+  0_validator:
     _pattern_matching: true
-  1_transform:
-    _pattern_matching: true
-  2_validation:
-    _pattern_matching: true
+  # 0_dispatcher:
+  #   _pattern_matching: true
+  # 1_transform:
+  #   _pattern_matching: true
+  # 2_validation:
+  #   _pattern_matching: true
 
 delivery:
   _description: "Output finale"
@@ -31,7 +33,7 @@ backup:
 
 reports:
   _description: "Report files"
-  _settings_key: "REPORTS"  # Prende path da S.REPORTS
+  _settings_key: "REPORTS"
   _timestamped: true
   validation_report:
     _filename: "validation_report.html"
@@ -39,10 +41,11 @@ reports:
 # Cartelle custom (non in Settings)
 static:
   _description: "Static support files"
-  _path: "support"  # Path fisso
   mappings:
-    _filename: "product_mapping.csv"
-    _required: true
+    _description: "Mapping files folder"
+    product_mapping:
+      _filename: "product_mapping.csv"
+      _required: true
 
 cache:
   _description: "Cache temporanea"
