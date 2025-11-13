@@ -1,0 +1,2 @@
+ - dispatcher should be able to save a a file with match "*FR*sales*.csv" 
+ in netsted folder structure like FR\SALES\sales_filename.csv
