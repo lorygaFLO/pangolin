@@ -372,6 +372,34 @@ class DataFacility:
         runs = sorted([d.name for d in runs_path.iterdir() if d.is_dir()])
         return runs[-limit:]
     
+    def get_node(self, path: str) -> DataNode:
+        """
+        Gets a DataNode from a string path.
+        Needed to pass a data structure like path in trasformers/validators parameters.
+        
+        Args:
+            path: string like "static.mapping.product_mapping" or "D.static.mapping.product_mapping"
+        
+        Returns:
+            DataNode object on which you can call .read(), .exists(), etc.
+        
+        Example:
+            D = DataFacility()
+            node = D.get_node("static.mapping.product_mapping")
+            if node.exists():
+                data = node.read()
+        """
+        # Remove "D." if present at the beginning
+        if path.startswith("D."):
+            path = path[2:]
+        
+        # Navigate the path
+        node = self
+        for part in path.split('.'):
+            node = getattr(node, part)
+        
+        return node
+    
     def validate_required(self) -> Dict[str, bool]:
         """Valida file required."""
         results = {}
@@ -394,3 +422,5 @@ class DataFacility:
 def get_project_data(structure_file: str = 'config/data_structure.yaml') -> DataFacility:  # Use forward slash
     """Factory function."""
     return DataFacility(structure_file)
+
+ 

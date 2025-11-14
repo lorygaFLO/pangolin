@@ -1,2 +1,3 @@
-"*sales*": "SALES_DATA"
+"*sales*": "SALES"
+"*inventory*": "INVENTORY"
 "test_*.csv": "test_data"

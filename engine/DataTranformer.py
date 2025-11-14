@@ -7,11 +7,14 @@ Inherits from BaseProcessor for file operations.
 import os
 from typing import Dict, Any, Literal
 from utils.transformers import TRANSFORMERS_DICT
-from engine.file_handler import BaseProcessor
-from engine.reporter import Reporter
+from engine.BaseProcessor import BaseProcessor
+from engine.Reporter import Reporter
 from config.settings import get_settings
 from pathlib import Path
 S = get_settings()
+
+
+
 class DataTransformer(BaseProcessor):
     def __init__(self, name: str, registry_path: str, report_folder: str, input_folder: str, output_folder: str = None):
         """
@@ -81,7 +84,7 @@ class DataTransformer(BaseProcessor):
                         messages.append(error_msg)
                 
                 except Exception as e:
-                    error_msg = f"Error in transform '{transform['name']}': {str(e)}"
+                    error_msg = f"ERROR in transform '{transform['name']}': {str(e)}"
                     transform_log.append({
                         "transform": transform["name"],
                         "status": "failed",

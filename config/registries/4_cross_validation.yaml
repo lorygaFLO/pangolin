@@ -1,0 +1,13 @@
+"*sales*":
+  validators:
+    sales_inventory_consistency:
+      - product_id
+"*inventory*":
+  validators:
+    always_true_validator:
+
+
+
+
+
+

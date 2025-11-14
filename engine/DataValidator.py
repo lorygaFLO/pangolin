@@ -7,8 +7,8 @@ Inherits from BaseProcessor for file operations.
 import os
 import shutil
 from utils.validators import VALIDATORS_DICT
-from engine.file_handler import BaseProcessor
-from engine.reporter import Reporter
+from engine.BaseProcessor import BaseProcessor
+from engine.Reporter import Reporter
 from typing import Dict, Any, Optional, List
 from pathlib import Path
 from config.settings import get_settings

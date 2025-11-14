@@ -6,8 +6,8 @@ Inherits from BaseProcessor for file operations.
 
 import os
 import shutil
-from engine.file_handler import BaseProcessor
-from engine.reporter import Reporter
+from engine.BaseProcessor import BaseProcessor
+from engine.Reporter import Reporter
 from pathlib import Path
 from typing import List, Tuple
 from config.settings import get_settings
@@ -51,9 +51,7 @@ class FileDispatcher(BaseProcessor):
         file_paths = self.get_input_files()
         
         if not file_paths:
-            print(f"WARNING: No files found in input folder '{self.input_node.path}'.")
-            print("If this is unexpected, please check your input data location.")
-            return
+            raise FileNotFoundError(f"No files found in input folder '{self.input_node.path}'. If this is unexpected, please check your input data location.")
 
         processed_count = 0
         for file_path, filename in file_paths:

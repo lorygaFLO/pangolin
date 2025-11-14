@@ -10,12 +10,17 @@ staging:
   _timestamped: true
   0_validator:
     _pattern_matching: true
-  # 0_dispatcher:
-  #   _pattern_matching: true
-  # 1_transform:
-  #   _pattern_matching: true
-  # 2_validation:
-  #   _pattern_matching: true
+  1_dispatcher:
+    _pattern_matching: true
+  2_transform:
+    _pattern_matching: true
+  3_validation:
+    _pattern_matching: true
+  4_cross_validation:
+    _pattern_matching: true
+  5_dispatcher:
+    _pattern_matching: true
+
 
 delivery:
   _description: "Output finale"
@@ -27,8 +32,8 @@ delivery:
     _filename: "sales_report.xlsx"
 
 backup:
-  _description: "Backup files"
-  _settings_key: "BACKUP"  # Prende path da S.BACKUP
+  _description: "Backup folder"
+  _settings_key: "BACKUP"  
   _timestamped: true
 
 reports:
@@ -46,6 +51,11 @@ static:
     product_mapping:
       _filename: "product_mapping.csv"
       _required: true
+    inventory_snapshot:
+      _description: "Inventory snapshots file. We are tracking all product IDs in inventory received over time."
+      _filename: "inventory_snapshot_product_ids.csv"
+      _versioned: true
+
 
 cache:
   _description: "Cache temporanea"

@@ -5,28 +5,37 @@ steps:
     report_folder: "reports"  # Changed from report_path to report_folder
     input_folder: "input"  # Input dal transform
     output_folder: "staging.0_validator"   
+  - type: dispatcher
+    name: "1_dispatcher"
+    registry_path: "config/registries/1_dispatcher.yaml"
+    report_folder: "reports"
+    input_folder: "staging.0_validator"  # Corrisponde a 'input' in data_structure
+    output_folder: "staging.1_dispatcher"  # Percorso completo con dot notation
+    rm_from_input_folder: false
+  - type: transform
+    name: "2_transform"
+    registry_path: "config/registries/2_transform_registry.yaml"
+    report_folder: "reports"
+    input_folder: "staging.1_dispatcher"  # Input dal dispatcher
+    output_folder: "staging.2_transform"   # Output in staging
+  - type: validate
+    name: "3_validation"
+    registry_path: "config/registries/3_validation.yaml"
+    report_folder: "reports"  # Changed from report_path to report_folder
+    input_folder: "staging.2_transform"  # Input dal transform
+    output_folder: "staging.3_validation"            # Output finale in delivery
+  - type: validate
+    name: "4_cross_validation"
+    registry_path: "config/registries/4_cross_validation.yaml"
+    report_folder: "reports"  # Changed from report_path to report_folder
+    input_folder: "staging.3_validation"  # Input dal transform
+    output_folder: "staging.4_cross_validation"            # Output finale in delivery
+  - type: dispatcher
+    name: "5_dispatcher"
+    registry_path: "config/registries/5_dispatcher.yaml"
+    report_folder: "reports"
+    input_folder: "staging.4_cross_validation"  # Corrisponde a 'input' in data_structure
+    output_folder: "delivery"  # Percorso completo con dot notation
+    rm_from_input_folder: false
 
-
-
-
-  # - type: dispatcher
-  #   name: "0_dispatcher"
-  #   registry_path: "config/registries/0_dispatcher.yaml"
-  #   report_folder: "reports"
-  #   input_folder: "input"  # Corrisponde a 'input' in data_structure
-  #   output_folder: "staging.0_dispatcher"  # Percorso completo con dot notation
-  #   rm_from_input_folder: false
-
-  # - type: transform
-  #   name: "1_transform"
-  #   registry_path: "config/registries/1_transform_registry.yaml"
-  #   report_folder: "reports"
-  #   input_folder: "staging.0_dispatcher"  # Input dal dispatcher
-  #   output_folder: "staging.1_transform"   # Output in staging
-
-  # - type: validate
-  #   name: "2_validation"
-  #   registry_path: "config/registries/2_validation_registry.yaml"
-  #   report_folder: "reports"  # Changed from report_path to report_folder
-  #   input_folder: "staging.1_transform"  # Input dal transform
-  #   output_folder: "delivery"            # Output finale in delivery
+    

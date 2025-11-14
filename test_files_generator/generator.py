@@ -116,6 +116,100 @@ def generate_sales_data(num_records: int = 100, num_products: int = 10, num_stor
     
     return pd.DataFrame(data)
 
+def generate_inventory_data(num_records: int = 100, num_products: int = 10, num_stores: int = 5) -> pd.DataFrame:
+    """
+    Generate historical inventory data with daily/weekly snapshots.
+    
+    Args:
+        num_records: number of records to generate
+        num_products: number of unique products
+        num_stores: number of unique stores
+    
+    Returns:
+        DataFrame with columns: product_id, store_id, date, opening_stock, quantity_in, 
+        quantity_out, closing_stock, reorder_point, reorder_quantity, unit_cost
+    """
+    
+    # Generate weekly dates for 2025
+    start_date = datetime(2025, 1, 1)
+    end_date = datetime(2025, 12, 31)
+    weekly_dates = []
+    current_date = start_date
+    while current_date <= end_date:
+        weekly_dates.append(current_date.date())
+        current_date += timedelta(weeks=1)
+    
+    data = []
+    
+    # Track inventory state for each product-store combination
+    inventory_states = {}
+    
+    for _ in range(num_records):
+        product_id = f"PROD_{random.randint(1, num_products):04d}"
+        store_id = random.randint(1, num_stores)
+        date = random.choice(weekly_dates)
+        
+        # Create unique key for tracking inventory
+        key = f"{product_id}_{store_id}_{date}"
+        
+        # Skip if this combination already exists for this date
+        if key in inventory_states:
+            continue
+            
+        # Opening stock (if first record for this product-store, random; otherwise use previous closing)
+        base_key = f"{product_id}_{store_id}"
+        if base_key not in inventory_states:
+            opening_stock = random.randint(50, 300)
+            inventory_states[base_key] = opening_stock
+        else:
+            opening_stock = inventory_states[base_key]
+        
+        # Quantity received (new stock coming in)
+        quantity_in = random.choices(
+            [0, random.randint(20, 150)], 
+            weights=[0.6, 0.4]  # 60% chance of no incoming stock
+        )[0]
+        
+        # Quantity sold/shipped out
+        max_out = min(opening_stock + quantity_in, 100)  # Can't sell more than available
+        quantity_out = random.randint(0, max(1, max_out))
+        
+        # Closing stock calculation
+        closing_stock = opening_stock + quantity_in - quantity_out
+        closing_stock = max(0, closing_stock)  # Ensure non-negative
+        
+        # Update state for next iteration
+        inventory_states[base_key] = closing_stock
+        inventory_states[key] = True  # Mark this date as used
+        
+        # Reorder point (when to order more stock)
+        reorder_point = random.randint(20, 80)
+        
+        # Reorder quantity (how much to order when hitting reorder point)
+        reorder_quantity = random.randint(50, 200)
+        
+        # Unit cost of the product
+        unit_cost = round(random.uniform(5.0, 250.0), 2)
+        
+        data.append({
+            "product_id": product_id,
+            "store_id": store_id,
+            "date": date,
+            "opening_stock": opening_stock,
+            "quantity_in": quantity_in,
+            "quantity_out": quantity_out,
+            "closing_stock": closing_stock,
+            "reorder_point": reorder_point,
+            "reorder_quantity": reorder_quantity,
+            "unit_cost": unit_cost
+        })
+    
+    df = pd.DataFrame(data)
+    # Sort by date, product_id, and store_id for better readability
+    df = df.sort_values(['date', 'product_id', 'store_id']).reset_index(drop=True)
+    
+    return df
+
 
 # Esempio di utilizzo
 if __name__ == "__main__":
@@ -194,6 +288,18 @@ if __name__ == "__main__":
     empty_df = pd.DataFrame()
     empty_df.to_csv(os.path.join(S.PATH_INPUT, "sales_data_case10_empty_file.csv"), index=False, sep=S.CSV_DELIMITER)
     
+    # INVENTORY CASES
+    print("\nGenerating inventory test cases...")
+    
+    ##INVENTORY CASE1 - FR##
+    inventory_df = generate_inventory_data(num_records=1500, num_products=15, num_stores=4)
+    inventory_df.to_csv(os.path.join(S.PATH_INPUT, "FR_inventory_data_case1_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
+    
+    ##INVENTORY CASE2 - US##
+    inventory_df = generate_inventory_data(num_records=2000, num_products=20, num_stores=6)
+    inventory_df.to_csv(os.path.join(S.PATH_INPUT, "US_inventory_data_case2_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
+    
     print("Test files generated in:", S.PATH_INPUT)
+
 
 

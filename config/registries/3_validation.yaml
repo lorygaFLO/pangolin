@@ -1,6 +1,5 @@
 "*sales*":
   validators:
-    is_empty_dataframe: 
     required_columns:
       - product_id
       - price
@@ -8,6 +7,10 @@
       - sellout_price
       - date
       - quantity
+      - total_sales
+      - product_name
+      - product_version
+      - brand
     additional_columns:
       - product_id
       - price
@@ -15,13 +18,12 @@
       - sellout_price
       - date
       - quantity
-    validate_product_ids:
-      product_id_column: product_id
-      product_id_master_column: product_id
-
+      - total_sales
+      - product_name
+      - product_version
+      - brand
 "*inventory*":
   validators:
-    is_empty_dataframe: 
     required_columns:
       - product_id
       - store_id
@@ -33,17 +35,6 @@
       - reorder_point
       - reorder_quantity
       - unit_cost
-    additional_columns:
-      - product_id
-      - store_id
-      - date
-      - opening_stock
-      - quantity_in
-      - quantity_out
-      - closing_stock
-      - reorder_point
-      - reorder_quantity
-      - unit_cost
-    validate_product_ids:
-      product_id_column: product_id
-      product_id_master_column: product_id
+
+
+

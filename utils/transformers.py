@@ -1,7 +1,80 @@
 import polars as pl
-from typing import List
+from typing import List, Union
+from engine.DataFacility import DataFacility
+D = DataFacility()
 
 
+def enrich_with_mapping(
+    df: pl.DataFrame,
+    mapping_file: str,  # Now accepts path like "static.mapping.product_mapping"
+    df_join_column: Union[str, List[str]],  # More descriptive: column(s) in the DataFrame to join on
+    mapping_key_column: Union[str, List[str]],  # More descriptive: key column(s) in the mapping to join on
+    columns_to_add: List[str],  # More descriptive: columns to add from the mapping
+    messages: list = None,
+) -> pl.DataFrame:
+    """
+    Enrich the DataFrame with additional columns from a mapping file.
+
+    Parameters:
+    df: Input DataFrame (polars)
+    mapping_file: DataFacility path (e.g. "static.mapping.product_mapping")
+    df_join_column: Column(s) in the DataFrame to join on
+    mapping_key_column: Column(s) in the mapping file to join on
+    columns_to_add: List of columns to add from the mapping
+    messages: Optional list to append messages
+    """
+    # Get the DataFacility node passed in the parameters
+    mapping_node = eval(mapping_file)
+    
+    # Check if it exists
+    if not mapping_node.exists():
+        raise FileNotFoundError(f"Mapping file not found: {mapping_file}")
+    
+    # Ensure join columns are lists for consistency
+    if isinstance(df_join_column, str):
+        df_join_column = [df_join_column]
+    if isinstance(mapping_key_column, str):
+        mapping_key_column = [mapping_key_column]
+    
+    # Read the mapping file
+    mapping_df = mapping_node.read()
+    
+    # Perform the join between the DataFrame and the mapping file
+    enriched_df = df.join(
+        mapping_df.select(mapping_key_column + columns_to_add),
+        left_on=df_join_column,
+        right_on=mapping_key_column,
+        how="left"
+    )
+    
+    # Simple report on unmatched records
+    if messages is not None:
+        # Check how many records didn't get matched (first added column will be null)
+        first_added_column = columns_to_add[0]
+        unmatched_count = enriched_df[first_added_column].null_count()
+        total_count = len(enriched_df)
+        
+        if unmatched_count > 0:
+            # Get a few examples of unmatched records
+            unmatched_examples = enriched_df.filter(
+                pl.col(first_added_column).is_null()
+            ).select(df_join_column).unique().head(3)
+            
+            examples_str = ", ".join([
+                str(row) for row in unmatched_examples.iter_rows()
+            ])
+            
+            messages.append(
+                f"{enrich_with_mapping.__name__}: Enriched with {mapping_file}. "
+                f"Unmatched records: {unmatched_count}/{total_count}. "
+                f"Examples: {examples_str}"
+            )
+        else:
+            messages.append(
+                f"{enrich_with_mapping.__name__}: Successfully enriched all records with {mapping_file}."
+            )
+    
+    return enriched_df
 
 def strings_strip_whitespace(
     df: pl.DataFrame, 
@@ -108,10 +181,110 @@ def blank(df: pl.DataFrame, messages: list = None) -> pl.DataFrame:
     return result_df
 
 
+def multiply_columns(
+        df: pl.DataFrame, 
+        columns_to_multiply: List[str], 
+        output_column: str, 
+        messages: list = None
+    ) -> pl.DataFrame:
+        """
+        Multiply values from multiple columns and store the result in a new column.
+        
+        Parameters:
+        df: Input DataFrame (polars)
+        columns_to_multiply: List of column names to multiply
+        output_column: Name of the resulting column
+        messages: Optional list to append messages
+        
+        Returns:
+        DataFrame with the new column containing the product of input columns
+        """
+        if not isinstance(df, pl.DataFrame):
+            raise TypeError("df must be a polars DataFrame")
+        
+        if not all(col in df.columns for col in columns_to_multiply):
+            raise ValueError("One or more columns to multiply are not present in the DataFrame")
+        
+        result_df = df.clone()
+        
+        # Compute the product of the input columns
+        product_expr = pl.lit(1)
+        for col in columns_to_multiply:
+            product_expr *= pl.col(col)
+        
+        result_df = result_df.with_columns(
+            product_expr.alias(output_column)
+        )
+        
+        if messages is not None:
+            messages.append(f"{multiply_columns.__name__}: Created column '{output_column}' as the product of {columns_to_multiply}.")
+        
+        return result_df
+
+def save_inventory_snapshot(
+    df: pl.DataFrame,
+    snapshot_file: str,  # DataFacility path (e.g. "static.inventory.product_snapshot")
+    product_id_column: str,  # Column name containing product IDs
+    messages: list = None
+    ) -> pl.DataFrame:
+    """
+    Save or append distinct product IDs to an inventory snapshot file.
+    
+    Parameters:
+    df: Input DataFrame (polars)
+    snapshot_file: DataFacility path for the snapshot file
+    product_id_column: Column name containing product IDs
+    messages: Optional list to append messages
+    
+    Returns:
+    Original DataFrame (unchanged)
+    """
+    if not isinstance(df, pl.DataFrame):
+        raise TypeError("df must be a polars DataFrame")
+    
+    if product_id_column not in df.columns:
+        raise ValueError(f"Column '{product_id_column}' not found in DataFrame")
+    
+    # Get the DataFacility node
+    snapshot_node = eval(snapshot_file)
+    
+    # Get distinct product IDs from current DataFrame
+    new_products = df.select(pl.col(product_id_column)).unique()
+    
+    # Check if snapshot file exists
+    if snapshot_node.exists():
+        # Read existing snapshot
+        existing_snapshot = snapshot_node.read()
+        
+        # Combine with new products and get distinct values
+        combined_snapshot = pl.concat([existing_snapshot, new_products]).unique()
+        
+        # Save the combined snapshot
+        snapshot_node.write(combined_snapshot)
+        
+        new_count = len(combined_snapshot) - len(existing_snapshot)
+        messages.append(
+            f"{save_inventory_snapshot.__name__}: Appended {new_count} new product IDs to {snapshot_file}. "
+            f"Total products: {len(combined_snapshot)}."
+        )
+    else:
+        # Create new snapshot with distinct product IDs
+        snapshot_node.write(new_products)
+        
+        if messages is not None:
+            messages.append(
+                f"{save_inventory_snapshot.__name__}: Created new snapshot at {snapshot_file} with new product IDs."
+            )
+    
+    return df
+
 ############################################################################################################
 # Dictionary to map transformer names to functions - All new transformers must be added here
 TRANSFORMERS_DICT = {
     "strings_strip_whitespace": strings_strip_whitespace,
     "case_transform": case_transform,
     "blank": blank,
+    "enrich_with_mapping": enrich_with_mapping,
+    "multiply_columns": multiply_columns,
+    "save_inventory_snapshot": save_inventory_snapshot,
 }
