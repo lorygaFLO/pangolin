@@ -395,7 +395,7 @@ def sales_inventory_consistency(df, messages, params):
     matching_records = sales_keys.join(inventory_keys, on=key_columns, how="inner")
     
     # Delete inventory snapshot
-    #D.static.mappings.inventory_snapshot.delete()
+    D.static.mappings.inventory_snapshot.delete()
     
     # Check if there are any matching records
     if len(matching_records) == 0:

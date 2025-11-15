@@ -291,15 +291,14 @@ if __name__ == "__main__":
     # INVENTORY CASES
     print("\nGenerating inventory test cases...")
     
-    ##INVENTORY CASE1 - FR##
-    inventory_df = generate_inventory_data(num_records=1500, num_products=15, num_stores=4)
+    ##INVENTORY CASE11 - FR##
+    inventory_df = generate_inventory_data(num_records=1500, num_products=3, num_stores=4)
     inventory_df.to_csv(os.path.join(S.PATH_INPUT, "FR_inventory_data_case1_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
     
-    ##INVENTORY CASE2 - US##
-    inventory_df = generate_inventory_data(num_records=2000, num_products=20, num_stores=6)
+    ##INVENTORY CASE12 - US##
+    inventory_df = generate_inventory_data(num_records=2000, num_products=3, num_stores=6)
     inventory_df.to_csv(os.path.join(S.PATH_INPUT, "US_inventory_data_case2_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
     
-    print("Test files generated in:", S.PATH_INPUT)
-
+    print("Test files generation completed.")
 
 

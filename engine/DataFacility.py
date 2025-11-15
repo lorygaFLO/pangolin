@@ -70,16 +70,13 @@ class DataNode:
         if '_settings_key' in self.config:
             settings_key = self.config['_settings_key']
             
-            # Ottieni valore da Settings
-            if hasattr(S, settings_key):
-                folder_name = getattr(S, settings_key)
-                base = S.DATAPATH / folder_name  # S.DATAPATH is already a Path
-            elif hasattr(S, f'PATH_{settings_key}'):
-                # Prova anche PATH_INPUT, PATH_STAGING, etc
-                base = getattr(S, f'PATH_{settings_key}')  # Already a Path
-            else:
-                raise ValueError(f"Settings key '{settings_key}' not found in Settings")
-        
+            if not hasattr(S, settings_key):
+                raise ValueError(f"Settings key '{settings_key}' defined for node '{self.name}' not found in Settings.")
+            
+            folder_name = getattr(S, settings_key)
+            # La regola è una e una sola: il valore da Settings è un nome di cartella (str) da aggiungere a DATAPATH.
+            base = S.DATAPATH / str(folder_name)
+
         # Path esplicito
         elif '_path' in self.config:
             base = S.DATAPATH / self.config['_path']  # S.DATAPATH is already a Path
