@@ -92,11 +92,11 @@ class SETTINGS:
         data_path = _as_str(os.getenv("DATAPATH"))
 
         # Folders from .env (logical names)
-        input_folder = _as_str(os.getenv("INPUT"), "input")
-        staging_folder = _as_str(os.getenv("STAGING"), "staging")
-        delivery_folder = _as_str(os.getenv("DELIVERY"), "delivery")
-        reports_folder = _as_str(os.getenv("REPORTS"), "reports")
-        backups_folder = _as_str(os.getenv("BACKUP"), "backup")
+        self.INPUT_FOLDER_NAME = _as_str(os.getenv("INPUT_FOLDER_NAME"), "input")
+        self.STAGING_FOLDER_NAME = _as_str(os.getenv("STAGING_FOLDER_NAME"), "staging")
+        self.DELIVERY_FOLDER_NAME = _as_str(os.getenv("DELIVERY_FOLDER_NAME"), "delivery")
+        self.REPORTS_FOLDER_NAME = _as_str(os.getenv("REPORTS_FOLDER_NAME"), "reports")
+        self.BACKUP_FOLDER_NAME = _as_str(os.getenv("BACKUP_FOLDER_NAME"), "backup")
 
         # Compute BASE_PATH (fallback to cwd)
         self.BASEPATH = Path(os.path.abspath(base_path)) if base_path else Path(os.path.abspath(os.getcwd()))
@@ -116,24 +116,15 @@ class SETTINGS:
             raise ValueError(f"Unsupported OUTPUT_FORMAT: {self.OUTPUT_FORMAT}")
 
 
-        # Main derived folders
-        self.INPUT = input_folder
-        self.STAGING = staging_folder
-        self.DELIVERY = delivery_folder
-        self.REPORTS = reports_folder   
-        self.PATH_BACKUP = backups_folder
+        # Paths derived from DATAPATH
+        self.PATH_REPORTS = self.DATAPATH / self.REPORTS_FOLDER_NAME
 
-        self.PATH_INPUT = self.DATAPATH / self.INPUT
-        self.PATH_STAGING = self.DATAPATH / self.STAGING
-        self.PATH_DELIVERY = self.DATAPATH / self.DELIVERY
-        self.PATH_REPORTS = self.DATAPATH / self.REPORTS
-        self.PATH_BACKUP = self.DATAPATH / self.PATH_BACKUP
 
         # Optional run-scoped output/report folders
-        self.PATH_REPORTS_RUN = self.PATH_REPORTS / self.RUN_ID
-        self.PATH_STAGING_RUN = self.PATH_STAGING / self.RUN_ID
-        self.PATH_DELIVERY_RUN = self.PATH_DELIVERY / self.RUN_ID
-        self.PATH_BACKUP_RUN = self.PATH_BACKUP / self.RUN_ID
+        # self.PATH_REPORTS_RUN = self.PATH_REPORTS / self.RUN_ID
+        # self.PATH_STAGING_RUN = self.PATH_STAGING / self.RUN_ID
+        # self.PATH_DELIVERY_RUN = self.PATH_DELIVERY / self.RUN_ID
+        # self.PATH_BACKUP_RUN = self.PATH_BACKUP / self.RUN_ID
 
         self._initialized = True
 

@@ -1,12 +1,12 @@
 # Usa _settings_key per linkare a Settings
 input:
   _description: "Folder with input files"
-  _settings_key: "INPUT"  # Prende path da S.INPUT
+  _settings_key: "INPUT_FOLDER_NAME"  # Prende il nome della cartella da Settings
   # _path viene ignorato se c'è _settings_key
 
 staging:
   _description: "Processing area"
-  _settings_key: "STAGING"  # Prende path da S.STAGING
+  _settings_key: "STAGING_FOLDER_NAME"
   _timestamped: true
   0_validator:
     _pattern_matching: true
@@ -24,7 +24,7 @@ staging:
 
 delivery:
   _description: "Output finale"
-  _settings_key: "DELIVERY"  # Prende path da S.DELIVERY
+  _settings_key: "DELIVERY_FOLDER_NAME"
   _timestamped: true
   sales_final:
     _filename: "sales_final.csv"
@@ -33,12 +33,12 @@ delivery:
 
 backup:
   _description: "Backup folder"
-  _settings_key: "BACKUP"  
+  _settings_key: "BACKUP_FOLDER_NAME"
   _timestamped: true
 
 reports:
   _description: "Report files"
-  _settings_key: "REPORTS"
+  _settings_key: "REPORTS_FOLDER_NAME"
   _timestamped: true
   validation_report:
     _filename: "validation_report.html"
