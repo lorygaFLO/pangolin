@@ -34,22 +34,16 @@ class DataTransformer(BaseProcessor):
         """
         Transform files according to the rules in the registry.
         """
-        # Let process_files handle getting the files and potential errors
-        processed_files, error_files = self.process_files(file_paths)
         transformation_results = {}
 
-        # Report errors
-        for file_path, error_messages in error_files.items():
-            # Extract relative path from file_path for report structure
-            relative_path = Path(file_path).relative_to(self.input_node.path) if Path(file_path).is_relative_to(self.input_node.path) else Path(file_path).name
-            self.reporter.write_report(str(relative_path), error_messages)
+        # Iterate over files one by one using the generator
+        for full_path, data, pattern, relative_path, error_messages in self.process_files(file_paths):
+            if error_messages:
+                # Report errors from file reading or pattern matching
+                self.reporter.write_report(relative_path, error_messages)
+                transformation_results[full_path] = {"overall_success": False, "errors": error_messages}
+                continue
 
-        if not processed_files:
-            print(f"No files to transform in '{self.input_node.path}'")
-            return transformation_results
-
-        # Transform each file
-        for file_path, (data, pattern, relative_path) in processed_files.items():
             print(f"Transforming {relative_path}")
             messages = []
             
@@ -122,18 +116,22 @@ class DataTransformer(BaseProcessor):
             else:
                 # Transformation failed - only generate report, don't save file
                 messages.append("File NOT saved due to transformation errors")
-                print(f"Transformation failed for {file_path} - file not saved")
+                print(f"Transformation failed for {full_path} - file not saved")
 
-            transformation_results[file_path] = {
+            transformation_results[full_path] = {
                 "data": modified_data,
-                "log": transform_log
+                "log": transform_log,
+                "overall_success": all_success
             }
 
             # Write report
             if messages:
-                messages.insert(0, f"\n------ TRANSFORMATION RESULTS for {file_path} -------\n")
+                messages.insert(0, f"\n------ TRANSFORMATION RESULTS for {full_path} -------\n")
                 # Use relative_path to maintain folder structure in reports
                 self.reporter.write_report(relative_path, messages)
+        
+        if not transformation_results:
+            print(f"No files to transform in '{self.input_node.path}'")
 
         return transformation_results
 

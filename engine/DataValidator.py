@@ -46,22 +46,16 @@ class Validator(BaseProcessor):
         """
         Validate the input files against the registry rules.
         """
-        # Let process_files handle getting the files and potential errors
-        processed_files, error_files = self.process_files(file_paths)
         validation_results = {}
         
-        # Report errors
-        for file_path, error_messages in error_files.items():
-            # Extract relative path from file_path for report structure
-            relative_path = Path(file_path).relative_to(self.input_node.path) if Path(file_path).is_relative_to(self.input_node.path) else Path(file_path).name
-            self.reporter.write_report(str(relative_path), error_messages)
-        
-        if not processed_files:
-            print(f"No files to validate in '{self.input_node.path}'")
-            return validation_results
+        # Iterate over files one by one using the generator
+        for full_path, dataset, pattern, relative_path, error_messages in self.process_files(file_paths):
+            if error_messages:
+                # Report errors from file reading or pattern matching
+                self.reporter.write_report(relative_path, error_messages)
+                validation_results[full_path] = {"overall_passed": False, "errors": error_messages}
+                continue
 
-        # Validate each file
-        for file_path, (dataset, pattern, relative_path) in processed_files.items():
             print(f"Validating {relative_path}")
             messages = []
             
@@ -86,12 +80,23 @@ class Validator(BaseProcessor):
             for validator_name, result in file_validation_results.items():
                 messages.append(f"{validator_name}: {'Passed' if result else 'Failed'}")
             
-            validation_results.update(file_validation_results)
+            validation_results[full_path] = {"overall_passed": all_passed, "details": file_validation_results}
             
             # Save only if ALL validations passed
             if all_passed:
-                output_path = self.write_file(dataset, relative_path)
-                print(f"Valid file saved to {relative_path}")
+                # Preserve folder structure but change extension to output format
+                relative_path_obj = Path(relative_path)
+                
+                # Change extension but keep folder structure
+                if str(relative_path_obj.parent) == '.':
+                    # File at root level
+                    output_relative_path = Path(f"{relative_path_obj.stem}.{S.OUTPUT_FORMAT}")
+                else:
+                    # File in subfolder - preserve structure
+                    output_relative_path = relative_path_obj.parent / f"{relative_path_obj.stem}.{S.OUTPUT_FORMAT}"
+                
+                output_path = self.write_file(dataset, str(output_relative_path))
+                print(f"Valid file saved to {str(output_relative_path)}")
             else:
                 # Validation failed - generate report with all issues
                 messages.append("\nFile NOT saved due to validation errors")
@@ -99,6 +104,9 @@ class Validator(BaseProcessor):
                 # Write report using relative path to maintain folder structure
                 self.reporter.write_report(relative_path, messages)
                 
+        if not validation_results:
+            print(f"No files to validate in '{self.input_node.path}'")
+        
         return validation_results
 
 # Usage example

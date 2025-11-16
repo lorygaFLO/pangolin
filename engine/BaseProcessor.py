@@ -202,35 +202,37 @@ class BaseProcessor:
         
         return output_path
 
-    def process_files(self, file_paths: List[Tuple[str, str]] = None) -> Tuple[Dict[str, Tuple[pl.DataFrame, str, str]], Dict[str, List[str]]]:
+    def process_files(self, file_paths: List[Tuple[str, str]] = None):
         """
-        Process files with pattern matching.
+        Process files with pattern matching, yielding one file at a time.
         
-        Returns:
-            Tuple of (processed_files_dict, error_files_dict)
-            processed_files_dict: {full_path: (dataframe, matched_pattern, relative_path)}
+        Yields:
+            Tuple of (full_path, dataframe, matched_pattern, relative_path, error_messages)
+            error_messages will be an empty list if no errors.
         """
         if file_paths is None:
             file_paths = self.get_input_files()
 
-        processed_files = {}
-        error_files = {}
-        
         for full_path, relative_path in file_paths:
+            error_messages = []
+            data = None
+            matched_pattern = None
+
             # Read file
             data, read_messages = self.read_file(full_path)
             if data is None:
-                error_files[full_path] = read_messages
+                error_messages.extend(read_messages)
+                yield full_path, None, None, relative_path, error_messages
                 continue
 
             # Match pattern using relative path
             matched_pattern, match_error = self.match_file(relative_path)
-            if matched_pattern:
-                processed_files[full_path] = (data, matched_pattern, relative_path)
-            else:
-                error_files[full_path] = [match_error] if match_error else []
-
-        return processed_files, error_files
+            if match_error:
+                error_messages.append(match_error)
+                yield full_path, data, None, relative_path, error_messages
+                continue
+            
+            yield full_path, data, matched_pattern, relative_path, error_messages
 
     def execute(self, **kwargs):
         """To be implemented by subclasses."""

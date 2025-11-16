@@ -1,4 +1,4 @@
-"*_sales_*.csv":
+"*_sales_*":
   transforms:
     - name: "enrich_with_mapping"
       function: "enrich_with_mapping"
@@ -35,7 +35,7 @@
         output_column: "total_sales"
       order: 4
 
-"*_inventory_*.csv":
+"*_inventory_*":
   transforms:
     - name: "enrich_with_mapping"
       function: "enrich_with_mapping"
