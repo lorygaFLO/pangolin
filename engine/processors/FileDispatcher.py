@@ -44,7 +44,7 @@ class FileDispatcher(BaseProcessor):
         for item in self.fs.glob(self.fs.join(str(self.input_node.path), '**')):
             if self.fs.isfile(item):
                 # Calculate relative path from input folder
-                relative_path = os.path.relpath(item, str(self.input_node.path))
+                relative_path = self.fs.relpath(item, str(self.input_node.path))
                 file_paths.append((item, relative_path))
         return file_paths
 

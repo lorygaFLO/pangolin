@@ -84,7 +84,7 @@ class Validator(BaseProcessor):
             
             # Save only if ALL validations passed
             if all_passed:
-                relative_path_obj = self.fs.join(*self.fs.dirname(relative_path).split(os.sep)) if self.fs.dirname(relative_path) != '' else ''
+                relative_path_obj = self.fs.dirname(relative_path)
                 output_filename = f"{self.fs.splitext(self.fs.basename(relative_path))[0]}.{S.OUTPUT_FORMAT}"
                 output_relative_path = self.fs.join(relative_path_obj, output_filename) if relative_path_obj else output_filename
                 output_path = self.write_file(dataset, output_relative_path)
