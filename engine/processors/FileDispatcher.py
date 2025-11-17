@@ -4,7 +4,6 @@ Dispatches files to subfolders based on pattern matching.
 Inherits from BaseProcessor for file operations.
 """
 
-import os
 from engine.processors.BaseProcessor import BaseProcessor
 from engine.Reporter import Reporter
 from utils.fs_wrapper import FSWrapper

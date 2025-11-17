@@ -4,8 +4,6 @@ Validates datasets against predefined rules specified in the registry.
 Inherits from BaseProcessor for file operations.
 """
 
-import os
-import shutil
 from utils.validators import VALIDATORS_DICT
 from engine.processors.BaseProcessor import BaseProcessor
 from engine.Reporter import Reporter
