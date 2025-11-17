@@ -5,7 +5,7 @@ Inherits from BaseProcessor for file operations.
 """
 
 import os
-from engine.BaseProcessor import BaseProcessor
+from engine.processors.BaseProcessor import BaseProcessor
 from engine.Reporter import Reporter
 from utils.fs_wrapper import FSWrapper
 from typing import List, Tuple

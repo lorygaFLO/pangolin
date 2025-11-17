@@ -7,7 +7,7 @@ Inherits from BaseProcessor for file operations.
 import os
 import shutil
 from utils.validators import VALIDATORS_DICT
-from engine.BaseProcessor import BaseProcessor
+from engine.processors.BaseProcessor import BaseProcessor
 from engine.Reporter import Reporter
 from typing import Dict, Any, Optional, List
 from utils.fs_wrapper import FSWrapper
@@ -85,7 +85,7 @@ class Validator(BaseProcessor):
             # Save only if ALL validations passed
             if all_passed:
                 relative_path_obj = self.fs.join(*self.fs.dirname(relative_path).split(os.sep)) if self.fs.dirname(relative_path) != '' else ''
-                output_filename = f"{os.path.splitext(self.fs.basename(relative_path))[0]}.{S.OUTPUT_FORMAT}"
+                output_filename = f"{self.fs.splitext(self.fs.basename(relative_path))[0]}.{S.OUTPUT_FORMAT}"
                 output_relative_path = self.fs.join(relative_path_obj, output_filename) if relative_path_obj else output_filename
                 output_path = self.write_file(dataset, output_relative_path)
                 print(f"Valid file saved to {output_relative_path}")

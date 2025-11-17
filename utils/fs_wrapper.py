@@ -80,8 +80,9 @@ class FSWrapper:
     
     # Path join
     def join(self, *paths):
-        """Unisce componenti di path"""
-        return os.path.join(*paths)
+        """Unisce componenti di path, garantendo l'uso di '/' come separatore."""
+        # L'uso di os.path.join può introdurre '\' su Windows, che non è valido per i percorsi cloud.
+        return os.path.join(*paths).replace(os.sep, '/')
     
     # Estrazione nome file/cartella
     def basename(self, path):
@@ -107,8 +108,17 @@ class FSWrapper:
     def relpath(self, path, start=None):
         """Restituisce il path relativo"""
         if self.protocol == "file":
-            return os.path.relpath(path, start=start or os.getcwd())
-        return path  # Per filesystem remoti, ritorna il path così com'è
+            # os.path.relpath può usare '\' su Windows, normalizziamo a '/'
+            return os.path.relpath(path, start=start or os.getcwd()).replace(os.sep, '/')
+        
+        # Implementazione base per path remoti
+        if start and path.startswith(start):
+            # Assicura che il path di start abbia uno slash finale per una rimozione pulita
+            start_path = start if start.endswith('/') else start + '/'
+            if path.startswith(start_path):
+                return path[len(start_path):]
+        return path
+    
     
     def splitext(self, path):
         return os.path.splitext(path)

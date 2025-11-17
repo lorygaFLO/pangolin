@@ -7,7 +7,7 @@ Inherits from BaseProcessor for file operations.
 import os
 from typing import Dict, Any, Literal
 from utils.transformers import TRANSFORMERS_DICT
-from engine.BaseProcessor import BaseProcessor
+from engine.processors.BaseProcessor import BaseProcessor
 from engine.Reporter import Reporter
 from config.settings import get_settings
 from pathlib import Path
