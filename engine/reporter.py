@@ -1,8 +1,6 @@
-import os
+from utils.fs_wrapper import FSWrapper
 from config.settings import get_settings
 from engine.DataFacility import get_project_data
-from pathlib import Path
-from config.settings import get_settings
 S = get_settings()
 class Reporter:
     def __init__(self, report_folder: str = None, step_name: str = None):
@@ -20,6 +18,9 @@ class Reporter:
         """
         self.D = get_project_data()
         
+        self.fs = FSWrapper(
+            protocol=getattr(S, "FS_PROTOCOL", "file"))
+        
         # Default to 'reports' node if not specified
         self.report_folder = report_folder or 'reports'
         self.step_name = step_name
@@ -29,12 +30,12 @@ class Reporter:
         
         # If step_name is provided, create a subfolder for it
         if self.step_name:
-            self.report_path = self.report_node.path / self.step_name
+            self.report_path = self.fs.join(str(self.report_node.path), self.step_name)
         else:
-            self.report_path = self.report_node.path
+            self.report_path = str(self.report_node.path)
         
         # Ensure the report path exists
-        self.report_path.mkdir(parents=True, exist_ok=True)
+        self.fs.makedirs(self.report_path, exist_ok=True)
 
     def _get_node_by_path(self, path_str: str):
         """Navigate to a node in DataFacility using dot notation."""
@@ -49,9 +50,9 @@ class Reporter:
     def _create_report_filename(self, input_file_path: str) -> str:
         """Create report filename based on input file."""
         # Get just the filename if it's an absolute path
-        input_filename = os.path.basename(input_file_path)
+        input_filename = self.fs.basename(input_file_path)
         # Remove extension and add .txt
-        report_filename = os.path.splitext(input_filename)[0] + '_report.txt'
+        report_filename = self.fs.basename(self.fs.splitext(input_filename)[0]) + '_report.txt'
         return report_filename
 
     def write_report(self, input_file_path: str, messages: list):
@@ -66,11 +67,10 @@ class Reporter:
             return
         
         report_filename = self._create_report_filename(input_file_path)
-        report_path = self.report_path / report_filename
-        
+        report_path = self.fs.join(self.report_path, report_filename)
         
         report_type = "Report"
-        with open(report_path, 'w') as report_file:
+        with self.fs.open(report_path, 'w') as report_file:
             report_file.write(f"{report_type} for: {input_file_path}\n")
             report_file.write("=" * 50 + "\n\n")
             for message in messages:
@@ -80,12 +80,12 @@ class Reporter:
 
     def list_reports(self, pattern: str = '*.txt') -> list:
         """List all reports in the report folder."""
-        return list(self.report_path.glob(pattern))
+        return self.fs.glob(self.fs.join(self.report_path, pattern))
 
     def clear_reports(self):
         """Clear all reports from the report folder."""
         for report_file in self.list_reports():
-            report_file.unlink()
+            self.fs.remove(report_file)
         print(f"Cleared all reports from {self.report_path}")
 
 # Example usage with DataFacility

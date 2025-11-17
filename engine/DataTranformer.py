@@ -11,6 +11,7 @@ from engine.BaseProcessor import BaseProcessor
 from engine.Reporter import Reporter
 from config.settings import get_settings
 from pathlib import Path
+from utils.fs_wrapper import FSWrapper
 S = get_settings()
 
 
@@ -91,45 +92,21 @@ class DataTransformer(BaseProcessor):
             
             if all_success:
                 try:
-                    # Preserve folder structure but change extension to output format
-                    relative_path_obj = Path(relative_path)
-                    
-                    # Change extension but keep folder structure
-                    if str(relative_path_obj.parent) == '.':
-                        # File at root level
-                        output_relative_path = Path(f"{relative_path_obj.stem}.{S.OUTPUT_FORMAT}")
-                    else:
-                        # File in subfolder - preserve structure
-                        output_relative_path = relative_path_obj.parent / f"{relative_path_obj.stem}.{S.OUTPUT_FORMAT}"
-                    
-                    output_path = self.write_file(modified_data, str(output_relative_path))
-                    messages.append(f"Transformed file saved to: {str(output_relative_path)}")
-                    print(f"Transformed file saved to: {str(output_relative_path)}")
+                    relative_path_obj = self.fs.join(*self.fs.dirname(relative_path).split(os.sep)) if self.fs.dirname(relative_path) != '' else ''
+                    output_filename = f"{os.path.splitext(self.fs.basename(relative_path))[0]}.{S.OUTPUT_FORMAT}"
+                    output_relative_path = self.fs.join(relative_path_obj, output_filename) if relative_path_obj else output_filename
+                    output_path = self.write_file(modified_data, output_relative_path)
+                    print(f"Transformed file saved to {output_relative_path}")
                 except Exception as e:
-                    error_msg = f"Error saving file: {str(e)}"
-                    transform_log.append({
-                        "transform": "save_file",
-                        "status": "failed",
-                        "error": str(e)
-                    })
-                    messages.append(error_msg)
+                    all_success = False
+                    messages.append(f"Error saving transformed file: {str(e)}")
             else:
-                # Transformation failed - only generate report, don't save file
-                messages.append("File NOT saved due to transformation errors")
-                print(f"Transformation failed for {full_path} - file not saved")
+                messages.append("\nFile NOT saved due to transformation errors")
+                print(f"Transformation failed for {relative_path} - file not saved")
+            
+            self.reporter.write_report(relative_path, messages)
+            transformation_results[full_path] = {"overall_success": all_success, "transform_log": transform_log, "messages": messages}
 
-            transformation_results[full_path] = {
-                "data": modified_data,
-                "log": transform_log,
-                "overall_success": all_success
-            }
-
-            # Write report
-            if messages:
-                messages.insert(0, f"\n------ TRANSFORMATION RESULTS for {full_path} -------\n")
-                # Use relative_path to maintain folder structure in reports
-                self.reporter.write_report(relative_path, messages)
-        
         if not transformation_results:
             print(f"No files to transform in '{self.input_node.path}'")
 
@@ -137,21 +114,30 @@ class DataTransformer(BaseProcessor):
 
 # Usage example
 if __name__ == "__main__":
+    # Ensure you have a registry.yaml with 'transforms' defined for a pattern
+    # Example registry.yaml entry:
+    # my_pattern_*.csv:
+    #   transforms:
+    #     - name: "Rename Column A"
+    #       order: 1
+    #       function: "rename_column"
+    #       params:
+    #         old_name: "Column A"
+    #         new_name: "New Column A"
+    #     - name: "Filter Rows"
+    #       order: 2
+    #       function: "filter_rows"
+    #       params:
+    #         column: "Value"
+    #         operator: ">"
+    #         value: 10
+    
     transformer = DataTransformer(
-        name='transform_step',
-        registry_path='config/transform_registry.yaml',
-        report_folder='reports.transformation',  # Using dot notation
-        input_folder='staging.0_dispatcher',     # Using dot notation  
-        output_folder='staging.1_transform'      # Using dot notation
+        name='transformation_step',
+        registry_path='config/registry.yaml',
+        report_folder='reports.transformation',
+        input_folder='staging.validated',
+        output_folder='staging.transformed'
     )
     transformation_results = transformer.execute()
-    
-    # Print summary
-    for file_path, result in transformation_results.items():
-        print(f"\nFile: {file_path}")
-        for log_entry in result['log']:
-            status = log_entry.get('status', 'unknown')
-            transform_name = log_entry.get('transform', 'unknown')
-            print(f"  - {transform_name}: {status}")
-            if status == 'failed' and 'error' in log_entry:
-                print(f"    Error: {log_entry['error']}")
+    print(transformation_results)

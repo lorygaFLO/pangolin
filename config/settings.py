@@ -115,6 +115,18 @@ class SETTINGS:
         if self.OUTPUT_FORMAT not in {"csv", "parquet"}:
             raise ValueError(f"Unsupported OUTPUT_FORMAT: {self.OUTPUT_FORMAT}")
 
+        # Add FS protocol and options for fsspec
+        self.FS_PROTOCOL = _as_str(os.getenv("FS_PROTOCOL"), "file")
+        # Optionally, parse FS_OPTIONS from env as JSON or dict string, else default to {}
+        import json
+        fs_options_env = os.getenv("FS_OPTIONS")
+        if fs_options_env:
+            try:
+                self.FS_OPTIONS = json.loads(fs_options_env)
+            except Exception:
+                self.FS_OPTIONS = {}
+        else:
+            self.FS_OPTIONS = {}
 
         # Paths derived from DATAPATH
         self.PATH_REPORTS = self.DATAPATH / self.REPORTS_FOLDER_NAME

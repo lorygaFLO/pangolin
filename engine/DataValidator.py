@@ -10,7 +10,7 @@ from utils.validators import VALIDATORS_DICT
 from engine.BaseProcessor import BaseProcessor
 from engine.Reporter import Reporter
 from typing import Dict, Any, Optional, List
-from pathlib import Path
+from utils.fs_wrapper import FSWrapper
 from config.settings import get_settings
 S = get_settings()
 
@@ -84,19 +84,11 @@ class Validator(BaseProcessor):
             
             # Save only if ALL validations passed
             if all_passed:
-                # Preserve folder structure but change extension to output format
-                relative_path_obj = Path(relative_path)
-                
-                # Change extension but keep folder structure
-                if str(relative_path_obj.parent) == '.':
-                    # File at root level
-                    output_relative_path = Path(f"{relative_path_obj.stem}.{S.OUTPUT_FORMAT}")
-                else:
-                    # File in subfolder - preserve structure
-                    output_relative_path = relative_path_obj.parent / f"{relative_path_obj.stem}.{S.OUTPUT_FORMAT}"
-                
-                output_path = self.write_file(dataset, str(output_relative_path))
-                print(f"Valid file saved to {str(output_relative_path)}")
+                relative_path_obj = self.fs.join(*self.fs.dirname(relative_path).split(os.sep)) if self.fs.dirname(relative_path) != '' else ''
+                output_filename = f"{os.path.splitext(self.fs.basename(relative_path))[0]}.{S.OUTPUT_FORMAT}"
+                output_relative_path = self.fs.join(relative_path_obj, output_filename) if relative_path_obj else output_filename
+                output_path = self.write_file(dataset, output_relative_path)
+                print(f"Valid file saved to {output_relative_path}")
             else:
                 # Validation failed - generate report with all issues
                 messages.append("\nFile NOT saved due to validation errors")
