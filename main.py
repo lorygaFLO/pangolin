@@ -4,9 +4,9 @@ Handles both transformation and validation of data files.
 Every step must have an execute attribute
 """
 
-from engine.DataValidator import Validator
-from engine.DataTranformer import DataTransformer
-from engine.FileDispatcher import FileDispatcher
+from engine.processors.DataValidator import Validator
+from engine.processors.DataTranformer import DataTransformer
+from engine.processors.FileDispatcher import FileDispatcher
 
 from config.settings import *
 import yaml

@@ -4,11 +4,9 @@ Dispatches files to subfolders based on pattern matching.
 Inherits from BaseProcessor for file operations.
 """
 
-import os
-import shutil
-from engine.BaseProcessor import BaseProcessor
+from engine.processors.BaseProcessor import BaseProcessor
 from engine.Reporter import Reporter
-from pathlib import Path
+from utils.fs_wrapper import FSWrapper
 from typing import List, Tuple
 from config.settings import get_settings
 S = get_settings()
@@ -31,6 +29,7 @@ class FileDispatcher(BaseProcessor):
         self.reporter = Reporter(report_folder, step_name=name)
         self.rm_from_input = rm_from_input_folder
 
+
     def get_input_files(self) -> List[Tuple[str, str]]:
         """
         Override to get all files from input folder recursively.
@@ -40,12 +39,12 @@ class FileDispatcher(BaseProcessor):
             List of tuples (full_path, relative_path).
         """
         file_paths = []
-        # Use rglob to find files recursively
-        for item in self.input_node.path.rglob('*'):
-            if item.is_file():
+        # Use glob to find files recursively
+        for item in self.fs.glob(self.fs.join(str(self.input_node.path), '**')):
+            if self.fs.isfile(item):
                 # Calculate relative path from input folder
-                relative_path = item.relative_to(self.input_node.path)
-                file_paths.append((str(item), str(relative_path)))
+                relative_path = self.fs.relpath(item, str(self.input_node.path))
+                file_paths.append((item, relative_path))
         return file_paths
 
     def execute(self, rm_from_input_folder: bool = None):
@@ -63,7 +62,7 @@ class FileDispatcher(BaseProcessor):
 
         processed_count = 0
         for full_path, relative_path in file_paths:
-            filename = Path(full_path).name
+            filename = self.fs.basename(full_path)
 
             # Match file to pattern using the relative path
             matched_pattern, match_error = self.match_file(relative_path)
@@ -77,16 +76,17 @@ class FileDispatcher(BaseProcessor):
             # Get target folder from registry
             target_folder = self.registry.get(matched_pattern, matched_pattern)
 
-            target_dir = self.output_node.path / target_folder
-            target_dir.mkdir(parents=True, exist_ok=True)
-            target_path = target_dir / filename
+            target_dir = self.fs.join(str(self.output_node.path), target_folder)
+            self.fs.makedirs(target_dir, exist_ok=True)
+            target_path = self.fs.join(target_dir, filename)
 
             # Move or copy file
             if self.rm_from_input:
-                shutil.move(full_path, target_path)
+                self.fs.copy(full_path, target_path)
+                self.fs.remove(full_path)
                 print(f"Moved '{filename}' to '{target_path}'")
             else:
-                shutil.copy2(full_path, target_path)
+                self.fs.copy(full_path, target_path)
                 print(f"Copied '{filename}' to '{target_path}'")
 
             processed_count += 1

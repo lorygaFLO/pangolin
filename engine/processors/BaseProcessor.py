@@ -6,14 +6,13 @@ Base class for all pipeline processors. Provides:
 - Common file processing functionality
 """
 
-import os
 import fnmatch
 import polars as pl
 from typing import Dict, List, Tuple, Optional, Any
 from config.settings import get_settings
 import yaml
 from engine.DataFacility import get_project_data
-from pathlib import Path
+from utils.fs_wrapper import FSWrapper
 S = get_settings()
 
 
@@ -42,6 +41,13 @@ class BaseProcessor:
         self.name = name
         self.output_folder = output_folder or name  # Default to step name
         
+
+        # Initialize FSWrapper using settings
+        self.fs = FSWrapper(
+            protocol=getattr(S, "FS_PROTOCOL", "file"),
+            **getattr(S, "FS_OPTIONS", {})
+        )
+        
         # Initialize DataFacility
         self.D = get_project_data()
         
@@ -52,14 +58,14 @@ class BaseProcessor:
         # Setup input/output paths using DataFacility
         self.input_node = self._get_node_by_path(input_folder)
         self.output_node = self._get_node_by_path(self.output_folder) if self.output_folder else None
-        
+
         # Ensure input folder exists
-        if not self.input_node.path.exists():
-            self.input_node.path.mkdir(parents=True, exist_ok=True)
+        if not self.fs.exists(str(self.input_node.path)):
+            self.fs.makedirs(str(self.input_node.path), exist_ok=True)
             
         # Ensure output folder exists if specified
-        if self.output_node and not self.output_node.path.exists():
-            self.output_node.path.mkdir(parents=True, exist_ok=True)
+        if self.output_node and not self.fs.exists(str(self.output_node.path)):
+            self.fs.makedirs(str(self.output_node.path), exist_ok=True)
 
     def _get_node_by_path(self, path_str: str):
         """Navigate to a node in DataFacility using dot notation."""
@@ -71,10 +77,10 @@ class BaseProcessor:
 
     def get_registry(self, file_path: str = 'config/registry.yaml') -> dict:
         """Load registry configuration from YAML file."""
-        if not os.path.isabs(file_path):
-            file_path = S.BASEPATH / file_path  # S.BASEPATH is already a Path
+        if not self.fs.isabs(file_path):
+            file_path = str(S.BASEPATH / file_path)  # S.BASEPATH is already a Path
         
-        with open(file_path, 'r') as file:
+        with self.fs.open(file_path, 'r') as file:
             registry = yaml.safe_load(file)
         
         return registry
@@ -109,18 +115,19 @@ class BaseProcessor:
         
         if include_subfolders:
             # Search recursively maintaining relative paths
-            for item in self.input_node.path.rglob('*'):
-                if item.is_file():
+            for item in self.fs.glob(self.fs.join(str(self.input_node.path), '**')):
+                if self.fs.isfile(item):
                     # Calculate relative path from input folder
-                    relative_path = item.relative_to(self.input_node.path)
-                    file_paths.append((str(item), str(relative_path)))
+                    relative_path = self.fs.relpath(item, str(self.input_node.path))
+                    file_paths.append((item, relative_path))
         else:
             # Only search in the direct folder
-            items = self.input_node.list('*')
+            items = self.fs.listdir(str(self.input_node.path))
             for item in items:
-                if item.is_file():
-                    relative_path = item.name  # Just the filename
-                    file_paths.append((str(item), str(relative_path)))
+                full_item = self.fs.join(str(self.input_node.path), item)
+                if self.fs.isfile(full_item):
+                    relative_path = item  # Just the filename
+                    file_paths.append((full_item, relative_path))
         
         if not file_paths:
             # This is an error for most processors - subclasses can override
@@ -140,23 +147,16 @@ class BaseProcessor:
         """
         messages = []
         try:
-            # Convert string path to Path object
-            file_path_obj = Path(file_path)
-            
-            # Create a temporary node for the file
-            file_node = type('FileNode', (), {
-                'path': file_path_obj,
-                'file_format': self._infer_format(str(file_path_obj)),
-                'is_file': True
-            })()
+            # Use file path directly
+            file_format = self._infer_format(file_path)
             
             # Read based on format
-            if file_node.file_format == 'csv':
-                data = pl.read_csv(file_path_obj, separator=S.CSV_DELIMITER)
-            elif file_node.file_format == 'parquet':
-                data = pl.read_parquet(file_path_obj)
+            if file_format == 'csv':
+                data = pl.read_csv(file_path, separator=S.CSV_DELIMITER)
+            elif file_format == 'parquet':
+                data = pl.read_parquet(file_path)
             else:
-                raise ValueError(f"Unsupported file format: {file_node.file_format}")
+                raise ValueError(f"Unsupported file format: {file_format}")
             
             return data, messages
             
@@ -166,7 +166,7 @@ class BaseProcessor:
 
     def _infer_format(self, filename: str) -> str:
         """Infer format from file extension."""
-        ext = os.path.splitext(filename)[1].lower()
+        ext = self.fs.splitext(filename)[1].lower()
         format_map = {
             '.csv': 'csv',
             '.parquet': 'parquet',
@@ -188,8 +188,8 @@ class BaseProcessor:
             raise ValueError("No output folder specified")
         
         # Create output path preserving folder structure
-        output_path = output_node.path / relative_path
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path = self.fs.join(str(output_node.path), relative_path)
+        self.fs.makedirs(self.fs.dirname(output_path), exist_ok=True)
         
         # Write based on format
         file_format = self._infer_format(str(relative_path))
