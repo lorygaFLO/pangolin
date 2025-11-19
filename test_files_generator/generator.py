@@ -215,7 +215,8 @@ def generate_inventory_data(num_records: int = 100, num_products: int = 10, num_
 if __name__ == "__main__":
 
     S = get_settings()
-    
+    os.path.join(S.DATAPATH / S.INPUT_FOLDER_NAME).mkdir(exist_ok=True)
+
     # Genera e salva l'anagrafica prodotti
     max_products = 100  # Numero massimo di prodotti nell'anagrafica
     product_registry = generate_product_mapping(num_products=max_products)
