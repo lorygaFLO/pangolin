@@ -24,7 +24,7 @@ def enrich_with_mapping(
     messages: Optional list to append messages
     """
     # Get the DataFacility node passed in the parameters
-    mapping_node = eval(mapping_file)
+    mapping_node = D.get_node(mapping_file)
     
     # Check if it exists
     if not mapping_node.exists():
@@ -246,7 +246,7 @@ def save_inventory_snapshot(
         raise ValueError(f"Column '{product_id_column}' not found in DataFrame")
     
     # Get the DataFacility node
-    snapshot_node = eval(snapshot_file)
+    snapshot_node = D.get_node(snapshot_file)
     
     # Get distinct product IDs from current DataFrame
     new_products = df.select(pl.col(product_id_column)).unique()

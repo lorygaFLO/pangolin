@@ -215,7 +215,7 @@ def generate_inventory_data(num_records: int = 100, num_products: int = 10, num_
 if __name__ == "__main__":
 
     S = get_settings()
-    os.path.join(S.DATAPATH / S.INPUT_FOLDER_NAME).mkdir(exist_ok=True)
+    os.makedirs(os.path.join(S.DATAPATH, S.INPUT_FOLDER_NAME), exist_ok=True)
 
     # Genera e salva l'anagrafica prodotti
     max_products = 100  # Numero massimo di prodotti nell'anagrafica
@@ -224,17 +224,17 @@ if __name__ == "__main__":
 
     ##CASE1##
     sales_df = generate_sales_data(num_records=500, num_products=8, num_stores=3)
-    sales_df.to_csv(os.path.join(S.DATAPATH / S.INPUT_FOLDER_NAME, "US_sales_data_case1_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
+    sales_df.to_csv(os.path.join(S.DATAPATH, S.INPUT_FOLDER_NAME, "US_sales_data_case1_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
     ##CASE2##
     sales_df = generate_sales_data(num_records=1000, num_products=50, num_stores=3)
-    sales_df.to_csv(os.path.join(S.DATAPATH / S.INPUT_FOLDER_NAME, "FR_sales_data_case2_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
+    sales_df.to_csv(os.path.join(S.DATAPATH, S.INPUT_FOLDER_NAME, "FR_sales_data_case2_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
     ##CASE3##
     sales_df = generate_sales_data(num_records=200, num_products=3, num_stores=3)
     # Convert some values in the 'price' column to strings with "test"
     indices_to_modify = random.sample(range(len(sales_df)), k=5)  # Select 5 random indices
     for idx in indices_to_modify:
         sales_df.at[idx, 'price'] = "test"
-    sales_df.to_csv(os.path.join(S.DATAPATH / S.INPUT_FOLDER_NAME, "FR_sales_data_case3_price_is_string.csv"), index=False, sep=S.CSV_DELIMITER)
+    sales_df.to_csv(os.path.join(S.DATAPATH, S.INPUT_FOLDER_NAME, "FR_sales_data_case3_price_is_string.csv"), index=False, sep=S.CSV_DELIMITER)
     
     ##CASE4##
     sales_df = generate_sales_data(num_records=200, num_products=3, num_stores=3)
@@ -242,12 +242,12 @@ if __name__ == "__main__":
     indices_to_modify = random.sample(range(len(sales_df)), k=5)  # Select 5 random indices
     for idx in indices_to_modify:
         sales_df.at[idx, 'quantity'] = "test"
-    sales_df.to_csv(os.path.join(S.DATAPATH / S.INPUT_FOLDER_NAME, "US_sales_data_case4_quantity_is_string.csv"), index=False, sep=S.CSV_DELIMITER)
+    sales_df.to_csv(os.path.join(S.DATAPATH, S.INPUT_FOLDER_NAME, "US_sales_data_case4_quantity_is_string.csv"), index=False, sep=S.CSV_DELIMITER)
     
     ##CASE5##
     # no nation, dispatcher does not know where to dispatch
     sales_df = generate_sales_data(num_records=800, num_products=8, num_stores=5)
-    sales_df.to_csv(os.path.join(S.DATAPATH / S.INPUT_FOLDER_NAME, "sales_data_case5_no_nation.csv"), index=False, sep=S.CSV_DELIMITER)
+    sales_df.to_csv(os.path.join(S.DATAPATH, S.INPUT_FOLDER_NAME, "sales_data_case5_no_nation.csv"), index=False, sep=S.CSV_DELIMITER)
 
     ##CASE6##
     #duplicates are present
@@ -255,7 +255,7 @@ if __name__ == "__main__":
     # Duplicate some rows
     duplicates = sales_df.sample(n=10, random_state=1)
     sales_df = pd.concat([sales_df, duplicates], ignore_index=True)
-    sales_df.to_csv(os.path.join(S.DATAPATH / S.INPUT_FOLDER_NAME, "US_sales_data_case6_with_duplicates.csv"), index=False, sep=S.CSV_DELIMITER)
+    sales_df.to_csv(os.path.join(S.DATAPATH, S.INPUT_FOLDER_NAME, "US_sales_data_case6_with_duplicates.csv"), index=False, sep=S.CSV_DELIMITER)
 
     ##CASE7##
     #missing values are present
@@ -265,13 +265,13 @@ if __name__ == "__main__":
         indices_to_modify = random.sample(range(len(sales_df)), k=5)
         for idx in indices_to_modify:
             sales_df.at[idx, col] = pd.NA
-    sales_df.to_csv(os.path.join(S.DATAPATH / S.INPUT_FOLDER_NAME, "FR_sales_data_case7_with_missing_values.csv"), index=False, sep=S.CSV_DELIMITER)
+    sales_df.to_csv(os.path.join(S.DATAPATH, S.INPUT_FOLDER_NAME, "FR_sales_data_case7_with_missing_values.csv"), index=False, sep=S.CSV_DELIMITER)
 
     ##CASE8##
     # missing 'product_id' column
     sales_df = generate_sales_data(num_records=200, num_products=3, num_stores=3)
     sales_df.drop(columns=['product_id'], inplace=True)
-    sales_df.to_csv(os.path.join(S.DATAPATH / S.INPUT_FOLDER_NAME, "FR_sales_data_case8_missing_product_id.csv"), index=False, sep=S.CSV_DELIMITER)
+    sales_df.to_csv(os.path.join(S.DATAPATH, S.INPUT_FOLDER_NAME, "FR_sales_data_case8_missing_product_id.csv"), index=False, sep=S.CSV_DELIMITER)
 
     ##CASE9##
     # Out-of-scale values for 'price' and 'quantity'
@@ -280,25 +280,25 @@ if __name__ == "__main__":
     sales_df.at[random.randint(0, len(sales_df) - 1), 'price'] = 10000
     # Set an exaggerated value for 'quantity'
     sales_df.at[random.randint(0, len(sales_df) - 1), 'quantity'] = 10000
-    sales_df.to_csv(os.path.join(S.DATAPATH / S.INPUT_FOLDER_NAME, "FR_sales_data_case9_out_of_scale.csv"), index=False, sep=S.CSV_DELIMITER)
+    sales_df.to_csv(os.path.join(S.DATAPATH, S.INPUT_FOLDER_NAME, "FR_sales_data_case9_out_of_scale.csv"), index=False, sep=S.CSV_DELIMITER)
     ##CASE10##
     # Empty file with only column headers
     empty_df = pd.DataFrame(columns=["product_id", "price", "store_id", "sellout_price", "date", "quantity"])
-    empty_df.to_csv(os.path.join(S.DATAPATH / S.INPUT_FOLDER_NAME, "sales_data_case10_empty_file.csv"), index=False, sep=S.CSV_DELIMITER)
+    empty_df.to_csv(os.path.join(S.DATAPATH, S.INPUT_FOLDER_NAME, "sales_data_case10_empty_file.csv"), index=False, sep=S.CSV_DELIMITER)
     # Empty file
     empty_df = pd.DataFrame()
-    empty_df.to_csv(os.path.join(S.DATAPATH / S.INPUT_FOLDER_NAME, "sales_data_case10_empty_file.csv"), index=False, sep=S.CSV_DELIMITER)
+    empty_df.to_csv(os.path.join(S.DATAPATH, S.INPUT_FOLDER_NAME, "sales_data_case10_empty_file.csv"), index=False, sep=S.CSV_DELIMITER)
     
     # INVENTORY CASES
     print("\nGenerating inventory test cases...")
     
     ##INVENTORY CASE11 - FR##
     inventory_df = generate_inventory_data(num_records=1500, num_products=3, num_stores=4)
-    inventory_df.to_csv(os.path.join(S.DATAPATH / S.INPUT_FOLDER_NAME, "FR_inventory_data_case1_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
+    inventory_df.to_csv(os.path.join(S.DATAPATH, S.INPUT_FOLDER_NAME, "FR_inventory_data_case1_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
     
     ##INVENTORY CASE12 - US##
     inventory_df = generate_inventory_data(num_records=2000, num_products=3, num_stores=6)
-    inventory_df.to_csv(os.path.join(S.DATAPATH / S.INPUT_FOLDER_NAME, "US_inventory_data_case2_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
+    inventory_df.to_csv(os.path.join(S.DATAPATH, S.INPUT_FOLDER_NAME, "US_inventory_data_case2_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
     
     print("Test files generation completed.")
 
