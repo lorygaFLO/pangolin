@@ -1,0 +1,1 @@
+# Use this file for costants to use in validators, processors, etc

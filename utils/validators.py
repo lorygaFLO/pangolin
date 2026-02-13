@@ -3,7 +3,8 @@ import polars as pl
 import numpy as np
 import re
 from typing import List
-
+from engine.DataFacility import DataFacility
+D = DataFacility()
 
 def always_true_validator(df, messages, params=None):
     """
@@ -49,10 +50,10 @@ def required_columns(df, messages, columns):
     bool: True if all required columns are present, False otherwise.
     """
 
-    if isinstance(df, pd.DataFrame) or isinstance(df, pl.DataFrame):
+    if isinstance(df, pl.DataFrame):
         missing_columns = [col for col in columns if col not in df.columns]
     else:
-        raise TypeError("df must be either a pandas or polars DataFrame")
+        raise TypeError("df must be a polars DataFrame")
 
     if missing_columns:
         messages.append(f"Missing columns: {', '.join(missing_columns)}")
@@ -296,8 +297,118 @@ def check_hierarchy(df, messages, params):
 
     return is_valid
 
+def validate_product_ids(df, messages, params):
+    """
+    Validate that product IDs in the dataframe exist in the provided product master data.
 
+    Parameters:
+    df (polars.DataFrame): The dataframe to check.
+    messages (list): List to store validation messages.
+    params (dict): Dictionary containing:
+        - product_id_column: Name of the column in df containing product IDs
+        - product_master: Polars DataFrame containing the product master data with a 'product_id' column
 
+    Returns:
+    bool: True if all product IDs exist in the product master, False otherwise.
+    """
+    product_id_column = params.get('product_id_column')
+    product_id_master_column = params.get('product_id_master_column')
+
+    if not D.static.mappings.product_mapping.exists():
+        messages.append("Product master data is not available.")
+        return False
+    else:
+        product_master = D.static.mappings.product_mapping.read()
+    if not isinstance(df, pl.DataFrame):
+        raise TypeError("df must be a polars DataFrame")
+
+    if product_id_master_column not in product_master.columns:
+        messages.append("Column 'product_id' not found in product master data.")
+        return False
+
+    missing_ids = df.filter(~df[product_id_column].is_in(product_master[product_id_master_column]))[product_id_column]
+
+    if len(missing_ids) > 0:
+        messages.append(f"Missing product IDs: {missing_ids.unique().to_list()}")
+        return False
+
+    return True
+
+def sales_inventory_consistency(df, messages, params):
+    """
+    Validate that sales records have corresponding inventory records based on specified key columns.
+    
+    Parameters:
+    df (polars.DataFrame): The sales dataframe to check.
+    messages (list): List to store validation messages.
+    params (dict): Dictionary containing:
+        - key_columns: List of column names to use as keys for matching sales with inventory
+        
+    Returns:
+    bool: True if sales records have matching inventory records, False otherwise.
+    """
+    if not isinstance(df, pl.DataFrame):
+        raise TypeError("df must be a polars DataFrame")
+    
+    # Handle params - it should be a dict with 'key_columns', but handle if it's passed differently
+    if isinstance(params, dict):
+        key_columns = params.get('key_columns', [])
+    elif isinstance(params, list):
+        # If params is directly a list, assume it's the list of key columns
+        key_columns = params
+    else:
+        messages.append("Invalid params format for sales-inventory consistency check.")
+        return False
+    
+    if not key_columns:
+        messages.append("No key columns specified for sales-inventory consistency check.")
+        return False
+    
+    # Check if inventory snapshot exists
+    if not D.static.mappings.inventory_snapshot.exists():
+        messages.append("Inventory snapshot data is not available.")
+        return False
+    
+    # Read inventory snapshot
+    inventory_df = D.static.mappings.inventory_snapshot.read()
+    
+    # Check if key columns exist in both dataframes
+    missing_in_sales = [col for col in key_columns if col not in df.columns]
+    missing_in_inventory = [col for col in key_columns if col not in inventory_df.columns]
+    
+    if missing_in_sales:
+        messages.append(f"Key columns missing in sales data: {', '.join(missing_in_sales)}")
+        return False
+    
+    if missing_in_inventory:
+        messages.append(f"Key columns missing in inventory data: {', '.join(missing_in_inventory)}")
+        D.static.mappings.inventory_snapshot.delete()
+        return False
+    
+    # Get unique combinations of key columns from sales
+    sales_keys = df.select(key_columns).unique()
+    
+    # Get unique combinations of key columns from inventory
+    inventory_keys = inventory_df.select(key_columns).unique()
+    
+    # Find sales records that have matching inventory records
+    matching_records = sales_keys.join(inventory_keys, on=key_columns, how="inner")
+    
+    # Delete inventory snapshot
+    D.static.mappings.inventory_snapshot.delete()
+    
+    # Check if there are any matching records
+    if len(matching_records) == 0:
+        messages.append("No sales records have corresponding inventory records based on the specified key columns.")
+        return False
+    
+    # Check if all sales records have matching inventory records
+    if len(matching_records) < len(sales_keys):
+        unmatched_count = len(sales_keys) - len(matching_records)
+        messages.append(f"{unmatched_count} sales record combinations do not have corresponding inventory records.")
+        return False
+    
+    return True
 
 
 ############################################################################################################
@@ -311,4 +422,6 @@ VALIDATORS_DICT = {
     "value_range": value_range,
     "check_null_values": check_null_values,
     "check_hierarchy": check_hierarchy,
+    "validate_product_ids": validate_product_ids,
+    "sales_inventory_consistency": sales_inventory_consistency,
 }

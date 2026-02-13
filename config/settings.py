@@ -2,6 +2,7 @@ from __future__ import annotations
 from dotenv import load_dotenv, find_dotenv
 import os
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 # Load .env from project root (or nearest parent)
@@ -61,7 +62,27 @@ class SETTINGS:
     - No singleton pattern
     """
 
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
     def __init__(self):
+        if self._initialized:
+            return
+
+        self.BACKEND_ENGINE = _as_str(os.getenv("BACKEND_ENGINE"))  
+        self.DUCKDB_CHUNK_SIZE = _as_int(os.getenv("DUCKDB_CHUNK_SIZE"), default=100000)
+        
+        # Validate backend
+        if self.BACKEND_ENGINE not in ['polars']:
+            raise ValueError(f"Invalid BACKEND_ENGINE: {self.BACKEND_ENGINE}. Only polars supported in this release.")
+        
+
+
         # Stable per-instance timestamp for the entire run
         # Format is friendly for filenames
         self.RUN_ID = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
@@ -71,60 +92,53 @@ class SETTINGS:
         data_path = _as_str(os.getenv("DATAPATH"))
 
         # Folders from .env (logical names)
-        input_folder = _as_str(os.getenv("INPUT"), "input")
-        staging_folder = _as_str(os.getenv("STAGING"), "staging")
-        delivery_folder = _as_str(os.getenv("DELIVERY"), "delivery")
-        reports_folder = _as_str(os.getenv("REPORTS"), "reports")
-        backups_folder = _as_str(os.getenv("BACKUP"), "backup")
+        self.INPUT_FOLDER_NAME = _as_str(os.getenv("INPUT_FOLDER_NAME"), "input")
+        self.STAGING_FOLDER_NAME = _as_str(os.getenv("STAGING_FOLDER_NAME"), "staging")
+        self.DELIVERY_FOLDER_NAME = _as_str(os.getenv("DELIVERY_FOLDER_NAME"), "delivery")
+        self.REPORTS_FOLDER_NAME = _as_str(os.getenv("REPORTS_FOLDER_NAME"), "reports")
+        self.BACKUP_FOLDER_NAME = _as_str(os.getenv("BACKUP_FOLDER_NAME"), "backup")
 
         # Compute BASE_PATH (fallback to cwd)
-        self.BASEPATH = os.path.abspath(base_path) if base_path else os.path.abspath(os.getcwd())
+        self.BASEPATH = Path(os.path.abspath(base_path)) if base_path else Path(os.path.abspath(os.getcwd()))
 
         # Compute DATA_PATH
         # If DATA_PATH is absolute, keep it; if relative, place it under BASE_PATH; else use BASE_PATH/data
         if data_path:
-            self.DATAPATH = data_path if _is_abs(data_path) else os.path.abspath(os.path.join(self.BASEPATH, data_path))
+            self.DATAPATH = Path(data_path) if _is_abs(data_path) else self.BASEPATH / data_path
         else:
-            self.DATAPATH = os.path.abspath(os.path.join(self.BASEPATH, "data"))
+            self.DATAPATH = self.BASEPATH / "data"
 
         # IO options
-        self.USE_POLARS = _as_bool(os.getenv("USE_POLARS"), default=True)
         self.DISABLE_REPORTS = _as_bool(os.getenv("DISABLE_REPORTS"), default=False)
         self.CSV_DELIMITER = _as_str(os.getenv("CSV_DELIMITER"), ";")
         self.OUTPUT_FORMAT = (_as_str(os.getenv("OUTPUT_FORMAT"), "parquet") or "parquet").lower()
         if self.OUTPUT_FORMAT not in {"csv", "parquet"}:
             raise ValueError(f"Unsupported OUTPUT_FORMAT: {self.OUTPUT_FORMAT}")
 
+        # Add FS protocol and options for fsspec
+        self.FS_PROTOCOL = _as_str(os.getenv("FS_PROTOCOL"), "file")
+        # Optionally, parse FS_OPTIONS from env as JSON or dict string, else default to {}
+        import json
+        fs_options_env = os.getenv("FS_OPTIONS")
+        if fs_options_env:
+            try:
+                self.FS_OPTIONS = json.loads(fs_options_env)
+            except Exception:
+                self.FS_OPTIONS = {}
+        else:
+            self.FS_OPTIONS = {}
 
-        # Main derived folders
-        self.INPUT = input_folder
-        self.STAGING = staging_folder
-        self.DELIVERY = delivery_folder
-        self.REPORTS = reports_folder   
-        self.PATH_BACKUP = backups_folder
+        # Paths derived from DATAPATH
+        self.PATH_REPORTS = self.DATAPATH / self.REPORTS_FOLDER_NAME
 
-        self.PATH_INPUT = _resolve_under(self.DATAPATH, self.INPUT)
-        self.PATH_STAGING = _resolve_under(self.DATAPATH, self.STAGING)
-        self.PATH_DELIVERY = _resolve_under(self.DATAPATH, self.DELIVERY)
-        self.PATH_REPORTS = _resolve_under(self.DATAPATH, self.REPORTS)
-        self.PATH_BACKUP = _resolve_under(self.DATAPATH, self.PATH_BACKUP)
 
         # Optional run-scoped output/report folders
-        self.PATH_REPORTS_RUN = os.path.abspath(os.path.join(self.PATH_REPORTS, self.RUN_ID))
-        self.PATH_STAGING_RUN = os.path.abspath(os.path.join(self.PATH_STAGING, self.RUN_ID))
-        self.PATH_DELIVERY_RUN = os.path.abspath(os.path.join(self.PATH_DELIVERY, self.RUN_ID))
-        self.PATH_BACKUP_RUN = os.path.abspath(os.path.join(self.PATH_BACKUP, self.RUN_ID))
+        # self.PATH_REPORTS_RUN = self.PATH_REPORTS / self.RUN_ID
+        # self.PATH_STAGING_RUN = self.PATH_STAGING / self.RUN_ID
+        # self.PATH_DELIVERY_RUN = self.PATH_DELIVERY / self.RUN_ID
+        # self.PATH_BACKUP_RUN = self.PATH_BACKUP / self.RUN_ID
 
-        # #Ensure directories exist
-        self.create_directories(
-            self.PATH_INPUT,
-            self.PATH_STAGING,
-            self.PATH_DELIVERY,
-            self.PATH_REPORTS,
-            self.PATH_REPORTS_RUN,
-            self.PATH_STAGING_RUN,
-            self.PATH_DELIVERY_RUN,
-        )
+        self._initialized = True
 
     @staticmethod
     def create_directories(*paths: str) -> None:

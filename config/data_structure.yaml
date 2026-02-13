@@ -1,0 +1,62 @@
+# Usa _settings_key per linkare a Settings
+input:
+  _description: "Folder with input files"
+  _settings_key: "INPUT_FOLDER_NAME"  # Prende il nome della cartella da Settings
+  # _path viene ignorato se c'è _settings_key
+
+staging:
+  _description: "Processing area"
+  _settings_key: "STAGING_FOLDER_NAME"
+  _timestamped: true
+  0_validator:
+    _pattern_matching: true
+  1_dispatcher:
+    _pattern_matching: true
+  2_transform:
+    _pattern_matching: true
+  3_validation:
+    _pattern_matching: true
+  4_cross_validation:
+    _pattern_matching: true
+  5_dispatcher:
+    _pattern_matching: true
+
+
+delivery:
+  _description: "Output finale"
+  _settings_key: "DELIVERY_FOLDER_NAME"
+  _timestamped: true
+  sales_final:
+    _filename: "sales_final.csv"
+  sales_report:
+    _filename: "sales_report.xlsx"
+
+backup:
+  _description: "Backup folder"
+  _settings_key: "BACKUP_FOLDER_NAME"
+  _timestamped: true
+
+reports:
+  _description: "Report files"
+  _settings_key: "REPORTS_FOLDER_NAME"
+  _timestamped: true
+  validation_report:
+    _filename: "validation_report.html"
+
+# Cartelle custom (non in Settings)
+static:
+  _description: "Static support files"
+  mappings:
+    _description: "Mapping files folder"
+    product_mapping:
+      _filename: "product_mapping.csv"
+      _required: true
+    inventory_snapshot:
+      _description: "Inventory snapshots file. We are tracking all product IDs in inventory received over time."
+      _filename: "inventory_snapshot_product_ids.csv"
+      _versioned: true
+
+
+cache:
+  _description: "Cache temporanea"
+  _path: "cache"  # Path fisso

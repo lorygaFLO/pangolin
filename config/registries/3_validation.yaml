@@ -1,0 +1,40 @@
+"*sales*":
+  validators:
+    required_columns:
+      - product_id
+      - price
+      - store_id
+      - sellout_price
+      - date
+      - quantity
+      - total_sales
+      - product_name
+      - product_version
+      - brand
+    additional_columns:
+      - product_id
+      - price
+      - store_id
+      - sellout_price
+      - date
+      - quantity
+      - total_sales
+      - product_name
+      - product_version
+      - brand
+"*inventory*":
+  validators:
+    required_columns:
+      - product_id
+      - store_id
+      - date
+      - opening_stock
+      - quantity_in
+      - quantity_out
+      - closing_stock
+      - reorder_point
+      - reorder_quantity
+      - unit_cost
+
+
+

@@ -1,0 +1,32 @@
+"*sales*":
+  validators:
+    # sales_inventory_consistency:
+    #   - product_id
+    always_true_validator:
+    check_null_values:
+      columns:
+        - price
+        - quantity
+      custom_null_values:
+        - ""
+        - " "
+        - "NA"
+        - "N/A"
+        - "NULL"
+    value_range:
+      price:
+        min: 0
+        max: 1000
+      sellout_price:
+        min: 0
+
+
+"*inventory*":
+  validators:
+    always_true_validator:
+
+
+
+
+
+

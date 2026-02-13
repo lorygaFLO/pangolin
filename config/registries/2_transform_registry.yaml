@@ -1,0 +1,64 @@
+"*_sales_*":
+  transforms:
+    - name: "enrich_with_mapping"
+      function: "enrich_with_mapping"
+      params:
+        mapping_file: "D.static.mappings.product_mapping"
+        df_join_column: 
+          - "product_id"
+        mapping_key_column: 
+          - "product_id"
+        columns_to_add:
+          - "product_name"
+          - "product_version"
+          - "brand"
+      order: 1
+    - name: "strings_strip_whitespace"
+      function: "strings_strip_whitespace"
+      params:
+        columns: ["product_name", "product_version"]
+        strip_whitespace: true
+      order: 2
+    - name: "case_transform"
+      function: "case_transform"
+      params:
+        columns: ["product_version", "product_name", "brand"]
+        to_lowercase: false
+        to_uppercase: true
+      order: 3
+    - name: "total_sales_calculation"
+      function: "multiply_columns"
+      params:
+        columns_to_multiply:
+          - "sellout_price"
+          - "quantity"
+        output_column: "total_sales"
+      order: 4
+
+"*_inventory_*":
+  transforms:
+    - name: "enrich_with_mapping"
+      function: "enrich_with_mapping"
+      params:
+        mapping_file: "D.static.mappings.product_mapping"
+        df_join_column: 
+          - "product_id"
+        mapping_key_column: 
+          - "product_id"
+        columns_to_add:
+          - "product_name"
+      order: 1
+    - name: "strings_strip_whitespace"
+      function: "strings_strip_whitespace"
+      params:
+        columns: ["product_name", "product_version"]
+        strip_whitespace: true
+      order: 2
+    - name: "save_inventory_snapshot"
+      function: "save_inventory_snapshot"
+      params:
+        product_id_column: "product_id"        
+        snapshot_file: "D.static.mappings.inventory_snapshot"
+      order: 3
+
+    
