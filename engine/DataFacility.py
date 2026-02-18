@@ -1,3 +1,338 @@
+"""
+DataFacility — Declarative, YAML-driven data access layer for Pangolin.
+=========================================================================
+
+DataFacility maps a YAML schema (``config/data_structure.yaml``) onto the
+filesystem so that every file and folder in the project can be accessed as
+a navigable Python object tree.  Path resolution, timestamping, versioning,
+and multi-format I/O are handled transparently.
+
+
+Quick-start
+-----------
+
+.. code-block:: python
+
+    from engine.DataFacility import get_project_data
+
+    D = get_project_data()          # loads config/data_structure.yaml
+    print(D)                        # overview: base path, data path, RUN_ID
+
+
+Browsing the tree
+-----------------
+
+Every top-level key in the YAML schema becomes an attribute of ``D``.
+Nested keys become child attributes, forming a navigable tree:
+
+.. code-block:: python
+
+    D.input                         # <DataFolder: input>   → data/input/
+    D.staging                       # <DataFolder: staging>  → data/staging/<RUN_ID>/
+    D.delivery                      # <DataFolder: delivery> → data/delivery/<RUN_ID>/
+    D.static                        # <DataFolder: static>   → data/static/
+    D.static.mappings               # <DataFolder: mappings> → data/static/mappings/
+    D.static.mappings.product_mapping   # <DataFile: product_mapping.csv>
+
+    # DataNode.__repr__ shows existence status and size:
+    #   <DataFile: product_mapping.csv [✓] 4.2KB>
+    #     Path: C:\\...\\data\\static\\mappings\\product_mapping.csv
+
+
+Inspecting a node
+-----------------
+
+.. code-block:: python
+
+    node = D.static.mappings.product_mapping
+
+    node.name            # 'product_mapping'
+    node.is_file         # True
+    node.path            # Path('…/data/static/mappings/product_mapping.csv')
+    node.file_format     # 'csv'   (inferred from extension)
+    node.description     # value of _description from YAML (str)
+    node.exists()        # True / False
+    node.config          # raw dict from YAML for this node
+
+    # Folder nodes expose their children:
+    D.delivery.children()           # {'sales_final': <DataNode>, 'sales_report': <DataNode>}
+    D.delivery.list('*.csv')        # [Path(...), ...]  — glob the folder
+
+
+Custom YAML attributes
+~~~~~~~~~~~~~~~~~~~~~~
+
+Any key starting with ``_`` that is not a reserved keyword
+(``_filename``, ``_path``, ``_settings_key``, ``_timestamped``, ``_versioned``,
+``_description``) is exposed as a Python attribute with the leading
+underscore stripped:
+
+.. code-block:: yaml
+
+    # data_structure.yaml excerpt
+    staging:
+      0_validator:
+        _pattern_matching: true
+
+.. code-block:: python
+
+    D.staging.0_validator is not accessible with dot notation (starts with
+    a digit), but you can use ``get_node``:
+
+    node = D.get_node("staging.0_validator")
+    node.pattern_matching    # True   (originally _pattern_matching)
+    node.list_attributes()   # {'pattern_matching': True}
+
+
+Reading files
+-------------
+
+``DataNode.read()`` dispatches on the inferred format and honours the
+backend engine configured in Settings (``BACKEND_ENGINE``).
+
+.. code-block:: python
+
+    # CSV  → polars.DataFrame (or pandas if BACKEND_ENGINE='pandas')
+    df = D.static.mappings.product_mapping.read()
+
+    # Override the default delimiter for this call only:
+    df = D.static.mappings.product_mapping.read(delimiter=',')
+
+    # Parquet
+    df = D.delivery.sales_final.read()          # if it were .parquet
+
+    # Excel
+    report = D.delivery.sales_report.read()     # .xlsx → DataFrame
+
+    # JSON / YAML → native Python dict / list
+    data = D.cache.some_json_file.read()
+
+
+Writing files
+-------------
+
+``DataNode.write()`` supports three modes: ``overwrite`` (default),
+``append``, and ``update``.
+
+.. code-block:: python
+
+    import polars as pl
+
+    df = pl.DataFrame({
+        "product_id": ["A1", "B2"],
+        "price": [9.99, 14.50],
+    })
+
+    # Overwrite (default) ------------------------------------------------
+    D.delivery.sales_final.write(df)
+
+    # Append — reads existing data, concatenates, writes back -------------
+    D.delivery.sales_final.write(df, mode='append')
+    # Shortcut:
+    D.delivery.sales_final.append(df)
+
+    # Update (JSON/YAML dicts only) — merges keys ------------------------
+    D.cache.some_yaml.write({"new_key": 42}, mode='update')
+    # Shortcut:
+    D.cache.some_yaml.update({"new_key": 42})
+
+    # Extra kwargs are forwarded to the underlying writer:
+    D.delivery.sales_final.write(df, delimiter=',')
+
+
+Versioning
+~~~~~~~~~~
+
+Nodes marked ``_versioned: true`` in the YAML schema automatically back
+up the existing file into a ``history/`` subfolder (timestamped) before
+an overwrite:
+
+.. code-block:: yaml
+
+    inventory_snapshot:
+      _filename: "inventory_snapshot_product_ids.csv"
+      _versioned: true
+
+.. code-block:: python
+
+    # First write — creates the file.
+    D.static.mappings.inventory_snapshot.write(df)
+
+    # Second write — moves the previous version to
+    #   …/static/mappings/history/inventory_snapshot_20260218_231500.csv
+    # then writes the new data.
+    D.static.mappings.inventory_snapshot.write(new_df)
+
+
+Deleting files
+--------------
+
+.. code-block:: python
+
+    D.delivery.sales_final.delete()   # removes the file if it exists
+
+
+Path resolution rules
+---------------------
+
+DataFacility resolves each node's filesystem path using the following
+priority order:
+
+1. **_settings_key** — the node's folder name is read from Settings at
+   runtime.  The resolved path is ``DATAPATH / <settings_value>``.
+
+   .. code-block:: yaml
+
+       input:
+         _settings_key: "INPUT_FOLDER_NAME"
+       # With INPUT_FOLDER_NAME="input" → data/input/
+
+2. **_path** — an explicit path relative to ``DATAPATH``.
+
+   .. code-block:: yaml
+
+       cache:
+         _path: "cache"
+       # → data/cache/
+
+3. **Default** — folders use ``<parent_path>/<node_name>``, files use
+   ``<parent_path>``.
+
+
+Timestamped folders
+~~~~~~~~~~~~~~~~~~~
+
+When ``_timestamped: true`` is set (or inherited from a parent), the
+current ``RUN_ID`` (e.g. ``20260218_215956``) is appended to the path:
+
+.. code-block:: python
+
+    D.staging.path        # data/staging/20260218_215956/
+    D.delivery.path       # data/delivery/20260218_215956/
+
+This ensures every pipeline run writes to an isolated directory.
+
+
+Navigating by string path — ``get_node()``
+-------------------------------------------
+
+Useful when the path comes from a configuration registry (e.g. a
+transformer/validator parameter stored as a string):
+
+.. code-block:: python
+
+    node = D.get_node("static.mappings.product_mapping")
+    # Equivalent to D.static.mappings.product_mapping
+
+    # The "D." prefix is tolerated and stripped automatically:
+    node = D.get_node("D.static.mappings.product_mapping")
+
+    if node.exists():
+        df = node.read()
+
+
+Switching between pipeline runs
+--------------------------------
+
+By default DataFacility uses the current ``RUN_ID`` from Settings.
+You can temporarily switch to a previous run to read its outputs:
+
+.. code-block:: python
+
+    # List the 10 most recent runs
+    D.list_runs()
+    # ['20260217_190454', '20260217_192638', '20260218_215956', ...]
+
+    # Switch to a specific run by ID
+    D.switch_to_run("20260217_192638")
+    old_df = D.delivery.sales_final.read()
+
+    # Or use a negative index (-1 = previous run, -2 = two runs ago)
+    D.switch_to_run(-1)
+
+    # Restore the original (current) RUN_ID
+    D.restore_current_run()
+
+⚠ ``switch_to_run`` mutates the global Settings singleton.  Use
+``restore_current_run`` when done to avoid side-effects on the rest of
+the pipeline.
+
+
+Validating required files
+-------------------------
+
+Nodes with ``_required: true`` can be bulk-checked:
+
+.. code-block:: python
+
+    results = D.validate_required()
+    # {'static.mappings.product_mapping': True}
+
+    missing = [path for path, ok in results.items() if not ok]
+    if missing:
+        raise FileNotFoundError(f"Required files missing: {missing}")
+
+
+Listing folder contents
+-----------------------
+
+.. code-block:: python
+
+    # All files in input/
+    D.input.list()                  # [Path('…/FR_sales_data…csv'), ...]
+
+    # Glob filtering
+    D.input.list('FR_*.csv')        # only French files
+    D.input.list('*.parquet')       # only parquet files
+
+    # Staging sub-step folders (timestamped)
+    D.staging.list()                # contents of data/staging/<RUN_ID>/
+
+
+Full pipeline example
+---------------------
+
+.. code-block:: python
+
+    from engine.DataFacility import get_project_data
+
+    D = get_project_data()
+
+    # 1. Check prerequisites
+    results = D.validate_required()
+    assert all(results.values()), f"Missing: {[k for k,v in results.items() if not v]}"
+
+    # 2. Read input
+    raw_files = D.input.list('*_sales_data_*.csv')
+    for f in raw_files:
+        print(f"Processing {f.name}")
+
+    # 3. Read a static mapping
+    mapping = D.static.mappings.product_mapping.read()
+
+    # 4. Write processed output
+    import polars as pl
+    result = pl.DataFrame({"col": [1, 2, 3]})
+    D.delivery.sales_final.write(result)
+
+    # 5. Verify
+    print(D.delivery.sales_final)
+    #   <DataFile: sales_final.csv [✓] 0.1KB>
+    #     Path: …/data/delivery/20260218_215956/sales_final.csv
+
+
+Notes
+-----
+- ``DataFacility`` is **not** a singleton; call ``get_project_data()`` to
+  obtain a fresh instance.  However, the underlying ``Settings`` object
+  *is* a singleton, so all instances share the same ``RUN_ID`` and paths.
+- The YAML schema is loaded once at construction.  If you change
+  ``data_structure.yaml`` at runtime, create a new instance.
+- I/O methods forward ``**kwargs`` to the underlying library
+  (``polars.read_csv``, ``pandas.to_parquet``, etc.), so any library-
+  specific option is available.
+"""
+
 from pathlib import Path
 from typing import Any, Optional, Dict, List, Union
 from datetime import datetime
