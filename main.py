@@ -4,6 +4,9 @@ Handles both transformation and validation of data files.
 Pipeline is defined in Python code using Prefect's @flow decorators.
 """
 
+import os
+os.environ.setdefault("PREFECT_LOGGING_EXTRA_LOGGERS", "pangolin") # Ensure pangolin logger is included in Prefect's logging configuration
+
 from prefect import flow, get_run_logger
 from engine.processors.DataValidator import Validator
 from engine.processors.DataTranformer import DataTransformer

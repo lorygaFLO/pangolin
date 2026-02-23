@@ -54,7 +54,7 @@ class Validator(BaseProcessor):
                 validation_results[full_path] = {"overall_passed": False, "errors": error_messages}
                 continue
 
-            print(f"Validating {relative_path}")
+            self.log.info(f"Validating {relative_path}")
             messages = []
             
             file_validation_results = {}
@@ -86,16 +86,16 @@ class Validator(BaseProcessor):
                 output_filename = f"{self.fs.splitext(self.fs.basename(relative_path))[0]}.{S.OUTPUT_FORMAT}"
                 output_relative_path = self.fs.join(relative_path_obj, output_filename) if relative_path_obj else output_filename
                 output_path = self.write_file(dataset, output_relative_path)
-                print(f"Valid file saved to {output_relative_path}")
+                self.log.info(f"Valid file saved to {output_relative_path}")
             else:
                 # Validation failed - generate report with all issues
                 messages.append("\nFile NOT saved due to validation errors")
-                print(f"Validation failed for {relative_path} - file not saved")
+                self.log.warning(f"Validation failed for {relative_path} - file not saved")
                 # Write report using relative path to maintain folder structure
                 self.reporter.write_report(relative_path, messages)
                 
         if not validation_results:
-            print(f"No files to validate in '{self.input_node.path}'")
+            self.log.warning(f"No files to validate in '{self.input_node.path}'")
         
         return validation_results
 

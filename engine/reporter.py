@@ -1,6 +1,7 @@
 from utils.fs_wrapper import FSWrapper
 from config.settings import get_settings
 from engine.DataFacility import get_project_data
+from engine.core.logger import ProcessorLogger
 S = get_settings()
 class Reporter:
     def __init__(self, report_folder: str = None, step_name: str = None):
@@ -24,6 +25,7 @@ class Reporter:
         # Default to 'reports' node if not specified
         self.report_folder = report_folder or 'reports'
         self.step_name = step_name
+        self.log = ProcessorLogger(step_name or 'reporter')
         
         # Navigate to report node using DataFacility
         self.report_node = self._get_node_by_path(self.report_folder)
@@ -76,7 +78,7 @@ class Reporter:
             for message in messages:
                 report_file.write(message + '\n')
         
-        print(f"Report written to {report_path}")
+        self.log.info(f"Report written to {report_path}")
 
     def list_reports(self, pattern: str = '*.txt') -> list:
         """List all reports in the report folder."""
@@ -86,7 +88,7 @@ class Reporter:
         """Clear all reports from the report folder."""
         for report_file in self.list_reports():
             self.fs.remove(report_file)
-        print(f"Cleared all reports from {self.report_path}")
+        self.log.info(f"Cleared all reports from {self.report_path}")
 
 # Example usage with DataFacility
 if __name__ == "__main__":

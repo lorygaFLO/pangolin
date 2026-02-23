@@ -57,7 +57,7 @@ class FileDispatcher(BaseProcessor):
         file_paths = self.get_input_files()
 
         if not file_paths:
-            print(f"No files to dispatch in '{self.input_node.path}'.")
+            self.log.info(f"No files to dispatch in '{self.input_node.path}'.")
             return
 
         processed_count = 0
@@ -84,13 +84,13 @@ class FileDispatcher(BaseProcessor):
             if self.rm_from_input:
                 self.fs.copy(full_path, target_path)
                 self.fs.remove(full_path)
-                print(f"Moved '{filename}' to '{target_path}'")
+                self.log.info(f"Moved '{filename}' to '{target_path}'")
             else:
                 self.fs.copy(full_path, target_path)
-                print(f"Copied '{filename}' to '{target_path}'")
+                self.log.info(f"Copied '{filename}' to '{target_path}'")
 
             processed_count += 1
 
-        print(f"Dispatcher processed {processed_count} files.")
+        self.log.info(f"Dispatcher processed {processed_count} files.")
 
 
