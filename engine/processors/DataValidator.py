@@ -96,6 +96,17 @@ class Validator(BaseProcessor):
                 
         if not validation_results:
             self.log.warning(f"No files to validate in '{self.input_node.path}'")
+            return validation_results
+
+        # ---- Final summary ----
+        passed = [self.fs.basename(p) for p, r in validation_results.items() if r.get("overall_passed")]
+        failed = [self.fs.basename(p) for p, r in validation_results.items() if not r.get("overall_passed")]
+
+        self.log.info(f"Validation complete: {len(passed)} passed, {len(failed)} failed out of {len(validation_results)} files")
+        if passed:
+            self.log.info("PASSED:\n   - " + "\n   - ".join(passed))
+        if failed:
+            self.log.warning("FAILED:\n   - " + "\n   - ".join(failed))
         
         return validation_results
 

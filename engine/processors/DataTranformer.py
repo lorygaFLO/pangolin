@@ -108,6 +108,17 @@ class DataTransformer(BaseProcessor):
 
         if not transformation_results:
             self.log.warning(f"No files to transform in '{self.input_node.path}'")
+            return transformation_results
+
+        # ---- Final summary ----
+        passed = [self.fs.basename(p) for p, r in transformation_results.items() if r.get("overall_success")]
+        failed = [self.fs.basename(p) for p, r in transformation_results.items() if not r.get("overall_success")]
+
+        self.log.info(f"Transformation complete: {len(passed)} passed, {len(failed)} failed out of {len(transformation_results)} files")
+        if passed:
+            self.log.info("TRANSFORMED:\n   - " + "\n   - ".join(passed))
+        if failed:
+            self.log.warning("FAILED:\n   - " + "\n   - ".join(failed))
 
         return transformation_results
 
