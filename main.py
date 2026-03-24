@@ -39,7 +39,7 @@ def raw_dispatch_flow(S):
         name="1_dispatcher",
         registry_path="config/registries/1_dispatcher.yaml",
         report_folder=S.REPORTS_FOLDER_NAME,
-        input_folder=S.STAGING_FOLDER_NAME,
+        input_folder="staging.0_validator",
         output_folder="staging.1_dispatcher",
         rm_from_input_folder=False
     )
@@ -53,7 +53,7 @@ def transform_flow(S):
         name="2_transform",
         registry_path="config/registries/2_transform_registry.yaml",
         report_folder=S.REPORTS_FOLDER_NAME,
-        input_folder=S.STAGING_FOLDER_NAME,
+        input_folder="staging.1_dispatcher",
         output_folder="staging.2_transform"
     )
     transformer.execute()
@@ -66,7 +66,7 @@ def validation_flow(S):
         name="3_validation",
         registry_path="config/registries/3_validation.yaml",
         report_folder=S.REPORTS_FOLDER_NAME,
-        input_folder=S.STAGING_FOLDER_NAME,
+        input_folder="staging.2_transform",
         output_folder="staging.3_validation"
     )
     validator.execute()
@@ -79,7 +79,7 @@ def cross_validation_flow(S):
         name="4_cross_validation",
         registry_path="config/registries/4_cross_validation.yaml",
         report_folder=S.REPORTS_FOLDER_NAME,
-        input_folder=S.STAGING_FOLDER_NAME,
+        input_folder="staging.3_validation",
         output_folder="staging.4_cross_validation"
     )
     validator.execute()
@@ -92,7 +92,7 @@ def final_dispatch_flow(S):
         name="5_dispatcher",
         registry_path="config/registries/5_dispatcher.yaml",
         report_folder=S.REPORTS_FOLDER_NAME,
-        input_folder=S.STAGING_FOLDER_NAME,
+        input_folder="staging.4_cross_validation",
         output_folder=S.DELIVERY_FOLDER_NAME,
         rm_from_input_folder=True
     )
