@@ -1,3 +1,33 @@
+"""
+validators.py
+=============
+Collection of validator functions used by the pipeline engine.
+
+CONVENTION — Every validator MUST follow this signature:
+
+    def my_validator(df, messages, params=None) -> bool:
+
+Mandatory parameters:
+    df        (polars.DataFrame): The dataframe to validate.
+    messages  (list)            : Mutable list; append human-readable strings
+                                  describing any issues found.
+    params    (any, optional)   : Extra configuration (dict, list, scalar…).
+                                  Use None as default when no config is needed.
+
+Return value:
+    bool — True when the validation passes, False (or raise ValueError/TypeError)
+    when it fails.  Raising ValueError is reserved for fatal errors that must
+    stop the entire pipeline (e.g. missing mandatory columns, empty dataframe).
+
+Registration — decorate every new validator with @register_validator if you want to use it for validations:
+
+    @register_validator
+    def my_validator(df, messages, params=None):
+        ...
+
+    This automatically adds the function to VALIDATORS_DICT under its __name__.
+    Do NOT add entries to VALIDATORS_DICT manually.
+"""
 import pandas as pd
 import polars as pl
 import numpy as np
@@ -6,6 +36,16 @@ from typing import List
 from engine.DataFacility import DataFacility
 D = DataFacility()
 
+VALIDATORS_DICT = {}
+
+
+def register_validator(func):
+    """Decorator that automatically registers a validator function in VALIDATORS_DICT."""
+    VALIDATORS_DICT[func.__name__] = func
+    return func
+
+
+@register_validator
 def always_true_validator(df, messages, params=None):
     """
     Always returns True. Used for testing.
@@ -21,6 +61,7 @@ def always_true_validator(df, messages, params=None):
     return True
 
 
+@register_validator
 def always_false_validator(df, messages, params=None):
     """
     Always returns False. Used for testing.
@@ -37,6 +78,7 @@ def always_false_validator(df, messages, params=None):
     return False
 
 
+@register_validator
 def required_columns(df, messages, columns):
     """
     Check if required columns are present in the dataframe.
@@ -63,6 +105,7 @@ def required_columns(df, messages, columns):
     return True
 
 
+@register_validator
 def additional_columns(df, messages, columns):
     """
     Check if there are additional columns in the dataframe that are not in the list.
@@ -88,6 +131,7 @@ def additional_columns(df, messages, columns):
     return True
 
 
+@register_validator
 def is_empty_dataframe(df, messages):
     """
     Check if the dataframe is empty.
@@ -111,6 +155,7 @@ def is_empty_dataframe(df, messages):
     return True
 
 
+@register_validator
 def value_range(df, messages, params):
     """
     Check if values in specified columns are within the given range.
@@ -166,6 +211,7 @@ def value_range(df, messages, params):
     return is_valid
 
 
+@register_validator
 def check_null_values(df, messages, params):
     """
     Check for null values and custom-defined null values in specified columns and provide sample rows.
@@ -235,8 +281,7 @@ def check_null_values(df, messages, params):
     return is_valid
 
 
-
-
+@register_validator
 def check_hierarchy(df, messages, params):
     """
     Check if the hierarchy between higher_level_columns and lower_level_columns is respected.
@@ -297,6 +342,8 @@ def check_hierarchy(df, messages, params):
 
     return is_valid
 
+
+@register_validator
 def validate_product_ids(df, messages, params):
     """
     Validate that product IDs in the dataframe exist in the provided product master data.
@@ -334,6 +381,8 @@ def validate_product_ids(df, messages, params):
 
     return True
 
+
+@register_validator
 def sales_inventory_consistency(df, messages, params):
     """
     Validate that sales records have corresponding inventory records based on specified key columns.
@@ -412,16 +461,5 @@ def sales_inventory_consistency(df, messages, params):
 
 
 ############################################################################################################
-# Dictionary to map validator names to functions - All new vAlidators must be added here
-VALIDATORS_DICT = {
-    "always_true_validator": always_true_validator,
-    "always_false_validator": always_false_validator,
-    "required_columns": required_columns,
-    "additional_columns": additional_columns,
-    "is_empty_dataframe": is_empty_dataframe,
-    "value_range": value_range,
-    "check_null_values": check_null_values,
-    "check_hierarchy": check_hierarchy,
-    "validate_product_ids": validate_product_ids,
-    "sales_inventory_consistency": sales_inventory_consistency,
-}
+# VALIDATORS_DICT is automatically populated by the @register_validator decorator.
+# To register a new validator, simply decorate it with @register_validator.

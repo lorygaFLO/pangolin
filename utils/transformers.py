@@ -1,9 +1,48 @@
+"""
+transformers.py
+===============
+Collection of transformer functions used by the pipeline engine.
+
+CONVENTION — Every transformer MUST follow this signature:
+
+    def my_transformer(df, messages=None, **kwargs) -> polars.DataFrame:
+
+Mandatory parameters:
+    df        (polars.DataFrame): The dataframe to transform.
+    messages  (list, optional)  : Mutable list; append human-readable strings
+                                  describing the operations performed.
+
+Additional parameters depend on the specific transformer (e.g. column names,
+configuration values).  They must all have sensible defaults where possible.
+
+Return value:
+    polars.DataFrame — the transformed dataframe (may be a modified clone or
+    the original, depending on the operation).  Never return None.
+
+Registration — decorate every new transformer with @register_transformer if you want to use it for transformations:
+
+    @register_transformer
+    def my_transformer(df, ..., messages=None) -> pl.DataFrame:
+        ...
+
+    This automatically adds the function to TRANSFORMERS_DICT under its __name__.
+    Do NOT add entries to TRANSFORMERS_DICT manually.
+"""
 import polars as pl
 from typing import List, Union
 from engine.DataFacility import DataFacility
 D = DataFacility()
 
+TRANSFORMERS_DICT = {}
 
+
+def register_transformer(func):
+    """Decorator that automatically registers a transformer function in TRANSFORMERS_DICT."""
+    TRANSFORMERS_DICT[func.__name__] = func
+    return func
+
+
+@register_transformer
 def enrich_with_mapping(
     df: pl.DataFrame,
     mapping_file: str,  # Now accepts path like "static.mapping.product_mapping"
@@ -76,6 +115,8 @@ def enrich_with_mapping(
     
     return enriched_df
 
+
+@register_transformer
 def strings_strip_whitespace(
     df: pl.DataFrame, 
     columns: List[str], 
@@ -112,7 +153,7 @@ def strings_strip_whitespace(
     return result_df
 
 
-
+@register_transformer
 def case_transform(
     df: pl.DataFrame, 
     columns: List[str], 
@@ -159,6 +200,8 @@ def case_transform(
 
     return result_df
 
+
+@register_transformer
 def blank(df: pl.DataFrame, messages: list = None) -> pl.DataFrame:
     """
     Transform string columns to upper or lower case.
@@ -181,6 +224,7 @@ def blank(df: pl.DataFrame, messages: list = None) -> pl.DataFrame:
     return result_df
 
 
+@register_transformer
 def multiply_columns(
         df: pl.DataFrame, 
         columns_to_multiply: List[str], 
@@ -221,6 +265,8 @@ def multiply_columns(
         
         return result_df
 
+
+@register_transformer
 def save_inventory_snapshot(
     df: pl.DataFrame,
     snapshot_file: str,  # DataFacility path (e.g. "static.inventory.product_snapshot")
@@ -279,12 +325,5 @@ def save_inventory_snapshot(
     return df
 
 ############################################################################################################
-# Dictionary to map transformer names to functions - All new transformers must be added here
-TRANSFORMERS_DICT = {
-    "strings_strip_whitespace": strings_strip_whitespace,
-    "case_transform": case_transform,
-    "blank": blank,
-    "enrich_with_mapping": enrich_with_mapping,
-    "multiply_columns": multiply_columns,
-    "save_inventory_snapshot": save_inventory_snapshot,
-}
+# TRANSFORMERS_DICT is automatically populated by the @register_transformer decorator.
+# To register a new transformer, simply decorate it with @register_transformer.
