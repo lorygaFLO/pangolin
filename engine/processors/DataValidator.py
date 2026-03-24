@@ -7,6 +7,7 @@ Inherits from BaseProcessor for file operations.
 from utils.validators import VALIDATORS_DICT
 from engine.processors.BaseProcessor import BaseProcessor
 from engine.reporter import Reporter
+from engine.core.exceptions import NoInputFilesError, AllFilesFailedError
 from typing import Dict, Any, Optional, List
 from utils.fs_wrapper import FSWrapper
 from config.settings import get_settings
@@ -95,8 +96,7 @@ class Validator(BaseProcessor):
                 self.reporter.write_report(relative_path, messages)
                 
         if not validation_results:
-            self.log.warning(f"No files to validate in '{self.input_node.path}'")
-            return validation_results
+            raise NoInputFilesError(self.name, str(self.input_node.path))
 
         # ---- Final summary ----
         passed = [self.fs.basename(p) for p, r in validation_results.items() if r.get("overall_passed")]
@@ -107,6 +107,11 @@ class Validator(BaseProcessor):
             self.log.info("PASSED:\n   - " + "\n   - ".join(passed))
         if failed:
             self.log.warning("FAILED:\n   - " + "\n   - ".join(failed))
+
+        if len(passed) == 0:
+            raise AllFilesFailedError(
+                f"[{self.name}] All {len(failed)} file(s) failed validation."
+            )
         
         return validation_results
 

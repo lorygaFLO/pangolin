@@ -8,6 +8,7 @@ from typing import Dict, Any, Literal
 from utils.transformers import TRANSFORMERS_DICT
 from engine.processors.BaseProcessor import BaseProcessor
 from engine.reporter import Reporter
+from engine.core.exceptions import NoInputFilesError, AllFilesFailedError
 from config.settings import get_settings
 S = get_settings()
 
@@ -105,8 +106,7 @@ class DataTransformer(BaseProcessor):
             transformation_results[full_path] = {"overall_success": all_success, "transform_log": transform_log, "messages": messages}
 
         if not transformation_results:
-            self.log.warning(f"No files to transform in '{self.input_node.path}'")
-            return transformation_results
+            raise NoInputFilesError(self.name, str(self.input_node.path))
 
         # ---- Final summary ----
         passed = [self.fs.basename(p) for p, r in transformation_results.items() if r.get("overall_success")]
@@ -117,6 +117,11 @@ class DataTransformer(BaseProcessor):
             self.log.info("TRANSFORMED:\n   - " + "\n   - ".join(passed))
         if failed:
             self.log.warning("FAILED:\n   - " + "\n   - ".join(failed))
+
+        if len(passed) == 0:
+            raise AllFilesFailedError(
+                f"[{self.name}] All {len(failed)} file(s) failed transformation."
+            )
 
         return transformation_results
 

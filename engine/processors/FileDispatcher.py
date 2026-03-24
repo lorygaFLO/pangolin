@@ -6,6 +6,7 @@ Inherits from BaseProcessor for file operations.
 
 from engine.processors.BaseProcessor import BaseProcessor
 from engine.reporter import Reporter
+from engine.core.exceptions import NoInputFilesError, AllFilesFailedError
 from utils.fs_wrapper import FSWrapper
 from typing import List, Tuple
 from config.settings import get_settings
@@ -57,8 +58,7 @@ class FileDispatcher(BaseProcessor):
         file_paths = self.get_input_files()
 
         if not file_paths:
-            self.log.info(f"No files to dispatch in '{self.input_node.path}'.")
-            return
+            raise NoInputFilesError(self.name, str(self.input_node.path))
 
         passed = []
         failed = []
@@ -100,5 +100,10 @@ class FileDispatcher(BaseProcessor):
             self.log.info("DISPATCHED:\n   - " + "\n   - ".join(passed))
         if failed:
             self.log.warning("FAILED:\n   - " + "\n   - ".join(failed))
+
+        if len(passed) == 0:
+            raise AllFilesFailedError(
+                f"[{self.name}] All {len(failed)} file(s) failed dispatch."
+            )
 
 
