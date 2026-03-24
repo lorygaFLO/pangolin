@@ -1,23 +1,19 @@
-# Data Ingestion, Validation & Transformation
+# Pangolin — Data Ingestion, Validation & Transformation Pipeline
 
-This repository provides a flexible and modular tool for data ingestion, validation, and transformation. The goal is to ensure that data complies with user-defined rules, can be transformed through configurable stages, and provides detailed reporting throughout the process.
+Pangolin is a flexible, modular data processing pipeline built on top of **Prefect** and **Polars**. It automates multi-stage ingestion, validation, transformation, and delivery of data files, ensuring data quality and compliance with user-defined rules at every step.
 
-This project is especially valuable for organizations and individuals that need to routinely validate and transform data from third-party sources. It automates the entire data processing pipeline, ensuring data quality and compliance with predefined standards.  
-Additionally, it provides a structured template that simplifies the definition of data transformation and validation processes, making it easier to generate reports, trace operations, and standardize data processing pipelines.
+This project is especially valuable for organizations that need to routinely process and especially validate data from third-party sources. It provides a declarative, YAML-driven approach to defining pipeline stages, making it easy to configure new rules and extend the system without touching core code.
 
-## Project Overview
+## Key Features
 
-The tool has been updated to support greater modularity and configurability, allowing you to define multi-stage pipelines via YAML configuration files. You can now specify a sequence of validation and transformation stages, each with its own registry, directly in the configuration.
-
-### Key Features
-
-* **Configurable Multi-stage Pipeline**: Define a sequence of validation and transformation stages via YAML
-* **Extensible Validation Rules**: Easily add new custom validators
-* **Modular Transformations**: Implement custom transformations via registry and Python functions
-* **Extended Format Support**: CSV and Parquet, with extensibility for more formats
-* **Detailed Reporting**: Reports generated for each stage and processed file
-* **Plug-in Architecture**: Easily add new validators/transformers
-* **Non-destructive Processing**: Original files are never modified
+* **Prefect-orchestrated pipeline**: Each stage runs as a Prefect subflow with full observability and retry support
+* **Declarative YAML registries**: Define validation rules, transformations, and routing logic in plain YAML — no Python required for most customizations
+* **Polars backend**: Fast, memory-efficient dataframe processing
+* **fsspec integration**: Filesystem-agnostic I/O; swap local storage for S3, GCS, or Azure with a one-line config change
+* **DataFacility**: A YAML-driven data access layer that maps the project's folder structure into a navigable Python object tree
+* **Detailed per-stage reports**: HTML reports generated automatically for every stage and processed file
+* **Non-destructive processing**: Input files are never modified; every stage writes to its own staging folder
+* **Extensible with decorators**: Add new validators/transformers with a single `@register_validator` / `@register_transformer` decorator — no manual dict wiring
 
 ## Project Architecture
 
@@ -25,131 +21,264 @@ The tool has been updated to support greater modularity and configurability, all
 
 ```
 /
-├── config/                 # Configuration files
-│   ├── configs.yaml        # General configuration
-│   ├── constants.py        # System constants
-│   ├── validation_registry.yaml      # Validation rules registry
-│   └── transform_registry.yaml       # Transformation rules registry
-├── engine/                 # Core processing modules
-│   ├── execute_checks.py   # Validation execution
-│   ├── execute_transforms.py # Transformation execution
-│   ├── read_data_pandas.py # Data reading utilities
-│   └── reporter.py         # Reporting functionality
-└── utils/                  # Utility functions
-    ├── import_configs.py   # Configuration management
-    ├── validators.py       # Validation functions
-    └── transformers.py     # Transformation functions
+├── main.py                     # Pipeline entry point (Prefect flows)
+├── example.env                 # Environment variable template
+├── pyproject.toml              # Project metadata & dependencies
+├── config/
+│   ├── settings.py             # Settings loader (reads .env, builds paths)
+│   ├── constants.py            # System-wide constants
+│   ├── data_structure.yaml     # Declarative folder/file schema (DataFacility)
+│   └── registries/
+│       ├── 0_raw_validation.yaml    # Stage 0 — raw input validation rules
+│       ├── 1_dispatcher.yaml        # Stage 1 — file routing rules
+│       ├── 2_transform_registry.yaml # Stage 2 — transformation rules
+│       ├── 3_validation.yaml        # Stage 3 — post-transform validation
+│       ├── 4_cross_validation.yaml  # Stage 4 — cross-file validation
+│       └── 5_dispatcher.yaml        # Stage 5 — final delivery routing
+├── engine/
+│   ├── DataFacility.py         # YAML-driven data access layer
+│   ├── reporter.py             # Report generation
+│   ├── core/
+│   │   ├── exceptions.py       # Custom pipeline exceptions
+│   │   └── logger.py           # Per-processor logger
+│   └── processors/
+│       ├── BaseProcessor.py    # Shared processor base class
+│       ├── DataValidator.py    # Validation processor
+│       ├── DataTranformer.py   # Transformation processor
+│       └── FileDispatcher.py  # File routing processor
+├── utils/
+│   ├── validators.py           # Built-in validator functions
+│   ├── transformers.py         # Built-in transformer functions
+│   └── fs_wrapper.py           # fsspec filesystem wrapper
+└── data/
+    ├── input/                  # Drop input files here
+    ├── staging/                # Per-run intermediate data (auto-created)
+    ├── delivery/               # Final outputs (timestamped per run)
+    └── reports/                # Pipeline reports (timestamped per run)
 ```
 
-### Processing Flow
+### Pipeline Stages
 
-1. **Data Discovery**: The system scans the input directory for supported file formats
-2. **Data Loading**: Files are loaded using the appropriate readers (Pandas for CSV/Parquet)
-3. **Stage Processing**: Files go through the configured pipeline stages:
-   * **Validation Stages**: Validation according to rules defined in the registry
-   * **Transformation Stages**: Transformation according to rules defined in the registry
-4. **Result Processing**:
-   * Successfully processed files are copied to the output directory (structure replicated)
-   * Detailed reports are generated for each stage and file
+The pipeline runs 6 sequential Prefect subflows in the example:
+
+| # | Subflow | Processor | Description |
+|---|---------|-----------|-------------|
+| 0 | Raw Data Validation | `Validator` | Validates raw input files against `0_raw_validation.yaml` |
+| 1 | Raw Data Dispatch | `FileDispatcher` | Routes validated files into typed sub-folders (e.g. `SALES`, `INVENTORY`) |
+| 2 | Data Transformation | `DataTransformer` | Applies enrichment, column transforms, and derived columns |
+| 3 | Transformed Data Validation | `Validator` | Re-validates post-transform data |
+| 4 | Cross Validation | `Validator` | Cross-file consistency checks |
+| 5 | Final Data Dispatch | `FileDispatcher` | Routes processed files to the delivery folder by region/type |
+
+Each stage reads from the previous stage's output folder (under `data/staging/<RUN_ID>/`) and writes to the next. Staging folders are timestamped per run to keep runs fully isolated and traceable.
+
+### DataFacility
+
+`DataFacility` maps `config/data_structure.yaml` onto the filesystem as a navigable Python object tree. Any processor can access paths, read files, and check existence without hardcoding paths:
+
+```python
+from engine.DataFacility import get_project_data
+
+D = get_project_data()
+D.input                            # data/input/
+D.staging                          # data/staging/<RUN_ID>/
+D.static.mappings.product_mapping  # data/static/mappings/product_mapping.csv
+
+node = D.static.mappings.product_mapping
+node.exists()    # True / False
+node.read()      # polars.DataFrame
+node.path        # pathlib.Path
+```
+
+## Setup
+
+### Prerequisites
+
+* Python ≥ 3.10
+* A running [Prefect](https://docs.prefect.io/) server (optional for local runs — Prefect can also run without a server in local mode)
+
+### Installation
+
+```bash
+pip install -e .
+```
+
+### Configuration
+
+1. Copy `example.env` to `.env` at the project root and fill in the values:
+
+```env
+BACKEND_ENGINE=polars          # Only "polars" is supported in this release
+FS_PROTOCOL=file               # fsspec protocol: "file", "s3", "gcs", "abfs", …
+# FS_OPTIONS={"key": "...", "secret": "..."}  # JSON string of fsspec options (optional)
+
+BASEPATH=C:\path\to\repo
+DATAPATH=C:\path\to\data       # Absolute, or relative to BASEPATH
+
+INPUT_FOLDER_NAME=input
+STAGING_FOLDER_NAME=staging
+DELIVERY_FOLDER_NAME=delivery
+REPORTS_FOLDER_NAME=reports
+BACKUP_FOLDER_NAME=backup
+
+CSV_DELIMITER=;
+OUTPUT_FORMAT=parquet          # "parquet" or "csv"
+DISABLE_REPORTS=False
+```
+
+2. Place input files in the `data/input/` folder (or the path configured in `.env`).
+
+### Running the Pipeline
+
+```bash
+python main.py
+```
+
+This executes the full 6-stage Prefect pipeline. Each run is identified by a unique `RUN_ID` timestamp (`YYYYMMDD_HHMMSS`) stamped on every staging, delivery, and report folder.
 
 ## Configuration Guide
 
-### General Configuration (configs.yaml)
+### Registry Files
 
-Before proceeding, ensure you rename `example.env` to `.env` and configure it with the appropriate settings for your environment.
+Each stage is driven by a YAML registry file. Files are matched against entries using glob patterns.
 
+#### Validation Registry (e.g. `0_raw_validation.yaml`)
 
-### Registry Configuration Examples
-
-#### Validation Registry (validation_registry.yaml)
 ```yaml
-"sales_*.csv":                
-  validators:                  
-    required_columns:          
-      - "transaction_id"
-      - "product_code"
-      # ... other columns ...
-    data_type:                
-      transaction_id: "str"
-      product_code: "str"
-      # ... other validations ...
+"*sales*":
+  validators:
+    is_empty_dataframe:           # no params needed
+    required_columns:
+      - product_id
+      - price
+      - quantity
+    validate_product_ids:
+      product_id_column: product_id
+      product_id_master_column: product_id
 ```
 
-#### Transformation Registry (transform_registry.yaml)
+#### Transformation Registry (`2_transform_registry.yaml`)
+
 ```yaml
-"sales_*.csv":
-  transformers:
-    column_rename:
-      transaction_id: "id"
-      product_code: "sku"
-    date_format:
-      transaction_date: "%Y-%m-%d"
-    derived_columns:
-      profit:
-        formula: "total_amount - (quantity * unit_cost)"
+"*_sales_*":
+  transforms:
+    - name: "enrich_with_mapping"
+      function: "enrich_with_mapping"
+      params:
+        mapping_file: "D.static.mappings.product_mapping"
+        df_join_column: ["product_id"]
+        mapping_key_column: ["product_id"]
+        columns_to_add: ["product_name", "brand"]
+      order: 1
+    - name: "case_transform"
+      function: "case_transform"
+      params:
+        columns: ["product_name", "brand"]
+        to_uppercase: true
+      order: 2
 ```
 
-## Implementation Guide
+#### Dispatcher Registry (e.g. `1_dispatcher.yaml`)
 
-### Creating Custom Components
+```yaml
+"*sales*":    "SALES"
+"*inventory*": "INVENTORY"
+```
 
-To add a custom validator or transformer, simply implement the function and register it in the respective dictionary (`VALIDATORS_DICT` or `TRANSFORMERS_DICT`).
+Files matching a pattern are routed to the named sub-folder inside the output directory.
 
-#### Custom Validator
+### Data Structure (`config/data_structure.yaml`)
 
-The user can specify all the validators he wants but is necessary to follow some rules. 
-- the validator must take the parameters df as input and messages. the users can then insert all the parameters he wants
-- the validator must return a boolean indicating the passed (True) or not passed (False) test 
+Defines the project's folder/file schema consumed by `DataFacility`. Use `_settings_key` to link a folder name to a `.env` variable, and `_timestamped: true` to automatically append the `RUN_ID`:
+
+```yaml
+staging:
+  _settings_key: "STAGING_FOLDER_NAME"
+  _timestamped: true
+  0_validator:
+    _pattern_matching: true
+```
+
+## Extending the Pipeline
+
+### Adding a Custom Validator
+
+Validators live in `utils/validators.py`. Decorate with `@register_validator` — no manual dict wiring required:
 
 ```python
-def custom_validator(dataset, messages):
-    """Custom validation function
-    Args:
-        dataset: pandas DataFrame to validate
-        messages: list for validation messages
-    """
-    # custom logic
-    messages.append("custom message")
+from utils.validators import register_validator
+import polars as pl
+
+@register_validator
+def no_negative_values(df: pl.DataFrame, messages: list, params=None) -> bool:
+    """Fail if any numeric column contains negative values."""
+    cols = params.get("columns", df.columns) if params else df.columns
+    for col in cols:
+        if df[col].dtype in (pl.Int64, pl.Float64) and (df[col] < 0).any():
+            messages.append(f"Column '{col}' contains negative values.")
+            return False
     return True
-
-VALIDATORS_DICT['custom_validator'] = custom_validator
 ```
-At th end of the validators.py file there is the VALIDATORS_DICT dictionary. The validator must be added to the dictionary or the routine will not recognize the function.
 
-#### Custom Transformer
+Then reference it by name in any registry YAML:
 
-Any custom trasformer must take df and messages parameters as input. The user can add all the additional parameters he wants.
+```yaml
+"*sales*":
+  validators:
+    no_negative_values:
+      columns: ["price", "quantity"]
+```
+
+**Signature contract:**
+- `df` — `polars.DataFrame`
+- `messages` — mutable list; append human-readable issue descriptions
+- `params` — optional extra config (dict, list, scalar, or `None`)
+- Return `True` for pass, `False` for fail; raise `ValueError` to abort the entire pipeline
+
+### Adding a Custom Transformer
+
+Transformers live in `utils/transformers.py`. Decorate with `@register_transformer`:
 
 ```python
-def custom_transformer(dataset, config):
-    """Custom transformation function
-    Args:
-        dataset: pandas DataFrame to transform
-        config: transformation configuration
-    """
-    # custom logic
-    messages.append("custom message")
-    return transformed_dataset
+from utils.transformers import register_transformer
+import polars as pl
 
-TRANSFORMERS_DICT['custom_transformer'] = custom_transformer
+@register_transformer
+def fill_nulls(df: pl.DataFrame, columns: list, fill_value=0, messages: list = None) -> pl.DataFrame:
+    """Replace null values in specified columns."""
+    df = df.with_columns([pl.col(c).fill_null(fill_value) for c in columns])
+    if messages is not None:
+        messages.append(f"Filled nulls in {columns} with {fill_value}")
+    return df
 ```
-At th end of the trasformers.py file there is the TRANSFORMERS_DICT dictionary. The trasformer must be added to the dictionary or the routine will not recognize the function.
 
-## Usage Examples
+Reference it in `2_transform_registry.yaml`:
 
-### Basic Usage
-to do
+```yaml
+"*_sales_*":
+  transforms:
+    - name: "fill_nulls"
+      function: "fill_nulls"
+      params:
+        columns: ["quantity", "price"]
+        fill_value: 0
+      order: 5
+```
+
+**Signature contract:**
+- `df` — `polars.DataFrame` (first positional argument)
+- `messages` — optional mutable list for operation notes
+- Additional keyword arguments map directly to `params` keys in the YAML
+- Must return a `polars.DataFrame` — never `None`
 
 ## Contributing
 
-Contributions are welcome! Here are some areas where you can contribute:
+Contributions are welcome! Priority areas:
 
-* **New File Format Support**: Add support for additional data formats
-* **Additional Validators/Transformers**: Implement new validation rules and transformation functions
-* **Performance Optimization**: Improve processing speed for large datasets
-* **Cloud Integration**: Add support for cloud storage services
-* **Documentation**: Improve guides and examples
-* **Error Handling**: Enhance error messages and reporting
-* **Partial Processing**: Implement partial success/failure handling
-* **Cross-file Operations**: Enable validation/transformation across multiple files
-* **Pipeline Optimization**: Add support for parallel processing and conditional execution
+* **Dockerization**: Production-ready `Dockerfile` + `docker-compose.yml` with cloud-native I/O (S3/GCS/Azure via `FS_PROTOCOL`/`FS_OPTIONS`), runtime-injected credentials, and an optional local Prefect server service — no local `data/` volume in production.
+* **Full Prefect Integration**: Move beyond basic `@flow` decorators — add deployment manifests (`prefect.yaml`), work pools, artifacts, Prefect secrets/variables blocks, scheduled/triggered runs, and failure notifications.
+* **New File Format Support**: Add support for Excel, JSON, or other formats
+* **Additional Validators/Transformers**: Implement new reusable functions
+* **Cloud Storage**: Expand and document S3/GCS/Azure usage via `FS_PROTOCOL` and `FS_OPTIONS`
+* **Documentation & Examples**: Improve guides and add realistic end-to-end examples
+
