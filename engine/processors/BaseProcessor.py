@@ -12,6 +12,7 @@ from typing import Dict, List, Tuple, Optional, Any
 from config.settings import get_settings
 import yaml
 from engine.DataFacility import get_project_data
+from engine.core.logger import ProcessorLogger
 from utils.fs_wrapper import FSWrapper
 S = get_settings()
 
@@ -39,6 +40,7 @@ class BaseProcessor:
         
         S = get_settings()
         self.name = name
+        self.log = ProcessorLogger(name)
         self.output_folder = output_folder or name  # Default to step name
         
 

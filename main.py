@@ -1,79 +1,140 @@
 """
-Main entry point for the data processing pipeline.
+Main entry point for the data processing pipeline using Prefect.
 Handles both transformation and validation of data files.
-Every step must have an execute attribute
+Pipeline is defined in Python code using Prefect's @flow decorators.
 """
 
+import os
+os.environ.setdefault("PREFECT_LOGGING_EXTRA_LOGGERS", "pangolin") # Ensure pangolin logger is included in Prefect's logging configuration
+
+from prefect import flow, get_run_logger
 from engine.processors.DataValidator import Validator
 from engine.processors.DataTranformer import DataTransformer
 from engine.processors.FileDispatcher import FileDispatcher
-
 from config.settings import *
-import yaml
-
-def load_pipeline_structure(config_path):
-    """Load pipeline configuration from a YAML file."""
-    with open(config_path, 'r') as file:
-        return yaml.safe_load(file)
-
-def step_factory(step_type, **kwargs):
-    """Factory function to create step instances based on type."""
-    if step_type == 'transform':
-        return DataTransformer(
-            name=kwargs['name'],
-            registry_path=kwargs['registry_path'],
-            report_folder=kwargs['report_folder'],
-            input_folder=kwargs['input_folder'],
-            output_folder=kwargs.get('output_folder') or kwargs['name']  # Default to step name
-        )
-    elif step_type == 'validate':
-        return Validator(
-            name=kwargs['name'],
-            registry_path=kwargs['registry_path'],
-            report_folder=kwargs['report_folder'],
-            input_folder=kwargs['input_folder'],
-            output_folder=kwargs.get('output_folder') or kwargs['name'] # Default to step name
-        )
-    elif step_type == 'dispatcher':
-        return FileDispatcher(
-            name=kwargs['name'],
-            registry_path=kwargs['registry_path'],
-            report_folder=kwargs['report_folder'],
-            input_folder=kwargs['input_folder'],
-            output_folder=kwargs.get('output_folder') or kwargs['name'],  # Default to step name
-            rm_from_input_folder=kwargs.get('rm_from_input_folder', False)
-        )
-    else:
-        raise ValueError(f"Unsupported step type: {step_type}")
 
 
-def run():
+# ================================
+# Subflow Definitions
+# ================================
+
+@flow(name="0 - Raw Data Validation")
+def raw_validation_flow(S):
+    """Step 0: Validate raw input files."""
+    validator = Validator(
+        name="0_validator",
+        registry_path="config/registries/0_raw_validation.yaml",
+        report_folder=S.REPORTS_FOLDER_NAME,
+        input_folder=S.INPUT_FOLDER_NAME,
+        output_folder="staging.0_validator"
+    )
+    validator.execute()
+
+
+@flow(name="1 - Raw Data Dispatch")
+def raw_dispatch_flow(S):
+    """Step 1: Dispatch raw files based on file type/pattern."""
+    dispatcher = FileDispatcher(
+        name="1_dispatcher",
+        registry_path="config/registries/1_dispatcher.yaml",
+        report_folder=S.REPORTS_FOLDER_NAME,
+        input_folder=S.STAGING_FOLDER_NAME,
+        output_folder="staging.1_dispatcher",
+        rm_from_input_folder=False
+    )
+    dispatcher.execute()
+
+
+@flow(name="2 - Data Transformation")
+def transform_flow(S):
+    """Step 2: Transform data according to business rules."""
+    transformer = DataTransformer(
+        name="2_transform",
+        registry_path="config/registries/2_transform_registry.yaml",
+        report_folder=S.REPORTS_FOLDER_NAME,
+        input_folder=S.STAGING_FOLDER_NAME,
+        output_folder="staging.2_transform"
+    )
+    transformer.execute()
+
+
+@flow(name="3 - Transformed Data Validation")
+def validation_flow(S):
+    """Step 3: Validate transformed data."""
+    validator = Validator(
+        name="3_validation",
+        registry_path="config/registries/3_validation.yaml",
+        report_folder=S.REPORTS_FOLDER_NAME,
+        input_folder=S.STAGING_FOLDER_NAME,
+        output_folder="staging.3_validation"
+    )
+    validator.execute()
+
+
+@flow(name="4 - Cross Validation")
+def cross_validation_flow(S):
+    """Step 4: Perform cross-validation checks between datasets."""
+    validator = Validator(
+        name="4_cross_validation",
+        registry_path="config/registries/4_cross_validation.yaml",
+        report_folder=S.REPORTS_FOLDER_NAME,
+        input_folder=S.STAGING_FOLDER_NAME,
+        output_folder="staging.4_cross_validation"
+    )
+    validator.execute()
+
+
+@flow(name="5 - Final Data Dispatch")
+def final_dispatch_flow(S):
+    """Step 5: Dispatch validated and processed data to delivery folder."""
+    dispatcher = FileDispatcher(
+        name="5_dispatcher",
+        registry_path="config/registries/5_dispatcher.yaml",
+        report_folder=S.REPORTS_FOLDER_NAME,
+        input_folder=S.STAGING_FOLDER_NAME,
+        output_folder=S.DELIVERY_FOLDER_NAME,
+        rm_from_input_folder=True
+    )
+    dispatcher.execute()
+
+
+# ================================
+# Main Flow Definition
+# ================================
+
+@flow(name="Full Processing Pipeline", description="End-to-end data validation, transformation, and delivery pipeline")
+def data_pipeline():
+    """
+    Main data processing pipeline flow.
+    Orchestrates the following subflows:
+    0. Raw Data Validation
+    1. Raw Data Dispatch
+    2. Data Transformation
+    3. Transformed Data Validation
+    4. Cross Validation
+    5. Final Data Dispatch
+    """
+    logger = get_run_logger()
     S = get_settings()
-    print("Process started with RUN_ID:", S.RUN_ID)
+    
+    logger.info(f"Process started - PANGOLIN_RUN_ID: {S.RUN_ID}")
 
-    # Load pipeline configuration
-    pipeline_structure = load_pipeline_structure('config/pipeline_structure.yaml')
+    s0 = raw_validation_flow(S, return_state=True)
+    s1 = raw_dispatch_flow(S, return_state=True, wait_for=[s0])
+    s2 = transform_flow(S, return_state=True, wait_for=[s1])
+    s3 = validation_flow(S, return_state=True, wait_for=[s2])
+    s4 = cross_validation_flow(S, return_state=True, wait_for=[s3])
+    final_dispatch_flow(S, wait_for=[s4])
 
-    for step in pipeline_structure['steps']:
+    logger.info("Process ended successfully")
 
-        step_type = step['type']
-        step_name = step['name']
-        print(f"\nStarting {step_type} step: {step_name}...")
 
-        try:
-            step_instance = step_factory(step_type, **step)
-            # Execute the step (assumes all step classes have a `run` method)
-            step_instance.execute()
-        except ValueError as e:
-            print(f"Error: {e}")
-
-        print(f"{step_type.capitalize()} step {step_name} completed")
-
-    print("\nProcess ended")
-
+# ================================
+# Entry Point
+# ================================
 
 if __name__ == "__main__":
-    run()
+    data_pipeline()
 
 
 

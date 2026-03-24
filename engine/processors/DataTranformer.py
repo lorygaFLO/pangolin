@@ -44,7 +44,7 @@ class DataTransformer(BaseProcessor):
                 transformation_results[full_path] = {"overall_success": False, "errors": error_messages}
                 continue
 
-            print(f"Transforming {relative_path}")
+            self.log.info(f"Transforming {relative_path}")
             messages = []
             
             transforms = self.registry[pattern]["transforms"]
@@ -95,19 +95,30 @@ class DataTransformer(BaseProcessor):
                     output_filename = f"{self.fs.splitext(self.fs.basename(relative_path))[0]}.{S.OUTPUT_FORMAT}"
                     output_relative_path = self.fs.join(relative_path_obj, output_filename) if relative_path_obj else output_filename
                     output_path = self.write_file(modified_data, output_relative_path)
-                    print(f"Transformed file saved to {output_relative_path}")
+                    self.log.info(f"Transformed file saved to {output_relative_path}")
                 except Exception as e:
                     all_success = False
                     messages.append(f"Error saving transformed file: {str(e)}")
             else:
                 messages.append("\nFile NOT saved due to transformation errors")
-                print(f"Transformation failed for {relative_path} - file not saved")
+                self.log.warning(f"Transformation failed for {relative_path} - file not saved")
             
             self.reporter.write_report(relative_path, messages)
             transformation_results[full_path] = {"overall_success": all_success, "transform_log": transform_log, "messages": messages}
 
         if not transformation_results:
-            print(f"No files to transform in '{self.input_node.path}'")
+            self.log.warning(f"No files to transform in '{self.input_node.path}'")
+            return transformation_results
+
+        # ---- Final summary ----
+        passed = [self.fs.basename(p) for p, r in transformation_results.items() if r.get("overall_success")]
+        failed = [self.fs.basename(p) for p, r in transformation_results.items() if not r.get("overall_success")]
+
+        self.log.info(f"Transformation complete: {len(passed)} passed, {len(failed)} failed out of {len(transformation_results)} files")
+        if passed:
+            self.log.info("TRANSFORMED:\n   - " + "\n   - ".join(passed))
+        if failed:
+            self.log.warning("FAILED:\n   - " + "\n   - ".join(failed))
 
         return transformation_results
 
