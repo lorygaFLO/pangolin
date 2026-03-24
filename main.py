@@ -119,35 +119,12 @@ def data_pipeline():
     
     logger.info(f"Process started - PANGOLIN_RUN_ID: {S.RUN_ID}")
 
-    # Step 0: Raw Data Validation
-    logger.info("Starting Step 0: Raw Data Validation...")
-    raw_validation_flow(S)
-    logger.info("Step 0 completed ✅")
-
-    # Step 1: Raw Data Dispatch
-    logger.info("Starting Step 1: Raw Data Dispatch...")
-    raw_dispatch_flow(S)
-    logger.info("Step 1 completed ✅")
-
-    # Step 2: Data Transformation
-    logger.info("Starting Step 2: Data Transformation...")
-    transform_flow(S)
-    logger.info("Step 2 completed ✅")
-
-    # Step 3: Transformed Data Validation
-    logger.info("Starting Step 3: Transformed Data Validation...")
-    validation_flow(S)
-    logger.info("Step 3 completed ✅")
-
-    # Step 4: Cross Validation
-    logger.info("Starting Step 4: Cross Validation...")
-    cross_validation_flow(S)
-    logger.info("Step 4 completed ✅")
-
-    # Step 5: Final Data Dispatch
-    logger.info("Starting Step 5: Final Data Dispatch...")
-    final_dispatch_flow(S)
-    logger.info("Step 5 completed ✅")
+    s0 = raw_validation_flow(S, return_state=True)
+    s1 = raw_dispatch_flow(S, return_state=True, wait_for=[s0])
+    s2 = transform_flow(S, return_state=True, wait_for=[s1])
+    s3 = validation_flow(S, return_state=True, wait_for=[s2])
+    s4 = cross_validation_flow(S, return_state=True, wait_for=[s3])
+    final_dispatch_flow(S, wait_for=[s4])
 
     logger.info("Process ended successfully")
 
