@@ -10,7 +10,7 @@ This page describes the high-level design of Pangolin, its folder structure, and
 pangolin/
 ├── main.py                        # Prefect flow entry point
 ├── config/
-│   ├── settings.py                # .env loader → SETTINGS singleton
+│   ├── settings.py                # .env loader → pydantic-settings SETTINGS
 │   ├── constants.py               # Shared constants
 │   ├── data_structure.yaml        # Declarative folder/file schema
 │   └── registries/                # YAML rules for each pipeline step
@@ -85,7 +85,7 @@ graph TD
 ## Key Components
 
 ### 1. Settings (`config/settings.py`)
-A singleton loaded from `.env` that provides paths, backend engine, CSV delimiter, output format, and run ID. Every module accesses it via `get_settings()`.
+A `pydantic-settings` `BaseSettings` class loaded from `.env` that provides paths, backend engine, CSV delimiter, output format, and run ID. Every module accesses it via `get_settings()`, which returns a fresh `SETTINGS` instance. Fields are type-checked and validated automatically by Pydantic.
 
 ### 2. DataFacility (`engine/DataFacility.py`)
 A YAML-driven data access layer that maps `data_structure.yaml` onto the filesystem. It provides a navigable Python object tree (e.g. `D.static.mappings.product_mapping.read()`) with built-in I/O, versioning, and timestamped folders. See [[Data Structure & DataFacility]].

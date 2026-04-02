@@ -8,6 +8,7 @@ data/
 
 pangolinEnv/
 .env
+.env.*
 *.egg-info/
 .eggs/
 

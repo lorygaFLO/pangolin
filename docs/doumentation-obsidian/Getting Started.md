@@ -102,37 +102,84 @@ FS_OPTIONS={"key": "AKIAIOSFODNN7EXAMPLE", "secret": "wJalrXUtnFEMI/K7MDENG/bPxR
 
 ## 4b. Adapting `settings.py` to Your Own Project
 
-The `SETTINGS` class in `config/settings.py` is a **singleton** that reads all its values from the `.env` file. You do **not** need to modify `settings.py` for normal usage — just change `.env`. However, if you are building your own project on top of Pangolin, here is what you can customize:
+The `SETTINGS` class in `config/settings.py` uses **`pydantic-settings`** to automatically load and validate values from `.env` and environment variables. You do **not** need to modify `settings.py` for normal usage — just change `.env`. However, if you are building your own project on top of Pangolin, here is what you can customize:
 
 ### Adding a New Setting
 
-1. Add the variable to your `.env`:
+1. **Add the variable to your `.env`:**
    ```ini
    MY_CUSTOM_OPTION=some_value
    ```
 
-2. Read it inside `SETTINGS.__init__()` using the helper functions:
+2. **Add a field to the `SETTINGS` class** in `config/settings.py`:
    ```python
-   # In config/settings.py, inside __init__:
-   self.MY_CUSTOM_OPTION = _as_str(os.getenv("MY_CUSTOM_OPTION"), "default_value")
+   class SETTINGS(BaseSettings):
+       # ... existing fields ...
+       
+       # Simple string with a default
+       MY_CUSTOM_OPTION: str = "default_value"
+       
+       # Required field (no default — raises if missing from .env)
+       MY_REQUIRED_SETTING: int
+       
+       # Optional field
+       MY_OPTIONAL_SETTING: Optional[str] = None
+       
+       # Boolean (pydantic handles "true"/"false"/"1"/"0" automatically)
+       ENABLE_FEATURE_X: bool = False
    ```
 
-3. Access it anywhere in your code:
+   > [!important]
+   > The field name **must match** the env variable name exactly (case-sensitive).
+
+3. **Access it anywhere in your code:**
    ```python
    from config.settings import get_settings
    S = get_settings()
    print(S.MY_CUSTOM_OPTION)
    ```
 
-### Helper Functions
+### Supported Types
 
-`settings.py` provides three type-safe helpers for reading environment variables:
+Pydantic automatically coerces `.env` strings into the declared type:
 
-| Helper | Returns | Example |
-|--------|---------|---------|
-| `_as_str(val, default)` | `str` or `None` | `_as_str(os.getenv("MY_VAR"), "fallback")` |
-| `_as_bool(val, default)` | `bool` | `_as_bool(os.getenv("ENABLE_X"), False)` — accepts `1`, `true`, `yes`, `y` |
-| `_as_int(val, default)` | `int` | `_as_int(os.getenv("BATCH_SIZE"), 1000)` |
+| Field Type | `.env` Value | Python Result |
+|------------|-------------|---------------|
+| `str` | `MY_VAR=hello` | `"hello"` |
+| `int` | `MY_VAR=42` | `42` |
+| `bool` | `MY_VAR=true` | `True` (accepts `1`, `true`, `yes`, `on`) |
+| `float` | `MY_VAR=3.14` | `3.14` |
+| `Path` | `MY_VAR=C:\data` | `Path("C:/data")` |
+| `dict` | `MY_VAR={"k": "v"}` | `{"k": "v"}` (parsed as JSON) |
+| `Optional[str]` | *(not set)* | `None` |
+
+### Adding Validation
+
+Use `@field_validator` to enforce constraints:
+
+```python
+from pydantic import field_validator
+
+@field_validator("MY_CUSTOM_OPTION")
+@classmethod
+def _validate_my_option(cls, v: str) -> str:
+    if v not in ("option_a", "option_b"):
+        raise ValueError(f"Invalid MY_CUSTOM_OPTION: {v}")
+    return v
+```
+
+### Adding a Derived / Computed Path
+
+Use `@computed_field` for values derived from other settings (not stored, recalculated on access):
+
+```python
+from pydantic import computed_field
+
+@computed_field
+@property
+def PATH_MY_THING(self) -> Path:
+    return self.DATAPATH / self.MY_CUSTOM_OPTION
+```
 
 ### Changing Folder Names
 
@@ -151,9 +198,10 @@ The `INPUT_FOLDER_NAME`, `STAGING_FOLDER_NAME`, etc. are logical folder names th
 | `S.FS_PROTOCOL` | `"file"` | Filesystem protocol for `fsspec` |
 | `S.FS_OPTIONS` | `{}` | Storage options for cloud protocols |
 | `S.DISABLE_REPORTS` | `False` | Whether to skip report generation |
+| `S.PATH_REPORTS` | `Path(...)` | Computed: `DATAPATH / REPORTS_FOLDER_NAME` |
 
 > [!note]
-> `SETTINGS` is a singleton — calling `get_settings()` from any module always returns the same instance with the same `RUN_ID`.
+> `get_settings()` returns a **fresh instance** each time. If you need the same `RUN_ID` across modules, call it once and pass the instance around, or store it in a module-level variable.
 
 ---
 
