@@ -1,23 +1,24 @@
 # Welcome to Pangolin
 
-**Pangolin** is a customizable template data pipeline built on [Prefect](https://www.prefect.io/) and [Polars](https://pola.rs/). It is designed to be deployed easily with minimal infrastructure, while ensuring easy local debugging, transparent task and data tracking, and long-term maintainability.
+**Pangolin** is a customizable template data pipeline built on [Prefect](https://www.prefect.io/) and powered by [Polars](https://pola.rs/). It is designed to be deployed easily with minimal infrastructure, while ensuring easy local debugging, transparent task and data tracking, and long-term maintainability.
 
+This documentation is intended to be visualized with the help of Obsidian. 
 ---
 
 ## How to Navigate This Documentation
 
 Use the sidebar or the links below to explore each topic:
 
-| Page | What You'll Learn |
-|---|---|
-| [[Architecture Overview]] | High-level design, folder layout, and how data flows through the pipeline |
-| [[Getting Started]] | Environment setup, `.env` configuration, and running the pipeline |
-| [[Pipeline Configuration]] | How to wire stages in `main.py` and configure the pipeline |
-| [[Data Structure & DataFacility]] | How `data_structure.yaml` maps folders/files and how to use `DataFacility` in code |
-| [[Registry Reference]] | Full guide on writing registry YAML files for each step |
-| [[Writing Validators]] | How to create and register a new validator function |
-| [[Writing Transformers]] | How to create and register a new transformer function |
-| [[Creating a New Processor]] | How to extend the engine with a custom processor type |
+| Page                              | What You'll Learn                                                                                        |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| [[Architecture Overview]]         | High-level design, folder layout, and how data flows through the pipeline                                |
+| [[Getting Started]]               | Environment setup, `.env` configuration, and running the pipeline                                        |
+| [[Pipeline Configuration]]        | How to wire stages in `main.py` and configure the pipeline                                               |
+| [[Data Structure & DataFacility]] | How `data_structure.yaml` maps folders/files and how to use `DataFacility` in code to do data operations |
+| [[Registry Reference]]            | Full guide on writing registry YAML files for each step                                                  |
+| [[Writing Validators]]            | How to create and register a new validator function                                                      |
+| [[Writing Transformers]]          | How to create and register a new transformer function                                                    |
+| [[Creating a New Processor]]      | How to extend the engine with a custom processor type                                                    |
 
 ---
 
