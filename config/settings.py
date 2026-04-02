@@ -18,9 +18,9 @@ class SETTINGS(BaseSettings):
     BACKEND_ENGINE: str = "polars"
     DUCKDB_CHUNK_SIZE: int = 100000
 
-    # Base paths
-    BASEPATH: Path = Path(".")
-    DATAPATH: Optional[Path] = None
+    # Base paths — stored as str to support both local and cloud protocols
+    BASEPATH: str = "."
+    DATAPATH: Optional[str] = None
 
     # Folder names
     INPUT_FOLDER_NAME: str = "input"
@@ -65,6 +65,8 @@ class SETTINGS(BaseSettings):
     def _coerce_empty_basepath(cls, v):
         if isinstance(v, str) and v.strip() == "":
             return "."
+        if isinstance(v, Path):
+            return str(v)
         return v
 
     @field_validator("DATAPATH", mode="before")
@@ -72,31 +74,48 @@ class SETTINGS(BaseSettings):
     def _coerce_empty_datapath(cls, v):
         if isinstance(v, str) and v.strip() == "":
             return None
+        if isinstance(v, Path):
+            return str(v)
         return v
 
     @model_validator(mode="after")
     def _resolve_paths(self) -> SETTINGS:
-        bp = self.BASEPATH
-        if not bp.is_absolute():
-            bp = Path.cwd() / bp
-        self.BASEPATH = bp.resolve()
+        if self.FS_PROTOCOL == "file":
+            # Local filesystem: resolve to absolute paths
+            bp = Path(self.BASEPATH)
+            if not bp.is_absolute():
+                bp = Path.cwd() / bp
+            self.BASEPATH = str(bp.resolve())
 
-        dp = self.DATAPATH
-        if dp is None:
-            self.DATAPATH = self.BASEPATH / "data"
-        elif not dp.is_absolute():
-            self.DATAPATH = self.BASEPATH / dp
+            if self.DATAPATH is None:
+                self.DATAPATH = str(Path(self.BASEPATH) / "data")
+            else:
+                dp = Path(self.DATAPATH)
+                if not dp.is_absolute():
+                    self.DATAPATH = str(Path(self.BASEPATH) / dp)
+        else:
+            # Cloud protocols (az, s3, gcs, etc.): DATAPATH is a container/prefix
+            if self.DATAPATH is None:
+                raise ValueError(
+                    f"DATAPATH is required when FS_PROTOCOL='{self.FS_PROTOCOL}'. "
+                    "Set it to your container name or bucket prefix."
+                )
+            # BASEPATH is not meaningful for cloud; keep as-is for config loading
+            bp = Path(self.BASEPATH)
+            if not bp.is_absolute():
+                bp = Path.cwd() / bp
+            self.BASEPATH = str(bp.resolve())
         return self
 
     # Derived paths
     @computed_field
     @property
-    def PATH_REPORTS(self) -> Path:
-        return self.DATAPATH / self.REPORTS_FOLDER_NAME
+    def PATH_REPORTS(self) -> str:
+        return self.DATAPATH + "/" + self.REPORTS_FOLDER_NAME
 
     @staticmethod
     def create_directories(*paths: str) -> None:
-        """Create folders if they do not exist."""
+        """Create local folders if they do not exist. For cloud, use FSWrapper.makedirs."""
         for p in paths:
             os.makedirs(p, exist_ok=True)
 

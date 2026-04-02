@@ -338,22 +338,27 @@ from typing import Any, Optional, Dict, List, Union
 from datetime import datetime
 import yaml
 import json
-import shutil
 import polars as pl
-import pandas as pd
 
 from config.settings import get_settings
+from utils.fs_wrapper import FSWrapper
+
 S = get_settings()
+_fs = FSWrapper(
+    protocol=getattr(S, "FS_PROTOCOL", "file"),
+    **getattr(S, "FS_OPTIONS", {})
+)
 
 
 class DataNode:
     """Nodo navigabile con supporto Settings integration."""
     
-    def __init__(self, name: str, config: Dict, parent_path: Path, d_root: 'DataFacility'):
+    def __init__(self, name: str, config: Dict, parent_path: str, d_root: 'DataFacility'):
         self.name = name
         self.config = config
         self.parent_path = parent_path
         self.d_root = d_root
+        self.fs = _fs
         self._children = {}
         
         # Attributi standard
@@ -369,7 +374,7 @@ class DataNode:
         if self.is_file:
             self.filename = config['_filename']
             self.file_format = self._infer_format(self.filename)
-            self.path = self._resolve_path() / self.filename
+            self.path = self.fs.join(self._resolve_path(), self.filename)
         else:
             self.path = self._resolve_path()
             # Inizializza figli
@@ -380,7 +385,7 @@ class DataNode:
     
     def _infer_format(self, filename: str) -> str:
         """Inferisce formato dall'estensione."""
-        ext = Path(filename).suffix.lower()
+        ext = self.fs.suffix(filename).lower()
         format_map = {
             '.csv': 'csv',
             '.parquet': 'parquet',
@@ -394,7 +399,7 @@ class DataNode:
         }
         return format_map.get(ext, 'unknown')
     
-    def _resolve_path(self) -> Path:
+    def _resolve_path(self) -> str:
         """
         Risolve path con priorità:
         1. _settings_key: usa valore da Settings
@@ -409,24 +414,23 @@ class DataNode:
                 raise ValueError(f"Settings key '{settings_key}' defined for node '{self.name}' not found in Settings.")
             
             folder_name = getattr(S, settings_key)
-            # La regola è una e una sola: il valore da Settings è un nome di cartella (str) da aggiungere a DATAPATH.
-            base = S.DATAPATH / str(folder_name)
+            base = self.fs.join(S.DATAPATH, str(folder_name))
 
         # Path esplicito
         elif '_path' in self.config:
-            base = S.DATAPATH / self.config['_path']  # S.DATAPATH is already a Path
+            base = self.fs.join(S.DATAPATH, self.config['_path'])
         
         # Default: usa parent_path per file, parent_path/name per folder
         else:
             if self.is_file:
                 base = self.parent_path
             else:
-                base = self.parent_path / self.name
+                base = self.fs.join(self.parent_path, self.name)
         
         # Gestione timestamping
         if self.config.get('_timestamped') or self._parent_is_timestamped():
             if S.RUN_ID not in str(base):
-                base = base / S.RUN_ID
+                base = self.fs.join(base, S.RUN_ID)
         
         return base
     
@@ -448,8 +452,9 @@ class DataNode:
     
     def __repr__(self) -> str:
         if self.is_file:
-            status = "✓" if self.path.exists() else "✗"
-            size = f"{self.path.stat().st_size / 1024:.1f}KB" if self.path.exists() else "N/A"
+            exists = self.fs.exists(self.path)
+            status = "✓" if exists else "✗"
+            size = f"{self.fs.getsize(self.path) / 1024:.1f}KB" if exists else "N/A"
             return f"<DataFile: {self.filename} [{status}] {size}>\n  Path: {self.path}"
         return f"<DataFolder: {self.name}>\n  Path: {self.path}"
     
@@ -469,36 +474,37 @@ class DataNode:
         if not self.is_file:
             raise ValueError(f"{self.name} is a folder")
         
-        if not self.path.exists():
+        if not self.fs.exists(self.path):
             raise FileNotFoundError(f"File not found: {self.path}")
         
-        backend = S.BACKEND_ENGINE
-        
         if self.file_format == 'csv':
-            delimiter = kwargs.get('delimiter', S.CSV_DELIMITER)
-            if backend == 'polars':
+            delimiter = kwargs.pop('delimiter', S.CSV_DELIMITER)
+            if self.fs.protocol == 'file':
                 return pl.read_csv(self.path, separator=delimiter, **kwargs)
             else:
-                return pd.read_csv(self.path, sep=delimiter, **kwargs)
+                with self.fs.open(self.path, 'rb') as fh:
+                    return pl.read_csv(fh, separator=delimiter, **kwargs)
         
         elif self.file_format == 'parquet':
-            if backend == 'polars':
+            if self.fs.protocol == 'file':
                 return pl.read_parquet(self.path, **kwargs)
             else:
-                return pd.read_parquet(self.path, **kwargs)
+                with self.fs.open(self.path, 'rb') as fh:
+                    return pl.read_parquet(fh, **kwargs)
         
         elif self.file_format == 'excel':
-            if backend == 'polars':
+            if self.fs.protocol == 'file':
                 return pl.read_excel(self.path, **kwargs)
             else:
-                return pd.read_excel(self.path, **kwargs)
+                with self.fs.open(self.path, 'rb') as fh:
+                    return pl.read_excel(fh, **kwargs)
         
         elif self.file_format == 'json':
-            with open(self.path, 'r', encoding='utf-8') as f:
+            with self.fs.open(self.path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         
         elif self.file_format == 'yaml':
-            with open(self.path, 'r', encoding='utf-8') as f:
+            with self.fs.open(self.path, 'r', encoding='utf-8') as f:
                 return yaml.safe_load(f)
         
         else:
@@ -509,23 +515,21 @@ class DataNode:
         if not self.is_file:
             raise ValueError(f"{self.name} is a folder")
         
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        parent_dir = self.fs.dirname(self.path)
+        self.fs.makedirs(parent_dir, exist_ok=True)
         
         # Versioning se richiesto
-        if self.config.get('_versioned') and self.path.exists() and mode == 'overwrite':
+        if self.config.get('_versioned') and self.fs.exists(self.path) and mode == 'overwrite':
             self._backup_version()
         
         # APPEND
         if mode == 'append':
             if self.file_format in ['csv', 'parquet', 'excel']:
-                if self.path.exists():
+                if self.fs.exists(self.path):
                     existing = self.read()
-                    if isinstance(data, pl.DataFrame):
-                        data = pl.concat([existing, data])
-                    else:
-                        data = pd.concat([existing, data], ignore_index=True)
+                    data = pl.concat([existing, data])
             elif self.file_format == 'json':
-                if self.path.exists():
+                if self.fs.exists(self.path):
                     existing = self.read()
                     if isinstance(existing, list):
                         data = existing + ([data] if not isinstance(data, list) else data)
@@ -533,7 +537,7 @@ class DataNode:
         # UPDATE (solo dict)
         elif mode == 'update':
             if self.file_format in ['json', 'yaml']:
-                if self.path.exists():
+                if self.fs.exists(self.path):
                     existing = self.read()
                     if isinstance(existing, dict) and isinstance(data, dict):
                         existing.update(data)
@@ -541,30 +545,33 @@ class DataNode:
         
         # Scrittura effettiva
         if self.file_format == 'csv':
-            delimiter = kwargs.get('delimiter', S.CSV_DELIMITER)
-            if isinstance(data, pl.DataFrame):
+            delimiter = kwargs.pop('delimiter', S.CSV_DELIMITER)
+            if self.fs.protocol == 'file':
                 data.write_csv(self.path, separator=delimiter, **kwargs)
             else:
-                data.to_csv(self.path, sep=delimiter, index=False, **kwargs)
+                with self.fs.open(self.path, 'wb') as fh:
+                    data.write_csv(fh, separator=delimiter, **kwargs)
         
         elif self.file_format == 'parquet':
-            if isinstance(data, pl.DataFrame):
+            if self.fs.protocol == 'file':
                 data.write_parquet(self.path, **kwargs)
             else:
-                data.to_parquet(self.path, index=False, **kwargs)
+                with self.fs.open(self.path, 'wb') as fh:
+                    data.write_parquet(fh, **kwargs)
         
         elif self.file_format == 'excel':
-            if isinstance(data, pl.DataFrame):
+            if self.fs.protocol == 'file':
                 data.write_excel(self.path, **kwargs)
             else:
-                data.to_excel(self.path, index=False, **kwargs)
+                with self.fs.open(self.path, 'wb') as fh:
+                    data.write_excel(fh, **kwargs)
         
         elif self.file_format == 'json':
-            with open(self.path, 'w', encoding='utf-8') as f:
+            with self.fs.open(self.path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, default=str)
         
         elif self.file_format == 'yaml':
-            with open(self.path, 'w', encoding='utf-8') as f:
+            with self.fs.open(self.path, 'w', encoding='utf-8') as f:
                 yaml.dump(data, f, default_flow_style=False)
     
     def append(self, data: Any, **kwargs):
@@ -574,25 +581,28 @@ class DataNode:
         self.write(data, mode='update', **kwargs)
     
     def exists(self) -> bool:
-        return self.path.exists()
+        return self.fs.exists(self.path)
     
     def delete(self):
-        if self.path.exists():
-            self.path.unlink()
+        if self.fs.exists(self.path):
+            self.fs.remove(self.path)
     
     def _backup_version(self):
         """Crea backup versionato."""
-        history_path = self.path.parent / 'history'
-        history_path.mkdir(exist_ok=True)
+        history_path = self.fs.join(self.fs.dirname(self.path), 'history')
+        self.fs.makedirs(history_path, exist_ok=True)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_name = f"{self.path.stem}_{timestamp}{self.path.suffix}"
-        shutil.copy2(self.path, history_path / backup_name)
+        stem = self.fs.stem(self.path)
+        ext = self.fs.suffix(self.path)
+        backup_name = f"{stem}_{timestamp}{ext}"
+        self.fs.copy(self.path, self.fs.join(history_path, backup_name))
     
-    def list(self, pattern: str = '*') -> List[Path]:
+    def list(self, pattern: str = '*') -> List[str]:
         """Lista file in cartella."""
         if self.is_file:
             raise ValueError(f"{self.name} is a file")
-        return list(self.path.glob(pattern))
+        glob_pattern = self.fs.join(self.path, pattern)
+        return self.fs.glob(glob_pattern)
     
     def children(self) -> Dict[str, 'DataNode']:
         return self._children
@@ -606,13 +616,14 @@ class DataFacility:
     """
     
     def __init__(self, structure_file: str = 'config/data_structure.yaml'):  # Use forward slash
-        self.base_path = S.BASEPATH  # Already a Path from Settings
-        self.data_path = S.DATAPATH  # Already a Path from Settings
+        self.base_path = S.BASEPATH
+        self.data_path = S.DATAPATH
         self.run_id = S.RUN_ID  # Usa RUN_ID da Settings
+        self.fs = _fs
         
-        # Carica schema
-        structure_path = self.base_path / structure_file
-        if not structure_path.exists():
+        # Carica schema — always from local filesystem (config lives in the repo)
+        structure_path = str(Path(self.base_path) / structure_file)
+        if not Path(structure_path).exists():
             raise FileNotFoundError(f"Data structure file not found: {structure_path}")
         
         with open(structure_path, 'r', encoding='utf-8') as f:
@@ -648,12 +659,16 @@ class DataFacility:
         Returns:
             run_id selezionato
         """
-        runs_path = self.data_path / 'runs'
-        if not runs_path.exists():
+        runs_path = self.fs.join(self.data_path, 'runs')
+        if not self.fs.exists(runs_path):
             raise ValueError("No runs directory found")
         
         # Lista run disponibili
-        available_runs = sorted([d.name for d in runs_path.iterdir() if d.is_dir()])
+        entries = self.fs.listdir(runs_path)
+        available_runs = sorted([
+            e for e in entries
+            if self.fs.isdir(self.fs.join(runs_path, e))
+        ])
         
         if isinstance(run_ref, int):
             if run_ref >= 0:
@@ -698,10 +713,14 @@ class DataFacility:
     
     def list_runs(self, limit: int = 10) -> List[str]:
         """Lista run disponibili."""
-        runs_path = self.data_path / 'runs'
-        if not runs_path.exists():
+        runs_path = self.fs.join(self.data_path, 'runs')
+        if not self.fs.exists(runs_path):
             return []
-        runs = sorted([d.name for d in runs_path.iterdir() if d.is_dir()])
+        entries = self.fs.listdir(runs_path)
+        runs = sorted([
+            e for e in entries
+            if self.fs.isdir(self.fs.join(runs_path, e))
+        ])
         return runs[-limit:]
     
     def get_node(self, path: str) -> DataNode:
