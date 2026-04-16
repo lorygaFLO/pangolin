@@ -120,16 +120,13 @@ def data_pipeline():
     
     logger.info(f"Process started - PANGOLIN_RUN_ID: {S.RUN_ID}")
 
-    try:
-        s0 = raw_validation_flow(S, return_state=True)
-        s1 = raw_dispatch_flow(S, return_state=True, wait_for=[s0])
-        s2 = transform_flow(S, return_state=True, wait_for=[s1])
-        s3 = validation_flow(S, return_state=True, wait_for=[s2])
-        s4 = cross_validation_flow(S, return_state=True, wait_for=[s3])
-        final_dispatch_flow(S, wait_for=[s4])
-    except PipelineError as e:
-        logger.error(f"Pipeline halted: {e}")
-        raise
+    s0 = raw_validation_flow(S, return_state=True)
+    s1 = raw_dispatch_flow(S, return_state=True, wait_for=[s0])
+    s2 = transform_flow(S, return_state=True, wait_for=[s1])
+    s3 = validation_flow(S, return_state=True, wait_for=[s2])
+    s4 = cross_validation_flow(S, return_state=True, wait_for=[s3])
+    final_dispatch_flow(S, wait_for=[s4])
+
 
     logger.info("Process ended successfully")
 

@@ -11,10 +11,14 @@
             "id": "0e1a4850e6a6e29a",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "Getting Started.md",
+                "mode": "preview",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "Getting Started"
             }
           }
         ]
