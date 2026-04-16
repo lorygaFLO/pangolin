@@ -22,8 +22,11 @@ This project is especially valuable for organizations that need to routinely pro
 ```
 /
 ├── main.py                     # Pipeline entry point (Prefect flows)
+├── deploy.py                   # ← lives in docker/ — see below
 ├── example.env                 # Environment variable template
 ├── pyproject.toml              # Project metadata & dependencies
+├── docker/
+│   └── deploy.py               # Prefect deployment: registers flow + serves it (manual & scheduled runs)
 ├── config/
 │   ├── settings.py             # Settings loader (reads .env, builds paths)
 │   ├── constants.py            # System-wide constants
@@ -130,11 +133,39 @@ DISABLE_REPORTS=False
 
 ### Running the Pipeline
 
+#### Option A — Direct execution (no UI, no server)
+
 ```bash
 python main.py
 ```
 
-This executes the full 6-stage Prefect pipeline. Each run is identified by a unique `RUN_ID` timestamp (`YYYYMMDD_HHMMSS`) stamped on every staging, delivery, and report folder.
+Runs the full 6-stage pipeline immediately. Prefect operates in local/ephemeral mode — no server required, but no UI either.
+
+#### Option B — With Prefect UI (manual trigger + observability)
+
+Open two terminals:
+
+```bash
+# Terminal 1 — start the Prefect server and UI
+prefect server start
+```
+
+```bash
+# Terminal 2 — register the deployment and keep it listening
+prefect config set PREFECT_API_URL=http://127.0.0.1:4200/api
+python docker/deploy.py
+```
+
+Then open `http://127.0.0.1:4200` → **Deployments** → `pangolin-daily` → **Quick Run**.
+
+To also enable a daily automatic schedule, set the env variable before running:
+
+```bash
+set PANGOLIN_CRON=0 6 * * *
+python docker/deploy.py
+```
+
+Each run is identified by a unique `RUN_ID` timestamp (`YYYYMMDD_HHMMSS`) stamped on every staging, delivery, and report folder.
 
 ## Configuration Guide
 
@@ -275,7 +306,7 @@ Reference it in `2_transform_registry.yaml`:
 
 Contributions are welcome! Priority areas:
 
-* **Dockerization**: Production-ready `Dockerfile` + `docker-compose.yml` with cloud-native I/O (S3/GCS/Azure via `FS_PROTOCOL`/`FS_OPTIONS`), runtime-injected credentials, and an optional local Prefect server service — no local `data/` volume in production.
+* **Dockerization** *(in progress)*: `docker/deploy.py` and the Prefect deployment are ready. Still needed: `Dockerfile`, `docker-compose.yml` (PostgreSQL + prefect-server + pangolin services), `.dockerignore`, and `requirements-docker.txt` (strips Windows-only deps). Cloud-native I/O (S3/GCS/Azure via `FS_PROTOCOL`/`FS_OPTIONS`) and runtime-injected credentials are planned.
 * **Full Prefect Integration**: Move beyond basic `@flow` decorators — add deployment manifests (`prefect.yaml`), work pools, artifacts, Prefect secrets/variables blocks, scheduled/triggered runs, and failure notifications.
 * **New File Format Support**: Add support for Excel, JSON, or other formats
 * **Additional Validators/Transformers**: Implement new reusable functions
