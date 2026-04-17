@@ -143,6 +143,8 @@ Runs the full 6-stage pipeline immediately. Prefect operates in local/ephemeral 
 
 #### Option B — With Prefect UI (manual trigger + observability)
 
+`docker/deploy.py` is the single entry point that makes the pipeline visible and triggerable from the Prefect UI. It registers the `pangolin-daily` deployment on the Prefect server and then **stays running**, listening for run requests. This is the same command used both locally and inside the Docker container in production.
+
 Open two terminals:
 
 ```bash
@@ -152,11 +154,14 @@ prefect server start
 
 ```bash
 # Terminal 2 — register the deployment and keep it listening
-prefect config set PREFECT_API_URL=http://127.0.0.1:4200/api
+#              (run once per session; must stay open)
+prefect config set PREFECT_API_URL=http://127.0.0.1:4200/api   # first time only
 python docker/deploy.py
 ```
 
-Then open `http://127.0.0.1:4200` → **Deployments** → `pangolin-daily` → **Quick Run**.
+> **Note:** Terminal 2 must remain open. When it is running, any run triggered from the UI (or by the cron schedule) is executed by this process. Closing it means no runs will be executed even if the server is up.
+
+Then open `http://127.0.0.1:4200` → **Deployments** → `pangolin-daily` → **Quick Run** to trigger a run manually.
 
 To also enable a daily automatic schedule, set the env variable before running:
 
@@ -164,6 +169,8 @@ To also enable a daily automatic schedule, set the env variable before running:
 set PANGOLIN_CRON=0 6 * * *
 python docker/deploy.py
 ```
+
+> **In Docker (production):** `docker compose up` starts `prefect-server` and the `pangolin` container automatically. The `pangolin` container runs `python docker/deploy.py` on startup and restarts automatically if it crashes — so the deployment is always registered and always listening without any manual steps.
 
 Each run is identified by a unique `RUN_ID` timestamp (`YYYYMMDD_HHMMSS`) stamped on every staging, delivery, and report folder.
 

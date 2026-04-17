@@ -7,6 +7,14 @@ Registers the data_pipeline as a Prefect deployment and serves it.
 """
 
 import os
+import sys
+from pathlib import Path
+
+# Ensure the project root (parent of this file's directory) is on sys.path
+# so that `main`, `engine`, `config`, etc. are importable regardless of
+# where this script is invoked from.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from main import data_pipeline
 
 CRON_SCHEDULE = os.getenv("PANGOLIN_CRON")  # None = no automatic schedule
