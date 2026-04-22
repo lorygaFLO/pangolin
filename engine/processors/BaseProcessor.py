@@ -12,6 +12,7 @@ from typing import Dict, List, Tuple, Optional, Any
 from config.settings import get_settings
 import yaml
 from engine.DataFacility import get_project_data
+from engine.core.logger import ProcessorLogger
 from utils.fs_wrapper import FSWrapper
 S = get_settings()
 
@@ -39,6 +40,7 @@ class BaseProcessor:
         
         S = get_settings()
         self.name = name
+        self.log = ProcessorLogger(name)
         self.output_folder = output_folder or name  # Default to step name
         
 
@@ -78,7 +80,7 @@ class BaseProcessor:
     def get_registry(self, file_path: str = 'config/registry.yaml') -> dict:
         """Load registry configuration from YAML file."""
         if not self.fs.isabs(file_path):
-            file_path = str(S.BASEPATH / file_path)  # S.BASEPATH is already a Path
+            file_path = self.fs.join(str(S.BASEPATH), file_path)
         
         with self.fs.open(file_path, 'r') as file:
             registry = yaml.safe_load(file)
@@ -150,11 +152,13 @@ class BaseProcessor:
             # Use file path directly
             file_format = self._infer_format(file_path)
             
-            # Read based on format
+            # Read based on format via fs_wrapper
             if file_format == 'csv':
-                data = pl.read_csv(file_path, separator=S.CSV_DELIMITER)
+                with self.fs.open(file_path, 'rb') as f:
+                    data = pl.read_csv(f, separator=S.CSV_DELIMITER)
             elif file_format == 'parquet':
-                data = pl.read_parquet(file_path)
+                with self.fs.open(file_path, 'rb') as f:
+                    data = pl.read_parquet(f)
             else:
                 raise ValueError(f"Unsupported file format: {file_format}")
             
@@ -191,12 +195,14 @@ class BaseProcessor:
         output_path = self.fs.join(str(output_node.path), relative_path)
         self.fs.makedirs(self.fs.dirname(output_path), exist_ok=True)
         
-        # Write based on format
+        # Write based on format via fs_wrapper
         file_format = self._infer_format(str(relative_path))
         if file_format == 'csv':
-            data.write_csv(output_path, separator=S.CSV_DELIMITER)
+            with self.fs.open(output_path, 'w') as f:
+                data.write_csv(f, separator=S.CSV_DELIMITER)
         elif file_format == 'parquet':
-            data.write_parquet(output_path)
+            with self.fs.open(output_path, 'wb') as f:
+                data.write_parquet(f)
         else:
             raise ValueError(f"Unsupported output format: {file_format}")
         

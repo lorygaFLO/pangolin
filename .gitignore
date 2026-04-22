@@ -8,3 +8,12 @@ data/
 
 pangolinEnv/
 .env
+.env.*
+*.egg-info/
+.eggs/
+
+# Obsidian (user-specific workspace files)
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/graph.json
+.obsidian/app.json

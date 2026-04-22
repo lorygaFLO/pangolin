@@ -6,6 +6,7 @@ Inherits from BaseProcessor for file operations.
 
 from engine.processors.BaseProcessor import BaseProcessor
 from engine.reporter import Reporter
+from engine.core.exceptions import NoInputFilesError, AllFilesFailedError
 from utils.fs_wrapper import FSWrapper
 from typing import List, Tuple
 from config.settings import get_settings
@@ -57,10 +58,10 @@ class FileDispatcher(BaseProcessor):
         file_paths = self.get_input_files()
 
         if not file_paths:
-            print(f"No files to dispatch in '{self.input_node.path}'.")
-            return
+            raise NoInputFilesError(self.name, str(self.input_node.path))
 
-        processed_count = 0
+        passed = []
+        failed = []
         for full_path, relative_path in file_paths:
             filename = self.fs.basename(full_path)
 
@@ -71,6 +72,7 @@ class FileDispatcher(BaseProcessor):
                 if not S.DISABLE_REPORTS:
                     # Pass relative_path to reporter to maintain structure in report name
                     self.reporter.write_report(relative_path, [match_error])
+                failed.append(filename)
                 continue
 
             # Get target folder from registry
@@ -84,13 +86,24 @@ class FileDispatcher(BaseProcessor):
             if self.rm_from_input:
                 self.fs.copy(full_path, target_path)
                 self.fs.remove(full_path)
-                print(f"Moved '{filename}' to '{target_path}'")
+                self.log.info(f"Moved '{filename}' to '{target_path}'")
             else:
                 self.fs.copy(full_path, target_path)
-                print(f"Copied '{filename}' to '{target_path}'")
+                self.log.info(f"Copied '{filename}' to '{target_path}'")
 
-            processed_count += 1
+            passed.append(filename)
 
-        print(f"Dispatcher processed {processed_count} files.")
+        # ---- Final summary ----
+        total = len(passed) + len(failed)
+        self.log.info(f"Dispatch complete: {len(passed)} dispatched, {len(failed)} failed out of {total} files")
+        if passed:
+            self.log.info("DISPATCHED:\n   - " + "\n   - ".join(passed))
+        if failed:
+            self.log.warning("FAILED:\n   - " + "\n   - ".join(failed))
+
+        if len(passed) == 0:
+            raise AllFilesFailedError(
+                f"[{self.name}] All {len(failed)} file(s) failed dispatch."
+            )
 
 

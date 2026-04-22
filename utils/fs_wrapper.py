@@ -1,5 +1,6 @@
 import fsspec
 import os
+import posixpath
 from pathlib import Path
 
 class FSWrapper:
@@ -87,11 +88,26 @@ class FSWrapper:
     # Estrazione nome file/cartella
     def basename(self, path):
         """Restituisce il nome del file o directory"""
-        return os.path.basename(path)
+        return posixpath.basename(path.replace(os.sep, '/'))
     
     def dirname(self, path):
         """Restituisce la directory contenente il path"""
-        return os.path.dirname(path)
+        return posixpath.dirname(path.replace(os.sep, '/'))
+    
+    def splitext(self, path):
+        """Restituisce (root, ext) come os.path.splitext."""
+        return posixpath.splitext(path.replace(os.sep, '/'))
+    
+    def stem(self, path):
+        """Restituisce il nome del file senza estensione."""
+        base = self.basename(path)
+        root, _ = posixpath.splitext(base)
+        return root
+    
+    def suffix(self, path):
+        """Restituisce l'estensione del file (con il punto)."""
+        _, ext = posixpath.splitext(path.replace(os.sep, '/'))
+        return ext
     
     # Ottieni dimensione file
     def getsize(self, path):
