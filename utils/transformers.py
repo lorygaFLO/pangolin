@@ -41,7 +41,7 @@ def register_transformer(func):
     TRANSFORMERS_DICT[func.__name__] = func
     return func
 
-
+##---TRANSFORMER DEFINITIONS---##
 @register_transformer
 def enrich_with_mapping(
     df: pl.DataFrame,
