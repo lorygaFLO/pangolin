@@ -272,7 +272,7 @@ def check_null_values(df, messages, params):
             null_count = null_mask.sum()
             if null_count > 0:
                 sample_rows = df.filter(null_mask).limit(sample_size)
-                row_indices = sample_rows.row_nr().to_list()
+                row_indices = list(range(len(sample_rows)))
 
         if null_count > 0:
             messages.append(f"Column {column} has {null_count} null values. Sample row indices: {row_indices}")
