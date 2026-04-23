@@ -267,6 +267,167 @@ def multiply_columns(
 
 
 @register_transformer
+def sum_columns(
+        df: pl.DataFrame,
+        columns_to_sum: List[str],
+        output_column: str,
+        messages: list = None
+    ) -> pl.DataFrame:
+        """
+        Sum values from multiple columns and store the result in a new column.
+
+        Parameters:
+        df: Input DataFrame (polars)
+        columns_to_sum: List of column names to sum
+        output_column: Name of the resulting column
+        messages: Optional list to append messages
+
+        Returns:
+        DataFrame with the new column containing the sum of input columns
+        """
+        if not isinstance(df, pl.DataFrame):
+            raise TypeError("df must be a polars DataFrame")
+
+        if not all(col in df.columns for col in columns_to_sum):
+            raise ValueError("One or more columns to sum are not present in the DataFrame")
+
+        result_df = df.clone()
+
+        sum_expr = pl.lit(0)
+        for col in columns_to_sum:
+            sum_expr = sum_expr + pl.col(col)
+
+        result_df = result_df.with_columns(
+            sum_expr.alias(output_column)
+        )
+
+        if messages is not None:
+            messages.append(f"{sum_columns.__name__}: Created column '{output_column}' as the sum of {columns_to_sum}.")
+
+        return result_df
+
+
+@register_transformer
+def subtract_columns(
+        df: pl.DataFrame,
+        minuend_column: str,
+        subtrahend_columns: List[str],
+        output_column: str,
+        messages: list = None
+    ) -> pl.DataFrame:
+        """
+        Subtract values of one or more columns from a base column and store the result in a new column.
+
+        Parameters:
+        df: Input DataFrame (polars)
+        minuend_column: Column name to subtract from
+        subtrahend_columns: List of column names to subtract
+        output_column: Name of the resulting column
+        messages: Optional list to append messages
+
+        Returns:
+        DataFrame with the new column containing the difference
+        """
+        if not isinstance(df, pl.DataFrame):
+            raise TypeError("df must be a polars DataFrame")
+
+        all_columns = [minuend_column] + subtrahend_columns
+        if not all(col in df.columns for col in all_columns):
+            raise ValueError("One or more columns are not present in the DataFrame")
+
+        result_df = df.clone()
+
+        subtract_expr = pl.col(minuend_column)
+        for col in subtrahend_columns:
+            subtract_expr = subtract_expr - pl.col(col)
+
+        result_df = result_df.with_columns(
+            subtract_expr.alias(output_column)
+        )
+
+        if messages is not None:
+            messages.append(f"{subtract_columns.__name__}: Created column '{output_column}' as '{minuend_column}' minus {subtrahend_columns}.")
+
+        return result_df
+
+
+@register_transformer
+def divide_columns(
+        df: pl.DataFrame,
+        numerator_column: str,
+        denominator_column: str,
+        output_column: str,
+        messages: list = None
+    ) -> pl.DataFrame:
+        """
+        Divide values of one column by another and store the result in a new column.
+
+        Parameters:
+        df: Input DataFrame (polars)
+        numerator_column: Column name for the numerator
+        denominator_column: Column name for the denominator
+        output_column: Name of the resulting column
+        messages: Optional list to append messages
+
+        Returns:
+        DataFrame with the new column containing the quotient (null where denominator is 0)
+        """
+        if not isinstance(df, pl.DataFrame):
+            raise TypeError("df must be a polars DataFrame")
+
+        for col in [numerator_column, denominator_column]:
+            if col not in df.columns:
+                raise ValueError(f"Column '{col}' not found in the DataFrame")
+
+        result_df = df.clone()
+
+        divide_expr = pl.when(pl.col(denominator_column) == 0).then(None).otherwise(
+            pl.col(numerator_column) / pl.col(denominator_column)
+        )
+
+        result_df = result_df.with_columns(
+            divide_expr.alias(output_column)
+        )
+
+        if messages is not None:
+            messages.append(f"{divide_columns.__name__}: Created column '{output_column}' as '{numerator_column}' / '{denominator_column}' (null where denominator is 0).")
+
+        return result_df
+
+
+@register_transformer
+def drop_columns(
+        df: pl.DataFrame,
+        columns: List[str],
+        messages: list = None
+    ) -> pl.DataFrame:
+        """
+        Drop one or more columns from the DataFrame.
+
+        Parameters:
+        df: Input DataFrame (polars)
+        columns: List of column names to drop
+        messages: Optional list to append messages
+
+        Returns:
+        DataFrame without the specified columns
+        """
+        if not isinstance(df, pl.DataFrame):
+            raise TypeError("df must be a polars DataFrame")
+
+        missing = [col for col in columns if col not in df.columns]
+        if missing:
+            raise ValueError(f"Columns not found in DataFrame: {missing}")
+
+        result_df = df.drop(columns)
+
+        if messages is not None:
+            messages.append(f"{drop_columns.__name__}: Dropped columns {columns}.")
+
+        return result_df
+
+
+@register_transformer
 def save_inventory_snapshot(
     df: pl.DataFrame,
     snapshot_file: str,  # DataFacility path (e.g. "static.inventory.product_snapshot")
