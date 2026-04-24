@@ -9,7 +9,7 @@ SHELL := /bin/sh
 
 GIT_BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)
 GIT_SHA    ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
-COMPOSE    ?= docker compose --env-file .env.docker
+COMPOSE    ?= docker compose --env-file docker/.env.docker
 
 export GIT_BRANCH
 export GIT_SHA

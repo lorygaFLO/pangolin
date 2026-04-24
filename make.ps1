@@ -29,7 +29,7 @@ $git = Get-GitInfo
 $env:GIT_BRANCH = $git.Branch
 $env:GIT_SHA    = $git.Sha
 
-$composePrefix = @('compose', '--env-file', '.env.docker')
+$composePrefix = @('compose', '--env-file', 'docker/.env.docker')
 
 function Invoke-Compose {
     param([Parameter(ValueFromRemainingArguments = $true)]$ComposeArgs)

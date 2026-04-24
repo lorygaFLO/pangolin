@@ -23,9 +23,9 @@ RUN apt-get update \
 WORKDIR /app
 
 # Install Python deps first to leverage layer cache
-COPY requirements-docker.txt /app/requirements-docker.txt
+COPY docker/requirements-docker.txt /app/docker/requirements-docker.txt
 RUN pip install --upgrade pip \
-    && pip install -r /app/requirements-docker.txt
+    && pip install -r /app/docker/requirements-docker.txt
 
 # Project source
 COPY . /app

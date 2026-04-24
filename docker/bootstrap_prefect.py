@@ -52,7 +52,7 @@ except ImportError:
 LOG = logging.getLogger("pangolin.bootstrap")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-DEFAULT_MANIFEST = Path(os.getenv("PANGOLIN_MANIFEST", "prefect_manifest.yaml"))
+DEFAULT_MANIFEST = Path(os.getenv("PANGOLIN_MANIFEST", "docker/prefect_manifest.yaml"))
 ENV_REF_RE = re.compile(r"^\$\{([A-Z_][A-Z0-9_]*)\}$")
 
 

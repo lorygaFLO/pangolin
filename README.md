@@ -124,8 +124,8 @@ production flow on your laptop.
 On macOS / Linux / Git Bash / WSL:
 
 ```bash
-cp .env.docker.example .env.docker
-# edit .env.docker if you need (defaults work out-of-the-box)
+cp docker/.env.docker.example docker/.env.docker
+# edit docker/.env.docker if you need (defaults work out-of-the-box)
 
 git checkout develop          # or any branch you want baked in
 make build                    # captures branch + short SHA into the image
@@ -136,7 +136,7 @@ make logs                     # follow logs
 On Windows PowerShell (no `make` required) use the bundled helper:
 
 ```powershell
-Copy-Item .env.docker.example .env.docker
+Copy-Item docker\.env.docker.example docker\.env.docker
 git checkout develop
 .\make.ps1 build
 .\make.ps1 up
@@ -150,9 +150,9 @@ git checkout develop
 UI URLs (both work, no `/etc/hosts` edits required):
 
 - http://localhost:8080
-- http://pangolin.localhost:8080  ← uses `PROJECT_NAME` from `.env.docker`
+- http://pangolin.localhost:8080  ← uses `PROJECT_NAME` from `docker/.env.docker`
 
-Change the host port via `PROXY_PORT` in `.env.docker` (also update
+Change the host port via `PROXY_PORT` in `docker/.env.docker` (also update
 `PREFECT_UI_API_URL` to match, otherwise the UI's API calls will hit the
 wrong port).
 
@@ -171,13 +171,13 @@ make up
 Docker itself does **not** check out branches — that's your job; the image
 just records what it was built from.
 
-### The manifest (`prefect_manifest.yaml`)
+### The manifest (`docker/prefect_manifest.yaml`)
 
 Single source of truth for everything Pangolin expects in Prefect. Three
 value sources:
 
 - inline literal — used as-is
-- `"${ENV_VAR}"` — resolved from container env (provided via `.env.docker`)
+- `"${ENV_VAR}"` — resolved from container env (provided via `docker/.env.docker`)
 - `null` / `""` — created **empty** so you can fill it via the UI; if a
   non-empty value already exists on the server, it is preserved on rerun
 
@@ -193,21 +193,21 @@ When you know you'll need a bunch of secrets but don't have the values yet:
 make bootstrap                                          # apply current manifest
 
 # inside the worker container (or any pangolin image)
-docker compose --env-file .env.docker run --rm bootstrap \
-    python bootstrap_prefect.py create-empty \
+docker compose --env-file docker/.env.docker run --rm bootstrap \
+    python docker/bootstrap_prefect.py create-empty \
     --type secret --name foo --name bar --name baz
 
-docker compose --env-file .env.docker run --rm bootstrap \
-    python bootstrap_prefect.py create-empty \
+docker compose --env-file docker/.env.docker run --rm bootstrap \
+    python docker/bootstrap_prefect.py create-empty \
     --type variable --from-file names.txt
 ```
 
-Each new entry is appended to `prefect_manifest.yaml` with `value: null`, so
+Each new entry is appended to `docker/prefect_manifest.yaml` with `value: null`, so
 it survives image rebuilds. Then fill the values in the Prefect UI.
 
 ### Going from `docker-local` to `cloud`
 
-Edit `.env.docker`:
+Edit `docker/.env.docker`:
 
 ```dotenv
 PANGOLIN_MODE=cloud
@@ -228,13 +228,13 @@ Then `make build && make up` on the VM. The same Caddyfile picks up
 
 | File | Purpose |
 |------|---------|
-| `Dockerfile` | App image, captures `GIT_BRANCH` / `GIT_SHA` build args |
+| `docker/Dockerfile` | App image, captures `GIT_BRANCH` / `GIT_SHA` build args |
 | `docker-compose.yml` | 4-service stack, named volume for the Prefect DB |
-| `Caddyfile` | Reverse proxy: `localhost`, `<PROJECT_NAME>.localhost`, `${PUBLIC_HOSTNAME}` |
-| `bootstrap_prefect.py` | Idempotent manifest applier + `create-empty` CLI |
-| `prefect_manifest.yaml` | Declarative list of Variables/Blocks (commit-safe) |
-| `.env.docker.example` | Template for `.env.docker` (real secrets live here, not in git) |
-| `requirements-docker.txt` | UTF-8 dependency list used by the image |
+| `docker/Caddyfile` | Reverse proxy: `localhost`, `<PROJECT_NAME>.localhost`, `${PUBLIC_HOSTNAME}` |
+| `docker/bootstrap_prefect.py` | Idempotent manifest applier + `create-empty` CLI |
+| `docker/prefect_manifest.yaml` | Declarative list of Variables/Blocks (commit-safe) |
+| `docker/.env.docker.example` | Template for `.env.docker` (real secrets live here, not in git) |
+| `docker/requirements-docker.txt` | UTF-8 dependency list used by the image |
 | `Makefile` | `build`, `up`, `down`, `logs`, `bootstrap`, `shell`, `clean` |
 | `docker/deploy.py` | `flow.serve()` entry point; hydrates env from Prefect before importing `main` |
 

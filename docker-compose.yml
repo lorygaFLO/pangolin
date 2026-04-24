@@ -16,7 +16,7 @@ name: pangolin
 
 x-pangolin-build: &pangolin-build
   context: .
-  dockerfile: Dockerfile
+  dockerfile: docker/Dockerfile
   args:
     GIT_BRANCH: ${GIT_BRANCH:-unknown}
     GIT_SHA: ${GIT_SHA:-unknown}
@@ -54,12 +54,12 @@ services:
         condition: service_healthy
     environment:
       PREFECT_API_URL: http://prefect-server:4200/api
-      PANGOLIN_MANIFEST: ${PANGOLIN_MANIFEST:-prefect_manifest.yaml}
+      PANGOLIN_MANIFEST: ${PANGOLIN_MANIFEST:-docker/prefect_manifest.yaml}
       GIT_BRANCH: ${GIT_BRANCH:-unknown}
       GIT_SHA: ${GIT_SHA:-unknown}
     env_file:
-      - .env.docker
-    command: ["python", "bootstrap_prefect.py"]
+      - docker/.env.docker
+    command: ["python", "docker/bootstrap_prefect.py"]
     restart: "no"
 
   worker:
@@ -73,12 +73,12 @@ services:
     environment:
       PREFECT_API_URL: http://prefect-server:4200/api
       PANGOLIN_MODE: ${PANGOLIN_MODE:-docker-local}
-      PANGOLIN_MANIFEST: ${PANGOLIN_MANIFEST:-prefect_manifest.yaml}
+      PANGOLIN_MANIFEST: ${PANGOLIN_MANIFEST:-docker/prefect_manifest.yaml}
       PANGOLIN_CRON: ${PANGOLIN_CRON:-}
       GIT_BRANCH: ${GIT_BRANCH:-unknown}
       GIT_SHA: ${GIT_SHA:-unknown}
     env_file:
-      - .env.docker
+      - docker/.env.docker
     volumes:
       # Bind-mount the host data folder so input/output is visible from outside
       - ./data:/app/data
@@ -95,7 +95,7 @@ services:
     ports:
       - "${PROXY_PORT:-8080}:80"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
     restart: unless-stopped

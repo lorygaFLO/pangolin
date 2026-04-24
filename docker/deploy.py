@@ -53,9 +53,9 @@ def _hydrate_from_prefect() -> None:
                 _block_type_slug = "json"
                 value: dict = {}
 
-    manifest_path = Path(os.getenv("PANGOLIN_MANIFEST", "prefect_manifest.yaml"))
+    manifest_path = Path(os.getenv("PANGOLIN_MANIFEST", "docker/prefect_manifest.yaml"))
     if not manifest_path.exists():
-        alt = Path(__file__).resolve().parent.parent / "prefect_manifest.yaml"
+        alt = Path(__file__).resolve().parent / "prefect_manifest.yaml"
         if alt.exists():
             manifest_path = alt
 
