@@ -198,7 +198,7 @@ class BaseProcessor:
         # Write based on format via fs_wrapper
         file_format = self._infer_format(str(relative_path))
         if file_format == 'csv':
-            with self.fs.open(output_path, 'w') as f:
+            with self.fs.open(output_path, 'wb') as f:
                 data.write_csv(f, separator=S.CSV_DELIMITER)
         elif file_format == 'parquet':
             with self.fs.open(output_path, 'wb') as f:
