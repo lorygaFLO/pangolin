@@ -14,6 +14,9 @@ class SETTINGS(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
+    # Project identity (used as UI subdomain in docker-local mode and for tagging)
+    PROJECT_NAME: str = "pangolin"
+
     # Backend
     BACKEND_ENGINE: str = "polars"
     DUCKDB_CHUNK_SIZE: int = 100000

@@ -1,0 +1,48 @@
+# Pangolin Prefect bootstrap manifest.
+#
+# Resolution rules:
+#   - inline literal     -> used as-is
+#   - "${ENV_VAR}"       -> resolved from container env (missing => empty)
+#   - null / "" / {}     -> created EMPTY; if a non-empty value already exists
+#                           on the server it is preserved (so user UI edits
+#                           survive rebuilds)
+#
+# DO NOT commit plaintext secrets here. Use ${ENV_VAR} or null.
+
+variables:
+  - name: pangolin_input_glob
+    value: "*.csv"
+  - name: pangolin_notes
+    value: null            # created empty, user fills via UI
+
+blocks:
+  # Main settings block. Every key is exported as an env var by deploy.py
+  # before the SETTINGS class is imported, so Pydantic-Settings picks it up.
+  - name: pangolin-settings
+    type: json
+    value:
+      PROJECT_NAME: pangolin
+      BASEPATH: /app
+      DATAPATH: /app/data
+      INPUT_FOLDER_NAME: input
+      STAGING_FOLDER_NAME: staging
+      DELIVERY_FOLDER_NAME: delivery
+      REPORTS_FOLDER_NAME: reports
+      BACKUP_FOLDER_NAME: backup
+      CSV_DELIMITER: ";"
+      OUTPUT_FORMAT: parquet
+      FS_PROTOCOL: file
+      DISABLE_REPORTS: "False"
+
+  # Example secret block, populated from container env via .env.docker.
+  # `expose_as_env` makes deploy.py export the secret value into os.environ
+  # under that name before the flow imports anything.
+  - name: pangolin-azure-conn
+    type: secret
+    value: "${AZURE_STORAGE_CONNECTION_STRING}"
+    expose_as_env: AZURE_STORAGE_CONNECTION_STRING
+
+  # Empty placeholder secret — user fills it via the Prefect UI.
+  - name: pangolin-extra-secret
+    type: secret
+    value: null
