@@ -12,7 +12,8 @@ Use the sidebar or the links below to explore each topic:
 | Page                              | What You'll Learn                                                                                        |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | [[Architecture Overview]]         | High-level design, folder layout, and how data flows through the pipeline                                |
-| [[Getting Started]]               | Environment setup, `.env` configuration, and running the pipeline                                        |
+| [[Getting Started]]               | Environment setup, `.env` configuration, and running the pipeline locally                                |
+| [[Docker Deployment]]             | Running with Docker (local, docker-local, cloud modes), security warning on UI access                    |
 | [[Pipeline Configuration]]        | How to wire stages in `main.py` and configure the pipeline                                               |
 | [[Data Structure & DataFacility]] | How `data_structure.yaml` maps folders/files and how to use `DataFacility` in code to do data operations |
 | [[Registry Reference]]            | Full guide on writing registry YAML files for each step                                                  |

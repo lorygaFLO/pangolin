@@ -89,7 +89,34 @@ def _hydrate_from_prefect() -> None:
     except Exception as exc:
         LOG.warning("Could not load JSON block %r: %s", settings_block, exc)
 
-    # 2) Secret blocks listed in the manifest with expose_as_env
+    # 2) Prefect Variables whose names match SETTINGS fields (UPPER_CASE names)
+    #    Only variables with ALL-CAPS names are treated as settings env vars.
+    try:
+        from prefect.variables import Variable
+        all_vars = Variable.get.__func__  # existence check only
+    except Exception:
+        pass
+    if manifest_path.exists():
+        try:
+            with manifest_path.open("r", encoding="utf-8") as f:
+                manifest_for_vars = yaml.safe_load(f) or {}
+        except Exception:
+            manifest_for_vars = {}
+        for entry in manifest_for_vars.get("variables", []) or []:
+            var_name = entry.get("name", "")
+            # Only export variables whose name looks like a settings key (UPPER_CASE)
+            if not var_name.isupper():
+                continue
+            try:
+                from prefect.variables import Variable
+                value = Variable.get(var_name)
+                if value not in (None, ""):
+                    os.environ.setdefault(var_name, str(value))
+                    LOG.info("env <- variable[%s]", var_name)
+            except Exception as exc:
+                LOG.warning("Could not load Variable %r: %s", var_name, exc)
+
+    # 4) Secret blocks listed in the manifest with expose_as_env
     if manifest_path.exists():
         try:
             with manifest_path.open("r", encoding="utf-8") as f:

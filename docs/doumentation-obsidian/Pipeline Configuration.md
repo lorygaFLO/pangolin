@@ -37,11 +37,11 @@ Here is a dissected example — step 2 (Transformation):
 @flow(name="2 - Data Transformation")
 def transform_flow(S):
     transformer = DataTransformer(
-        name="2_transform",                               # 1. Step name (used in logs)
-        registry_path="config/registries/2_transform_registry.yaml",  # 2. Rules file
-        report_folder=S.REPORTS_FOLDER_NAME,              # 3. Where reports go
-        input_folder="staging.1_dispatcher",              # 4. Input (dot-notation)
-        output_folder="staging.2_transform"               # 5. Output (dot-notation)
+        name="2_transform", # 1. Step name (used in logs)
+        registry_path="config/registries/2_transform_registry.yaml", # 2. Rules file
+        report_folder=S.REPORTS_FOLDER_NAME, # 3. Where reports go
+        input_folder="staging.1_dispatcher", # 4. Input (dot-notation)
+        output_folder="staging.2_transform" # 5. Output (dot-notation)
     )
     transformer.execute()
 ```

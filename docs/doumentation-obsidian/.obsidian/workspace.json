@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Getting Started.md",
+                "file": "Pipeline Configuration.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Getting Started"
+              "title": "Pipeline Configuration"
             }
           }
         ]
@@ -185,9 +185,13 @@
   },
   "active": "0e1a4850e6a6e29a",
   "lastOpenFiles": [
-    "Creating a New Processor.md",
     "Getting Started.md",
+    "Architecture Overview.md",
+    "Docker Deployment.md",
+    "Writing Transformers.md",
     "Welcome.md",
-    "Data Structure & DataFacility.md"
+    "Registry Reference.md",
+    "Data Structure & DataFacility.md",
+    "Creating a New Processor.md"
   ]
 }
