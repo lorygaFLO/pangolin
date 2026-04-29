@@ -333,7 +333,6 @@ Notes
   specific option is available.
 """
 
-from pathlib import Path
 from typing import Any, Optional, Dict, List, Union
 from datetime import datetime
 import yaml
@@ -348,6 +347,7 @@ _fs = FSWrapper(
     protocol=getattr(S, "FS_PROTOCOL", "file"),
     **getattr(S, "FS_OPTIONS", {})
 )
+_local_fs = FSWrapper(protocol="file")  # always local — for loading repo config files
 
 
 class DataNode:
@@ -622,11 +622,11 @@ class DataFacility:
         self.fs = _fs
         
         # Carica schema — always from local filesystem (config lives in the repo)
-        structure_path = str(Path(self.base_path) / structure_file)
-        if not Path(structure_path).exists():
+        structure_path = _local_fs.join(self.base_path, structure_file)
+        if not _local_fs.exists(structure_path):
             raise FileNotFoundError(f"Data structure file not found: {structure_path}")
         
-        with open(structure_path, 'r', encoding='utf-8') as f:
+        with _local_fs.open(structure_path, 'r', encoding='utf-8') as f:
             self.schema = yaml.safe_load(f)
         
         # Inizializza root nodes

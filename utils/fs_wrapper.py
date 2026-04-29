@@ -73,7 +73,7 @@ class FSWrapper:
     # Elenco file/cartelle
     def listdir(self, path):
         """Elenca file e cartelle in una directory"""
-        return [os.path.basename(p) for p in self.fs.ls(path)]
+        return [posixpath.basename(p.replace(os.sep, '/')) for p in self.fs.ls(path)]
     
     def glob(self, pattern):
         """Trova file che corrispondono a un pattern"""

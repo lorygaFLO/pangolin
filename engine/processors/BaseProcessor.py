@@ -15,6 +15,7 @@ from engine.DataFacility import get_project_data
 from engine.core.logger import ProcessorLogger
 from utils.fs_wrapper import FSWrapper
 S = get_settings()
+_local_fs = FSWrapper(protocol="file")  # always local — for loading repo config files
 
 
 class BaseProcessor:
@@ -79,10 +80,10 @@ class BaseProcessor:
 
     def get_registry(self, file_path: str = 'config/registry.yaml') -> dict:
         """Load registry configuration from YAML file."""
-        if not self.fs.isabs(file_path):
-            file_path = self.fs.join(str(S.BASEPATH), file_path)
+        if not _local_fs.isabs(file_path):
+            file_path = _local_fs.join(str(S.BASEPATH), file_path)
         
-        with self.fs.open(file_path, 'r') as file:
+        with _local_fs.open(file_path, 'r') as file:
             registry = yaml.safe_load(file)
         
         return registry

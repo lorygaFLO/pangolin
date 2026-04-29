@@ -2,6 +2,8 @@
 
 This page describes the high-level design of Pangolin, its folder structure, and how data flows through the system.
 
+Pangolin is designed as a battle-ready template: every folder, file, and abstraction has a deliberate place so that when you start a new project you fork the repo, adjust the registries and `data_structure.yaml`, and write your domain logic — the engine and scaffolding are already there.
+
 ---
 
 ## Project Structure
@@ -56,7 +58,7 @@ pangolin/
 └── example.env                    # Template for .env
 
 # The data/ folder is NOT in the repo (gitignored).
-# It is created at runtime and structured as:
+# It is created at runtime and in the example is structured as:
 #   data/input/            ← drop raw files here
 #   data/staging/<RUN_ID>/ ← intermediate step outputs
 #   data/delivery/<RUN_ID>/← final pipeline output
