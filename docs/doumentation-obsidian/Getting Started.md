@@ -187,18 +187,18 @@ The `INPUT_FOLDER_NAME`, `STAGING_FOLDER_NAME`, etc. are logical folder names th
 
 ### Key Properties You Get for Free
 
-| Property | Value | Description |
-|----------|-------|-------------|
-| `S.RUN_ID` | `"20260324_185705"` | Unique timestamp for the current run, generated automatically |
-| `S.BASEPATH` | `Path(...)` | Absolute path to the project root |
-| `S.DATAPATH` | `Path(...)` | Absolute path to the data folder |
-| `S.BACKEND_ENGINE` | `"polars"` | The DataFrame backend (only `polars` supported) |
-| `S.CSV_DELIMITER` | `";"` | Delimiter used for reading/writing CSV files |
-| `S.OUTPUT_FORMAT` | `"parquet"` | Output file format (`csv` or `parquet`) |
-| `S.FS_PROTOCOL` | `"file"` | Filesystem protocol for `fsspec` |
-| `S.FS_OPTIONS` | `{}` | Storage options for cloud protocols |
-| `S.DISABLE_REPORTS` | `False` | Whether to skip report generation |
-| `S.PATH_REPORTS` | `Path(...)` | Computed: `DATAPATH / REPORTS_FOLDER_NAME` |
+| Property            | Value               | Description                                                   |
+| ------------------- | ------------------- | ------------------------------------------------------------- |
+| `S.RUN_ID`          | `"20260324_185705"` | Unique timestamp for the current run, generated automatically |
+| `S.BASEPATH`        | `Path(...)`         | Absolute path to the project root                             |
+| `S.DATAPATH`        | `Path(...)`         | Absolute path to the data folder                              |
+| `S.BACKEND_ENGINE`  | `"polars"`          | The DataFrame backend (only `polars` supported)               |
+| `S.CSV_DELIMITER`   | `";"`               | Delimiter used for reading/writing CSV files                  |
+| `S.OUTPUT_FORMAT`   | `"parquet"`         | Output file format (`csv` or `parquet`)                       |
+| `S.FS_PROTOCOL`     | `"file"`            | Filesystem protocol for `fsspec`                              |
+| `S.FS_OPTIONS`      | `{}`                | Storage options for cloud protocols                           |
+| `S.DISABLE_REPORTS` | `False`             | Whether to skip report generation                             |
+| `S.PATH_REPORTS`    | `Path(...)`         | Computed: `DATAPATH / REPORTS_FOLDER_NAME`                    |
 
 > [!note]
 > `get_settings()` returns a **fresh instance** each time. If you need the same `RUN_ID` across modules, call it once and pass the instance around, or store it in a module-level variable.
@@ -284,12 +284,12 @@ If any file fails validation or transformation, a plain-text report is written u
 
 ## Troubleshooting
 
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| `Invalid BACKEND_ENGINE` | `.env` missing or `BACKEND_ENGINE` not set to `polars` | Check `.env` |
-| `NoInputFilesError` | No files in `data/input/` or previous step produced no output | Check input folder or registry patterns |
-| `AllFilesFailedError` | Every file failed a step | Check reports in `data/reports/<RUN_ID>/` |
-| `FileNotFoundError: product_mapping` | Missing static mapping file | Place `product_mapping.csv` in `data/static/mappings/` |
+| Symptom                              | Cause                                                         | Fix                                                    |
+| ------------------------------------ | ------------------------------------------------------------- | ------------------------------------------------------ |
+| `Invalid BACKEND_ENGINE`             | `.env` missing or `BACKEND_ENGINE` not set to `polars`        | Check `.env`                                           |
+| `NoInputFilesError`                  | No files in `data/input/` or previous step produced no output | Check input folder or registry patterns                |
+| `AllFilesFailedError`                | Every file failed a step                                      | Check reports in `data/reports/<RUN_ID>/`              |
+| `FileNotFoundError: product_mapping` | Missing static mapping file                                   | Place `product_mapping.csv` in `data/static/mappings/` |
 
 ---
 
