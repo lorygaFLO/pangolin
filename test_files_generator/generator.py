@@ -44,13 +44,17 @@ def generate_product_mapping(num_products: int = 10) -> dict:
     
     return products
 
-def save_product_mapping(products: dict):
+def save_product_mapping(products: dict, settings=None):
     """
     Salva l'anagrafica prodotti nella cartella static/mappings.
     
     Args:
         products: dictionary con anagrafica prodotti
+        settings: SETTINGS instance (if None, creates one via get_settings())
     """
+    if settings is None:
+        settings = get_settings()
+
     # Crea la cartella static/mappings se non esiste
     static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'static', 'mappings')
     os.makedirs(static_dir, exist_ok=True)
@@ -66,7 +70,7 @@ def save_product_mapping(products: dict):
     # IMPORTANTE: reset_index per rendere product_id una colonna normale
     df_products.reset_index(inplace=True)
     df_products.rename(columns={'index': 'product_id'}, inplace=True)
-    df_products.to_csv(csv_path, sep=S.CSV_DELIMITER, index=False)  # index=False per non salvare l'indice numerico
+    df_products.to_csv(csv_path, sep=settings.CSV_DELIMITER, index=False)  # index=False per non salvare l'indice numerico
     
 def generate_sales_data(num_records: int = 100, num_products: int = 10, num_stores: int = 5) -> pd.DataFrame:
     """

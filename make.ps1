@@ -58,7 +58,7 @@ switch ($Target) {
         Write-Host "Build a specific branch:"
         Write-Host "    git checkout <branch>; .\make.ps1 build"
     }
-    'build'     { Invoke-Compose @('build', '--build-arg', "GIT_BRANCH=$($git.Branch)", '--build-arg', "GIT_SHA=$($git.Sha)") }
+    'build'     { $env:BUILDX_NO_DEFAULT_ATTESTATIONS = '1'; Invoke-Compose @('build', '--build-arg', "GIT_BRANCH=$($git.Branch)", '--build-arg', "GIT_SHA=$($git.Sha)") }
     'up'        { Invoke-Compose @('up', '-d') }
     'down'      { Invoke-Compose @('down') }
     'restart'   { Invoke-Compose @('restart', 'worker') }

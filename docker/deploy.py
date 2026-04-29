@@ -158,17 +158,30 @@ if _MODE in ("docker-local", "cloud"):
 
 
 # Now it is safe to import the flow (which imports SETTINGS).
-from main import data_pipeline  # noqa: E402
+from main import data_pipeline, generate_test_data  # noqa: E402
 
 CRON_SCHEDULE = os.getenv("PANGOLIN_CRON") or None
 
 if __name__ == "__main__":
-    serve_kwargs: dict = {
+    from prefect import serve as prefect_serve
+
+    tags = [t for t in (os.getenv("GIT_BRANCH"), os.getenv("GIT_SHA")) if t]
+
+    pipeline_deploy_kwargs: dict = {
         "name": "pangolin-daily",
-        "tags": [t for t in (os.getenv("GIT_BRANCH"), os.getenv("GIT_SHA")) if t],
+        "tags": tags,
     }
     # Prefect 3.6+ rejects cron=None; only pass it when set.
     if CRON_SCHEDULE:
-        serve_kwargs["cron"] = CRON_SCHEDULE
+        pipeline_deploy_kwargs["cron"] = CRON_SCHEDULE
 
-    data_pipeline.serve(**serve_kwargs)
+    generate_deploy_kwargs: dict = {
+        "name": "pangolin-generate-test-data",
+        "tags": tags + ["test-data"],
+    }
+
+    # Serve both deployments in the same process
+    prefect_serve(
+        data_pipeline.to_deployment(**pipeline_deploy_kwargs),
+        generate_test_data.to_deployment(**generate_deploy_kwargs),
+    )
