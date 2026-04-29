@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Getting Started.md",
+                "file": "Data Structure & DataFacility.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Getting Started"
+              "title": "Data Structure & DataFacility"
             }
           }
         ]
@@ -78,7 +78,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "4c404e8f4054dca2",
@@ -185,9 +186,10 @@
   },
   "active": "0e1a4850e6a6e29a",
   "lastOpenFiles": [
-    "Creating a New Processor.md",
+    "Pipeline Configuration.md",
     "Getting Started.md",
     "Welcome.md",
+    "Creating a New Processor.md",
     "Data Structure & DataFacility.md"
   ]
 }
