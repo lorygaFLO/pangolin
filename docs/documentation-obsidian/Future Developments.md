@@ -14,11 +14,15 @@ Add a `tests/` folder covering three layers:
 
 ---
 
-## 2. Cloud Environments & Docker
+## 2. Cloud Environments & Docker — Refinements
 
-- **Cloud storage** — extend `FSWrapper` and `config/settings.py` to accept a `FILESYSTEM_PROTOCOL` env variable (`local` | `s3` | `az` | `gcs`), threading the right `fsspec` filesystem through without touching processors or registries.
-- **Docker image** — `python:3.12-slim` base, deps installed from `pyproject.toml`, `data/` and `.env` mounted at runtime. Entry point: `docker/deploy.py`.
-- **Secrets** — prefer Prefect Blocks (credentials) and Variables (config) over raw env vars; fall back to `.env` for local dev.
+The Docker stack and cloud-mode infrastructure are implemented in this version. However, the setup (Dockerfile, docker-compose, bootstrap, deploy scripts) is for the most part AI-generated and has not been battle-tested in production. Refinements and enhancements are expected — treat it as a working starting point, not a hardened deployment.
+
+Areas that likely need attention:
+
+- **Cloud storage** — `FSWrapper` currently only supports the local filesystem. Extend it to accept a `FILESYSTEM_PROTOCOL` env variable (`local` | `s3` | `az` | `gcs`), threading the right `fsspec` filesystem through without touching processors or registries.
+- **Docker image hardening** — review layer caching, multi-stage builds, non-root user, image size optimization.
+
 
 ---
 

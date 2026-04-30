@@ -1,5 +1,8 @@
 # Docker Deployment
 
+> [!warning] AI-Generated
+> This Docker setup (Dockerfile, docker-compose, bootstrap, deploy scripts) is for the most part AI-generated and has not been battle-tested in production. It likely requires refinements — treat it as a working starting point, not a hardened deployment.
+
 This guide covers running Pangolin inside Docker using the bundled 4-service stack (Prefect server, bootstrap, worker, reverse proxy).
 
 ---
@@ -152,6 +155,7 @@ The UI will be reachable at `http://pangolin.mycompany.com`. No code changes nee
 | `.\make.ps1 bootstrap` | Re-apply the manifest (idempotent, safe to re-run) |
 | `.\make.ps1 build` | Rebuild the image |
 | `.\make.ps1 clean` | Stop + **wipe the Prefect DB** |
+| `.\make.ps1 nuke` | `clean` + remove the pangolin image |
 
 ---
 
