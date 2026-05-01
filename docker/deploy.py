@@ -1,16 +1,14 @@
 """
 Registers the data_pipeline as a Prefect deployment and serves it.
 
-Modes (selected via PANGOLIN_MODE):
-  - local        : Pydantic reads .env directly (no Prefect hydration).
-  - docker-local : settings/secrets are pulled from Prefect Blocks and
-                   exported into os.environ BEFORE main is imported, so
-                   Pydantic-Settings picks them up transparently.
-  - cloud        : same as docker-local.
+- Without a cron: the deployment is only triggered manually from the UI (Quick Run).
+- To add a daily schedule, set the PANGOLIN_CRON env variable, e.g.:
+    PANGOLIN_CRON="0 6 * * *"  ->  every day at 06:00 UTC
 
-Schedule:
-  - Without PANGOLIN_CRON: deployment is manual-only (Quick Run from UI).
-  - With PANGOLIN_CRON   : also runs on the given cron (UTC).
+The flow parameters (restore_from, clear_input) are automatically
+exposed in the Prefect UI under "Custom Run" → "Parameters":
+  - restore_from: leave empty for normal run, or paste a backup run_id
+  - clear_input:  toggle on to empty input folder after backup
 """
 
 import logging
