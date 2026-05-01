@@ -1,14 +1,16 @@
 from utils.fs_wrapper import FSWrapper
 from config.settings import get_settings
+from config.run_context import RunContext
 from engine.DataFacility import get_project_data
 from engine.core.logger import ProcessorLogger
-S = get_settings()
+
 class Reporter:
-    def __init__(self, report_folder: str = None, step_name: str = None):
+    def __init__(self, CTX: RunContext, report_folder: str = None, step_name: str = None):
         """
         Initialize the Reporter with DataFacility integration.
 
         Args:
+            CTX: RunContext with runtime state (RUN_ID)
             report_folder (str): Dot-notation path to report folder in data structure 
                                (e.g., 'reports.validation', 'output.reports')
                                If None, uses 'reports' as default
@@ -17,7 +19,9 @@ class Reporter:
         Raises:
             ValueError: If the report folder node doesn't exist in data structure
         """
-        self.D = get_project_data()
+        S = get_settings()
+        self.S = S
+        self.D = get_project_data(run_id=CTX.RUN_ID)
         
         self.fs = FSWrapper(
             protocol=getattr(S, "FS_PROTOCOL", "file"))
@@ -65,7 +69,7 @@ class Reporter:
             input_file_path: Path to the input file being validated
             messages: List of validation messages
         """
-        if not messages or all("Passed" in message for message in messages) or S.DISABLE_REPORTS:
+        if not messages or all("Passed" in message for message in messages) or self.S.DISABLE_REPORTS:
             return
         
         report_filename = self._create_report_filename(input_file_path)

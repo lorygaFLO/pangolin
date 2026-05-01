@@ -10,15 +10,16 @@ from engine.core.exceptions import NoInputFilesError, AllFilesFailedError
 from utils.fs_wrapper import FSWrapper
 from typing import List, Tuple
 from config.settings import get_settings
-S = get_settings()
+from config.run_context import RunContext
 
 
 class FileDispatcher(BaseProcessor):
-    def __init__(self, name: str, registry_path: str, report_folder: str, input_folder: str, output_folder: str = None, rm_from_input_folder: bool = False):
+    def __init__(self, CTX: RunContext, name: str, registry_path: str, report_folder: str, input_folder: str, output_folder: str = None, rm_from_input_folder: bool = False):
         """
         Initialize the FileDispatcher.
         
         Args:
+            CTX: RunContext with runtime state (RUN_ID)
             name: Step name for identification
             registry_path: Path to the registry file
             report_folder: Dot-notation path to report folder in data structure
@@ -26,8 +27,8 @@ class FileDispatcher(BaseProcessor):
             output_folder: Dot-notation path to output folder
             rm_from_input_folder: Whether to remove files from input after processing
         """
-        super().__init__(name, registry_path, input_folder, output_folder)
-        self.reporter = Reporter(report_folder, step_name=name)
+        super().__init__(CTX, name, registry_path, input_folder, output_folder)
+        self.reporter = Reporter(CTX, report_folder, step_name=name)
         self.rm_from_input = rm_from_input_folder
 
 
@@ -69,7 +70,7 @@ class FileDispatcher(BaseProcessor):
             matched_pattern, match_error = self.match_file(relative_path)
 
             if match_error:
-                if not S.DISABLE_REPORTS:
+                if not self.S.DISABLE_REPORTS:
                     # Pass relative_path to reporter to maintain structure in report name
                     self.reporter.write_report(relative_path, [match_error])
                 failed.append(filename)

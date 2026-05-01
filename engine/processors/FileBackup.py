@@ -7,20 +7,20 @@ Supports restoring files from a previous backup run.
 
 from typing import List, Tuple, Optional
 from config.settings import get_settings
+from config.run_context import RunContext
 from engine.DataFacility import get_project_data
 from engine.core.logger import ProcessorLogger
 from engine.core.exceptions import NoInputFilesError
 from utils.fs_wrapper import FSWrapper
 
-S = get_settings()
-
 
 class FileBackup:
-    def __init__(self, name: str, input_folder: str, output_folder: str = None):
+    def __init__(self, CTX: RunContext, name: str, input_folder: str, output_folder: str = None):
         """
         Initialize the FileBackup processor.
 
         Args:
+            CTX: RunContext with runtime state (RUN_ID)
             name: Step name for identification
             input_folder: Dot-notation path to input folder in data structure
             output_folder: Dot-notation path to backup folder in data structure
@@ -30,6 +30,9 @@ class FileBackup:
         if not input_folder:
             raise ValueError("input_folder must be provided")
 
+        S = get_settings()
+        self.S = S
+        self.CTX = CTX
         self.name = name
         self.log = ProcessorLogger(name)
 
@@ -38,7 +41,7 @@ class FileBackup:
             **getattr(S, "FS_OPTIONS", {})
         )
 
-        self.D = get_project_data()
+        self.D = get_project_data(run_id=CTX.RUN_ID)
 
         self.input_folder = input_folder
         self.input_node = self._get_node_by_path(input_folder)

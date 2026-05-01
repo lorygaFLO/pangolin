@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from pydantic import Field, computed_field, field_validator, model_validator
+from pydantic import computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -36,11 +35,6 @@ class SETTINGS(BaseSettings):
     # Filesystem
     FS_PROTOCOL: str = "file"
     FS_OPTIONS: dict = {}
-
-    # Run ID (generated per instance, not from env)
-    RUN_ID: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    )
 
     @field_validator("BACKEND_ENGINE")
     @classmethod
