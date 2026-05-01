@@ -7,10 +7,12 @@ Pipeline is defined in Python code using Prefect's @flow decorators.
 import os
 os.environ.setdefault("PREFECT_LOGGING_EXTRA_LOGGERS", "pangolin") # Ensure pangolin logger is included in Prefect's logging configuration
 
+from typing import Optional
 from prefect import flow, get_run_logger
 from engine.processors.DataValidator import Validator
 from engine.processors.DataTranformer import DataTransformer
 from engine.processors.FileDispatcher import FileDispatcher
+from engine.processors.FileBackup import FileBackup
 from engine.core.exceptions import PipelineError
 from config.settings import *
 
@@ -18,6 +20,38 @@ from config.settings import *
 # ================================
 # Subflow Definitions
 # ================================
+
+@flow(name="Backup Input")
+def backup_flow(S):
+    """Backup current input files to backup/<run_id>/."""
+    backup = FileBackup(
+        name="backup",
+        input_folder=S.INPUT_FOLDER_NAME,
+        output_folder="backup"
+    )
+    backup.execute()
+
+
+@flow(name="Restore from Backup")
+def restore_flow(S, restore_from: str):
+    """Restore files from a previous backup run into the input folder."""
+    backup = FileBackup(
+        name="backup",
+        input_folder=S.INPUT_FOLDER_NAME,
+        output_folder="backup"
+    )
+    backup.restore(restore_from)
+
+
+@flow(name="Clear Input Folder")
+def clear_input_flow(S):
+    """Remove all files from the input folder after successful processing."""
+    backup = FileBackup(
+        name="backup",
+        input_folder=S.INPUT_FOLDER_NAME,
+        output_folder="backup"
+    )
+    backup.clear_input_folder()
 
 @flow(name="0 - Raw Data Validation")
 def raw_validation_flow(S):
@@ -104,29 +138,43 @@ def final_dispatch_flow(S):
 # ================================
 
 @flow(name="Full Processing Pipeline", description="End-to-end data validation, transformation, and delivery pipeline")
-def data_pipeline():
+def data_pipeline(restore_from: Optional[str] = None, clear_input: bool = False):
     """
     Main data processing pipeline flow.
     Orchestrates the following subflows:
+    -1. Backup / Restore (skipped when restoring from backup)
     0. Raw Data Validation
     1. Raw Data Dispatch
     2. Data Transformation
     3. Transformed Data Validation
     4. Cross Validation
     5. Final Data Dispatch
+
+    Args:
+        restore_from: If specified, restore input from this backup run_id
+                      (e.g. "20260429_193608") instead of backing up.
+        clear_input: If True (and not restoring), clear input folder after backup.
     """
     logger = get_run_logger()
     S = get_settings()
     
     logger.info(f"Process started - PANGOLIN_RUN_ID: {S.RUN_ID}")
 
-    s0 = raw_validation_flow(S, return_state=True)
+    # Either restore from a previous backup, or backup current input
+    if restore_from and restore_from.strip():
+        s_init = restore_flow(S, restore_from=restore_from.strip(), return_state=True)
+    else:
+        s_init = backup_flow(S, return_state=True)
+
+    s0 = raw_validation_flow(S, return_state=True, wait_for=[s_init])
     s1 = raw_dispatch_flow(S, return_state=True, wait_for=[s0])
     s2 = transform_flow(S, return_state=True, wait_for=[s1])
     s3 = validation_flow(S, return_state=True, wait_for=[s2])
     s4 = cross_validation_flow(S, return_state=True, wait_for=[s3])
-    final_dispatch_flow(S, wait_for=[s4])
+    s5 = final_dispatch_flow(S, return_state=True, wait_for=[s4])
 
+    if clear_input:
+        clear_input_flow(S, wait_for=[s5])
 
     logger.info("Process ended successfully")
 
