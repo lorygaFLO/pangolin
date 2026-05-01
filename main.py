@@ -161,12 +161,14 @@ def data_pipeline(restore_from: Optional[str] = None, clear_input: bool = False)
     """
     logger = get_run_logger()
     CTX = RunContext()
-    
-    logger.info(f"Process started - PANGOLIN_RUN_ID: {CTX.RUN_ID}")
+    restore_from = restore_from.strip() if restore_from else None
+
+    if restore_from:
+        logger.info(f"Process started - PANGOLIN_RUN_ID: {CTX.RUN_ID} - RESTORING from backup {restore_from}")
 
     # Either restore from a previous backup, or backup current input
-    if restore_from and restore_from.strip():
-        s_init = restore_flow(CTX, restore_from=restore_from.strip(), return_state=True)
+    if restore_from:
+        s_init = restore_flow(CTX, restore_from=restore_from, return_state=True)
     else:
         s_init = backup_flow(CTX, return_state=True)
 
