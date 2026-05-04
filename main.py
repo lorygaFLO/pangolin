@@ -13,7 +13,7 @@ from prefect import flow, get_run_logger
 from engine.processors.DataValidator import Validator
 from engine.processors.DataTranformer import DataTransformer
 from engine.processors.FileDispatcher import FileDispatcher
-from engine.processors.FileBackup import FileBackup
+from engine.processors.BackupRestore import BackupRestore
 from engine.core.exceptions import PipelineError
 from config.settings import get_settings
 from config.run_context import RunContext
@@ -27,7 +27,7 @@ from config.run_context import RunContext
 def backup_flow(CTX):
     """Backup current input files to backup/<run_id>/."""
     S = get_settings()
-    backup = FileBackup(CTX, name="backup", input_folder=S.INPUT_FOLDER_NAME, output_folder="backup")
+    backup = BackupRestore(CTX, name="backup", input_folder=S.INPUT_FOLDER_NAME, output_folder="backup")
     backup.execute()
 
 
@@ -35,7 +35,7 @@ def backup_flow(CTX):
 def restore_flow(CTX, restore_from: str):
     """Restore files from a previous backup run into the input folder."""
     S = get_settings()
-    backup = FileBackup(CTX, name="backup", input_folder=S.INPUT_FOLDER_NAME, output_folder="backup")
+    backup = BackupRestore(CTX, name="backup", input_folder=S.INPUT_FOLDER_NAME, output_folder="backup")
     backup.restore(restore_from)
 
 
@@ -43,7 +43,7 @@ def restore_flow(CTX, restore_from: str):
 def clear_input_flow(CTX):
     """Remove all files from the input folder after successful processing."""
     S = get_settings()
-    backup = FileBackup(CTX, name="backup", input_folder=S.INPUT_FOLDER_NAME, output_folder="backup")
+    backup = BackupRestore(CTX, name="backup", input_folder=S.INPUT_FOLDER_NAME, output_folder="backup")
     backup.clear_input_folder()
 
 @flow(name="0 - Raw Data Validation")
@@ -262,7 +262,9 @@ def data_pipeline(restore_from: Optional[str] = None, clear_input: bool = False)
 
     if restore_from:
         logger.info(f"Process started - PANGOLIN_RUN_ID: {CTX.RUN_ID} - RESTORING from backup {restore_from}")
-
+    else:
+        logger.info(f"Process started - PANGOLIN_RUN_ID: {CTX.RUN_ID}")
+    
     # Either restore from a previous backup, or backup current input
     if restore_from:
         s_init = restore_flow(CTX, restore_from=restore_from, return_state=True)
@@ -276,7 +278,7 @@ def data_pipeline(restore_from: Optional[str] = None, clear_input: bool = False)
     s4 = cross_validation_flow(CTX, return_state=True, wait_for=[s3])
     s5 = final_dispatch_flow(CTX, return_state=True, wait_for=[s4])
 
-    if clear_input:
+    if clear_input and not restore_from:
         clear_input_flow(CTX, wait_for=[s5])
 
     logger.info("Process ended successfully")

@@ -1,5 +1,5 @@
 """
-FileBackup Class:
+BackupRestore Class:
 Backs up all files from the input folder to the backup folder,
 organized in timestamped subfolders (run_id).
 Supports restoring files from a previous backup run.
@@ -14,10 +14,10 @@ from engine.core.exceptions import NoInputFilesError
 from utils.fs_wrapper import FSWrapper
 
 
-class FileBackup:
+class BackupRestore:
     def __init__(self, CTX: RunContext, name: str, input_folder: str, output_folder: str = None):
         """
-        Initialize the FileBackup processor.
+        Initialize the BackupRestore processor.
 
         Args:
             CTX: RunContext with runtime state (RUN_ID)

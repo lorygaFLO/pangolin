@@ -212,6 +212,13 @@ s3 = validation_flow(S, return_state=True, wait_for=[s2b])
 - Has `rm_from_input_folder` option for move vs copy semantics
 - Overrides `get_input_files()` to not raise on empty input
 
+### BackupRestore (`BackupRestore.py`)
+
+- Backs up all input files to `backup/<RUN_ID>/` before processing
+- Restores files from a previous backup into the input folder
+- Optionally clears the input folder after successful processing
+- Does not use a registry — operates directly on input/output folders
+
 
 ---
 

@@ -22,7 +22,7 @@ def data_pipeline():
 ```
 
 Each subflow:
-1. Creates a **Processor** instance (`Validator`, `DataTransformer`, or `FileDispatcher`)
+1. Creates a **Processor** instance (`Validator`, `DataTransformer`, `FileDispatcher`, or `BackupRestore`)
 2. Points it to a **registry YAML** file
 3. Specifies **input** and **output** folders using dot-notation paths into `data_structure.yaml`
 4. Calls `.execute()`
@@ -67,13 +67,14 @@ See [[Data Structure & DataFacility]] for the complete path resolution rules.
 
 ---
 
-## The Three Processor Types
+## The Four Processor Types
 
 | Processor | Class | Used For | Registry Format |
 |-----------|-------|----------|-----------------|
 | **Validator** | `engine.processors.DataValidator.Validator` | Running validation rules on each file | `pattern → {validators: {func_name: params}}` |
 | **Transformer** | `engine.processors.DataTranformer.DataTransformer` | Applying ordered transformations | `pattern → {transforms: [{name, function, params, order}]}` |
 | **Dispatcher** | `engine.processors.FileDispatcher.FileDispatcher` | Routing files into subfolders | `pattern → "target_folder"` |
+| **BackupRestore** | `engine.processors.BackupRestore.BackupRestore` | Backup/restore input files | No registry — uses input/output folders directly |
 
 See [[Registry Reference]] for detailed YAML formats.
 

@@ -52,7 +52,7 @@ Each step is driven by a **YAML registry** file (in `config/registries/`) that d
 ## Key Concepts at a Glance
 
 - **Registry** — A YAML file that maps file-name patterns to rules (validators, transforms, or dispatch targets).
-- **Processor** — A Python class that reads a registry and applies its rules to input files (`Validator`, `DataTransformer`, `FileDispatcher`).
+- **Processor** — A Python class that reads a registry and applies its rules to input files (`Validator`, `DataTransformer`, `FileDispatcher`, `BackupRestore`).
 - **DataFacility** — A navigable Python object tree that mirrors `data_structure.yaml`, giving you `D.input`, `D.staging`, `D.static.mappings.product_mapping`, etc.
 - **RUN_ID** — A timestamp (`YYYYMMDD_HHMMSS`) that isolates each pipeline execution into its own subfolder.
 
