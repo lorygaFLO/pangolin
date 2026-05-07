@@ -200,7 +200,7 @@ The `INPUT_FOLDER_NAME`, `STAGING_FOLDER_NAME`, etc. are logical folder names th
 
 | Property            | Value               | Description                                                   |
 | ------------------- | ------------------- | ------------------------------------------------------------- |
-| `S.RUN_ID`          | `"20260324_185705"` | Unique timestamp for the current run, generated automatically |
+| `CTX.RUN_ID`        | `"20260324_185705"` | Unique timestamp for the current run — lives on `RunContext`, not `SETTINGS` |
 | `S.BASEPATH`        | `Path(...)`         | Absolute path to the project root                             |
 | `S.DATAPATH`        | `Path(...)`         | Absolute path to the data folder                              |
 | `S.BACKEND_ENGINE`  | `"polars"`          | The DataFrame backend (only `polars` supported)               |
@@ -212,7 +212,7 @@ The `INPUT_FOLDER_NAME`, `STAGING_FOLDER_NAME`, etc. are logical folder names th
 | `S.PATH_REPORTS`    | `Path(...)`         | Computed: `DATAPATH / REPORTS_FOLDER_NAME`                    |
 
 > [!note]
-> `get_settings()` returns a **fresh instance** each time. If you need the same `RUN_ID` across modules, call it once and pass the instance around, or store it in a module-level variable.
+> `get_settings()` returns a **fresh instance** each time — it holds static config from `.env`. The `RUN_ID` is **not** part of `SETTINGS`; it belongs to `RunContext`, which is instantiated once in the main flow and passed down to every subflow and processor. This keeps per-run state separate from environment configuration.
 
 ---
 
@@ -239,16 +239,19 @@ The `data/static/mappings/product_mapping.csv` file is also required by the defa
 
 ### Quick Test with Generated Data
 
-If you don't have real data yet, use the built-in test data generator to populate `data/input/` and `data/static/` with realistic sample files:
+If you don't have real data yet, use the built-in test data generator to populate `data/input/` and `data/static/` with realistic sample files. There are two ways to run it:
 
+**Command line:**
 ```bash
-python test_files_generator/generator.py
+python main.py --generate
 ```
 
-This generates:
+**Prefect UI:** trigger the **"Generate Test Data"** flow directly from the Prefect dashboard — no parameters required.
+
+Both methods call the same `generate_test_data()` Prefect flow, which produces:
 - **Sales CSV files** — multiple test cases (correct data, missing values, type errors, duplicates, out-of-range values, empty files)
 - **Inventory CSV files** — with daily/weekly stock snapshots
-- **Product mapping** — a `product_mapping.csv` in `data/static/mappings/`
+- **Product mapping** — `product_mapping.csv` and `product_mapping.json` in `data/static/mappings/`
 
 > [!tip]
 > The generator uses your `.env` settings (paths, CSV delimiter), so make sure `.env` is configured before running it.

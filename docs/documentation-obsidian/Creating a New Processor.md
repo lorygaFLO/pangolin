@@ -25,11 +25,12 @@ This page explains the `BaseProcessor` API and how to create your own custom pro
 
 ```python
 class BaseProcessor:
-    def __init__(self, name, registry_path, input_folder, output_folder=None):
+    def __init__(self, CTX: RunContext, name: str, registry_path: str, input_folder: str, output_folder: str = None):
 ```
 
 | Parameter | Description |
 |-----------|-------------|
+| `CTX` | `RunContext` instance — carries the `RUN_ID` shared across the run |
 | `name` | Unique step name (used in logs and reports) |
 | `registry_path` | Path to the YAML registry file (relative to project root) |
 | `input_folder` | Dot-notation path to the input folder in `data_structure.yaml` |
@@ -72,15 +73,14 @@ from engine.processors.BaseProcessor import BaseProcessor
 from engine.reporter import Reporter
 from engine.core.exceptions import NoInputFilesError, AllFilesFailedError
 from config.settings import get_settings
-
-S = get_settings()
+from config.run_context import RunContext
 
 
 class DataAggregator(BaseProcessor):
-    def __init__(self, name, registry_path, report_folder,
-                 input_folder, output_folder=None):
-        super().__init__(name, registry_path, input_folder, output_folder)
-        self.reporter = Reporter(report_folder, step_name=name)
+    def __init__(self, CTX: RunContext, name: str, registry_path: str, report_folder: str,
+                 input_folder: str, output_folder: str = None):
+        super().__init__(CTX, name, registry_path, input_folder, output_folder)
+        self.reporter = Reporter(CTX, report_folder, step_name=name)
 
     def execute(self, file_paths=None):
         results = {}
@@ -113,6 +113,7 @@ class DataAggregator(BaseProcessor):
                 aggregated = data.group_by(group_by).agg(agg_exprs)
 
                 # Write output
+                S = self.S
                 out_name = f"{self.fs.splitext(self.fs.basename(rel_path))[0]}.{S.OUTPUT_FORMAT}"
                 self.write_file(aggregated, out_name)
                 messages.append(f"Aggregated {len(data)} → {len(aggregated)} rows")
@@ -168,8 +169,10 @@ staging:
 from engine.processors.DataAggregator import DataAggregator
 
 @flow(name="2b - Data Aggregation")
-def aggregation_flow(S):
+def aggregation_flow(CTX):     # ← receives RunContext
+    S = get_settings()
     aggregator = DataAggregator(
+        CTX,
         name="2b_aggregation",
         registry_path="config/registries/2b_aggregation.yaml",
         report_folder=S.REPORTS_FOLDER_NAME,
@@ -182,9 +185,9 @@ def aggregation_flow(S):
 ### 5. Wire It Into the Pipeline
 
 ```python
-s2 = transform_flow(S, return_state=True, wait_for=[s1])
-s2b = aggregation_flow(S, return_state=True, wait_for=[s2])
-s3 = validation_flow(S, return_state=True, wait_for=[s2b])
+    s2 = transform_flow(CTX, return_state=True, wait_for=[s1])
+    s2b = aggregation_flow(CTX, return_state=True, wait_for=[s2])
+    s3 = validation_flow(CTX, return_state=True, wait_for=[s2b])
 ```
 
 ---

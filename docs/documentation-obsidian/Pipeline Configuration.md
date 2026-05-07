@@ -10,16 +10,31 @@ The pipeline is defined in `main.py` using **Prefect flows**. The structure is *
 
 ```python
 @flow(name="Full Processing Pipeline")
-def data_pipeline():
-    S = get_settings()
+def data_pipeline(restore_from: Optional[str] = None, clear_input: bool = False):
+    logger = get_run_logger()
+    CTX = RunContext()
 
-    s0 = raw_validation_flow(S, return_state=True)
-    s1 = raw_dispatch_flow(S, return_state=True, wait_for=[s0])
-    s2 = transform_flow(S, return_state=True, wait_for=[s1])
-    s3 = validation_flow(S, return_state=True, wait_for=[s2])
-    s4 = cross_validation_flow(S, return_state=True, wait_for=[s3])
-    final_dispatch_flow(S, wait_for=[s4])
+    # Either restore from a previous backup, or backup current input
+    if restore_from:
+        s_init = restore_flow(CTX, restore_from=restore_from, return_state=True)
+    else:
+        s_init = backup_flow(CTX, return_state=True)
+
+    s0 = raw_validation_flow(CTX, return_state=True, wait_for=[s_init])
+    s1 = raw_dispatch_flow(CTX, return_state=True, wait_for=[s0])
+    s2 = transform_flow(CTX, return_state=True, wait_for=[s1])
+    s3 = validation_flow(CTX, return_state=True, wait_for=[s2])
+    s4 = cross_validation_flow(CTX, return_state=True, wait_for=[s3])
+    s5 = final_dispatch_flow(CTX, return_state=True, wait_for=[s4])
+
+    if clear_input and not restore_from:
+        clear_input_flow(CTX, wait_for=[s5])
 ```
+
+| Parameter | Description |
+|-----------|-------------|
+| `restore_from` | If set (e.g. `"20260324_185705"`), restores files from that backup run instead of backing up fresh input. See [[#BackupRestore]] below. |
+| `clear_input` | If `True`, deletes all files from `data/input/` after the pipeline completes (only when not restoring). |
 
 Each subflow:
 1. Creates a **Processor** instance (`Validator`, `DataTransformer`, `FileDispatcher`, or `BackupRestore`)
@@ -35,19 +50,22 @@ Here is a dissected example — step 2 (Transformation):
 
 ```python
 @flow(name="2 - Data Transformation")
-def transform_flow(S):
+def transform_flow(CTX):           # ← receives RunContext from the parent flow
+    S = get_settings()
     transformer = DataTransformer(
-        name="2_transform",  # 1. Step name (used in logs)
-        registry_path="config/registries/2_transform_registry.yaml", # 2. Rules file
-        report_folder=S.REPORTS_FOLDER_NAME, # 3. Where reports go
-        input_folder="staging.1_dispatcher", # 4. Input (dot-notation)
-        output_folder="staging.2_transform"  # 5. Output (dot-notation)
+        CTX,                                                          # 1. RunContext
+        name="2_transform",                                           # 2. Step name (used in logs)
+        registry_path="config/registries/2_transform_registry.yaml", # 3. Rules file
+        report_folder=S.REPORTS_FOLDER_NAME,                          # 4. Where reports go
+        input_folder="staging.1_dispatcher",                          # 5. Input (dot-notation)
+        output_folder="staging.2_transform"                           # 6. Output (dot-notation)
     )
     transformer.execute()
 ```
 
 | Parameter | Description |
 |-----------|-------------|
+| `CTX` | `RunContext` instance — carries the `RUN_ID` shared across all steps of a run |
 | `name` | Unique step identifier, appears in logs and report subfolder names |
 | `registry_path` | Path to the YAML registry file (relative to project root) |
 | `report_folder` | Dot-notation path to the reports folder in `data_structure.yaml` |
@@ -113,8 +131,10 @@ staging:
 
 ```python
 @flow(name="2b - Custom Validation")
-def custom_validation_flow(S):
+def custom_validation_flow(CTX):    # ← receives RunContext
+    S = get_settings()
     validator = Validator(
+        CTX,
         name="2b_custom_validation",
         registry_path="config/registries/2b_custom_validation.yaml",
         report_folder=S.REPORTS_FOLDER_NAME,
@@ -129,17 +149,11 @@ def custom_validation_flow(S):
 Insert it in the correct order with `wait_for` dependencies:
 
 ```python
-@flow(name="Full Processing Pipeline")
-def data_pipeline():
-    S = get_settings()
-
-    s0 = raw_validation_flow(S, return_state=True)
-    s1 = raw_dispatch_flow(S, return_state=True, wait_for=[s0])
-    s2 = transform_flow(S, return_state=True, wait_for=[s1])
-    s2b = custom_validation_flow(S, return_state=True, wait_for=[s2])  # ← new
-    s3 = validation_flow(S, return_state=True, wait_for=[s2b])         # ← updated
-    s4 = cross_validation_flow(S, return_state=True, wait_for=[s3])
-    final_dispatch_flow(S, wait_for=[s4])
+    s2 = transform_flow(CTX, return_state=True, wait_for=[s1])
+    s2b = custom_validation_flow(CTX, return_state=True, wait_for=[s2])  # ← new
+    s3 = validation_flow(CTX, return_state=True, wait_for=[s2b])         # ← updated
+    s4 = cross_validation_flow(CTX, return_state=True, wait_for=[s3])
+    s5 = final_dispatch_flow(CTX, return_state=True, wait_for=[s4])
 ```
 
 > [!important]
@@ -180,6 +194,7 @@ The `FileDispatcher` has an extra parameter:
 
 ```python
 dispatcher = FileDispatcher(
+    CTX,
     name="5_dispatcher",
     registry_path="config/registries/5_dispatcher.yaml",
     report_folder=S.REPORTS_FOLDER_NAME,
