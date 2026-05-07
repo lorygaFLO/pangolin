@@ -1,3 +1,11 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo_pangolin_dark.jpg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/logo_pangolin.jpg">
+    <img src="docs/assets/logo_pangolin.jpg" alt="Pangolin logo" style="width: 200px; aspect-ratio: 1; object-fit: cover; border-radius: 15px;"/>
+  </picture>
+</p>
+
 # Pangolin — Data Ingestion, Validation & Transformation Pipeline
 
 Pangolin is a flexible, modular data processing pipeline built on top of **Prefect** and **Polars**. It automates multi-stage ingestion, validation, transformation, and delivery of data files, ensuring data quality and compliance with user-defined rules at every step.
@@ -78,15 +86,15 @@ Full documentation is available in the [`docs/doumentation-obsidian/`](docs/doum
 
 | Guide | Description |
 |-------|-------------|
-| [Welcome](docs/doumentation-obsidian/Welcome.md) | Introduction and overview |
-| [Getting Started](docs/doumentation-obsidian/Getting%20Started.md) | Installation, configuration, and first run |
-| [Architecture Overview](docs/doumentation-obsidian/Architecture%20Overview.md) | Pipeline stages, directory structure, and data flow |
-| [Pipeline Configuration](docs/doumentation-obsidian/Pipeline%20Configuration.md) | Registry files and YAML-driven stage configuration |
-| [Registry Reference](docs/doumentation-obsidian/Registry%20Reference.md) | Detailed reference for all registry formats |
-| [Data Structure & DataFacility](docs/doumentation-obsidian/Data%20Structure%20&%20DataFacility.md) | YAML-driven filesystem mapping |
-| [Writing Validators](docs/doumentation-obsidian/Writing%20Validators.md) | How to create custom validation functions |
-| [Writing Transformers](docs/doumentation-obsidian/Writing%20Transformers.md) | How to create custom transformation functions |
-| [Creating a New Processor](docs/doumentation-obsidian/Creating%20a%20New%20Processor.md) | Extending the engine with new processor types |
+| [Welcome](docs/documentation-obsidian/Welcome.md) | Introduction and overview |
+| [Getting Started](docs/documentation-obsidian/Getting%20Started.md) | Installation, configuration, and first run |
+| [Architecture Overview](docs/documentation-obsidian/Architecture%20Overview.md) | Pipeline stages, directory structure, and data flow |
+| [Pipeline Configuration](docs/documentation-obsidian/Pipeline%20Configuration.md) | Registry files and YAML-driven stage configuration |
+| [Registry Reference](docs/documentation-obsidian/Registry%20Reference.md) | Detailed reference for all registry formats |
+| [Data Structure & DataFacility](docs/documentation-obsidian/Data%20Structure%20&%20DataFacility.md) | YAML-driven filesystem mapping |
+| [Writing Validators](docs/documentation-obsidian/Writing%20Validators.md) | How to create custom validation functions |
+| [Writing Transformers](docs/documentation-obsidian/Writing%20Transformers.md) | How to create custom transformation functions |
+| [Creating a New Processor](docs/documentation-obsidian/Creating%20a%20New%20Processor.md) | Extending the engine with new processor types |
 
 ## Contributing
 
