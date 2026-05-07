@@ -98,6 +98,17 @@ FS_OPTIONS={"key": "AKIAIOSFODNN7EXAMPLE", "secret": "wJalrXUtnFEMI/K7MDENG/bPxR
 
 `FS_OPTIONS` accepts a JSON string with any `fsspec` storage options for the chosen protocol.
 
+> [!important] Install the cloud driver first
+> `fsspec` does **not** bundle cloud backends — you must install the relevant package before switching protocol:
+>
+> | Protocol | Package to install |
+> |---|---|
+> | `s3` (AWS S3) | `pip install s3fs` |
+> | `az` (Azure Blob) | `pip install adlfs` |
+> | `gcs` (Google Cloud Storage) | `pip install gcsfs` |
+>
+> For **Docker deployments**, add the package to `docker/requirements-docker.txt` and rebuild the image (`make build` / `.\make.ps1 build`).
+
 ---
 
 ## 4b. Adapting `settings.py` to Your Own Project

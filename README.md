@@ -12,7 +12,7 @@
 
 The current implementation targets a **data preboarding** use case: inspecting incoming data from third-party sources, applying validation rules, transforming values, and delivering clean, compliant datasets. However, the underlying architecture is generic and reusable — you can build entirely different workflows on top of the same structure for any project that involves staged data processing.
 
-
+The project supports multiple deployment modes: you can run it **locally**, deploy it on an **on-premise server**, or containerize it via **Docker** and point it at cloud storage — in all cases triggering pipeline runs directly from the **Prefect UI**. That said, Pangolin is currently scoped for **small enterprise applications** and has not yet been extensively tested in larger or more demanding environments. Use it accordingly.
 
 ## Key Features
 
@@ -30,16 +30,17 @@ The current implementation targets a **data preboarding** use case: inspecting i
 ├── main.py                    # Pipeline entry point (Prefect flows)
 ├── config/
 │   ├── settings.py            # Settings loader
+│   ├── run_context.py         # Runtime context object
 │   ├── data_structure.yaml    # Declarative folder/file schema
 │   └── registries/            # YAML-driven stage configuration
 ├── engine/
 │   ├── DataFacility.py        # YAML-driven data access layer
 │   ├── reporter.py            # Report generation
 │   ├── core/                  # Exceptions, logging
-│   └── processors/            # BaseProcessor, Validator, Transformer, Dispatcher
+│   └── processors/            # BaseProcessor, Validator, Transformer, Dispatcher, BackupRestore
 ├── utils/                     # Built-in validators, transformers, fs wrapper
 ├── docker/                    # Deployment scripts
-├── data/                      # input / staging / delivery / reports
+├── data/                      # input / staging / delivery / backup / reports
 └── docs/                      # Documentation (Obsidian vault)
 ```
 
@@ -53,149 +54,10 @@ If you run into any problem, feel free to open an issue — feedback and bug rep
 
 The documentation includes a dedicated **Future Developments** section outlining planned improvements and ideas. Contributions are welcome! Priority areas:
 
-* **Dockerization** *(in progress)*
+* **Better Dockerization**
 * **Full Prefect Integration** (deployment manifests, work pools, artifacts, notifications)
 * **New File Format Support** (Excel, JSON, etc.)
 * **Additional Validators/Transformers**
 * **Cloud Storage** (S3/GCS/Azure documentation and examples)
 
-
-
-## Running in Docker
-
-Pangolin ships a 4-service Docker stack (Prefect server, one-shot bootstrap,
-worker running `flow.serve()`, Caddy reverse proxy) plus an idempotent
-manifest-driven configuration system.
-
-### The three modes
-
-`PANGOLIN_MODE` selects how settings are loaded:
-
-| Mode | Settings source | Where it runs |
-|------|-----------------|---------------|
-| `local` | Pydantic reads `.env` directly | Host machine, no Docker |
-| `docker-local` | Pulled from Prefect **Variables + Blocks** at flow start; `data/` bind-mounted | Local Docker |
-| `cloud` | Same as `docker-local` but with real cloud creds; UI on `${PUBLIC_HOSTNAME}` | VM / cloud host |
-
-`docker-local` is intentionally identical to `cloud` so you can rehearse the
-production flow on your laptop.
-
-### Quick start (docker-local)
-
-On macOS / Linux / Git Bash / WSL:
-
-```bash
-cp docker/.env.docker.example docker/.env.docker
-# edit docker/.env.docker if you need (defaults work out-of-the-box)
-
-git checkout develop          # or any branch you want baked in
-make build                    # captures branch + short SHA into the image
-make up                       # starts server, bootstrap, worker, caddy
-make logs                     # follow logs
-```
-
-On Windows PowerShell (no `make` required) use the bundled helper:
-
-```powershell
-Copy-Item docker\.env.docker.example docker\.env.docker
-git checkout develop
-.\make.ps1 build
-.\make.ps1 up
-.\make.ps1 logs
-```
-
-`make.ps1` exposes the same targets as the `Makefile`
-(`build`, `up`, `down`, `restart`, `logs`, `ps`, `bootstrap`, `shell`,
-`clean`, `nuke`).
-
-UI URLs (both work, no `/etc/hosts` edits required):
-
-- http://localhost:8080
-- http://pangolin.localhost:8080  ← uses `PROJECT_NAME` from `docker/.env.docker`
-
-Change the host port via `PROXY_PORT` in `docker/.env.docker` (also update
-`PREFECT_UI_API_URL` to match, otherwise the UI's API calls will hit the
-wrong port).
-
-### Building for a specific branch
-
-The image records which Git branch/SHA it was built from (baked in as
-`ENV GIT_BRANCH` / `ENV GIT_SHA`, logged at worker startup, and exposed in
-the Prefect UI as Variables `pangolin_git_branch` and `pangolin_git_sha`).
-
-```bash
-git checkout my-feature-branch
-make build       # auto-fills --build-arg GIT_BRANCH / GIT_SHA from the working copy
-make up
-```
-
-Docker itself does **not** check out branches — that's your job; the image
-just records what it was built from.
-
-### The manifest (`docker/prefect_manifest.yaml`)
-
-Single source of truth for everything Pangolin expects in Prefect. Three
-value sources:
-
-- inline literal — used as-is
-- `"${ENV_VAR}"` — resolved from container env (provided via `docker/.env.docker`)
-- `null` / `""` — created **empty** so you can fill it via the UI; if a
-  non-empty value already exists on the server, it is preserved on rerun
-
-The bootstrap container applies the manifest on every `make up` and is fully
-idempotent — re-running never wipes user-edited values.
-
-### Bulk-creating empty blocks/variables
-
-When you know you'll need a bunch of secrets but don't have the values yet:
-
-```bash
-# from the host
-make bootstrap                                          # apply current manifest
-
-# inside the worker container (or any pangolin image)
-docker compose --env-file docker/.env.docker run --rm bootstrap \
-    python docker/bootstrap_prefect.py create-empty \
-    --type secret --name foo --name bar --name baz
-
-docker compose --env-file docker/.env.docker run --rm bootstrap \
-    python docker/bootstrap_prefect.py create-empty \
-    --type variable --from-file names.txt
-```
-
-Each new entry is appended to `docker/prefect_manifest.yaml` with `value: null`, so
-it survives image rebuilds. Then fill the values in the Prefect UI.
-
-### Going from `docker-local` to `cloud`
-
-Edit `docker/.env.docker`:
-
-```dotenv
-PANGOLIN_MODE=cloud
-PUBLIC_HOSTNAME=pangolin.example.com
-PREFECT_UI_API_URL=http://pangolin.example.com/api
-AZURE_STORAGE_CONNECTION_STRING=<the real value>
-# ...any other secrets referenced by ${...} in the manifest
-```
-
-Then `make build && make up` on the VM. The same Caddyfile picks up
-`PUBLIC_HOSTNAME` and serves the UI there.
-
-> The reverse proxy currently has **no authentication**. There's a TODO in
-> `Caddyfile` showing where to plug `basicauth` once you want to lock the UI
-> down.
-
-### What's where
-
-| File | Purpose |
-|------|---------|
-| `docker/Dockerfile` | App image, captures `GIT_BRANCH` / `GIT_SHA` build args |
-| `docker-compose.yml` | 4-service stack, named volume for the Prefect DB |
-| `docker/Caddyfile` | Reverse proxy: `localhost`, `<PROJECT_NAME>.localhost`, `${PUBLIC_HOSTNAME}` |
-| `docker/bootstrap_prefect.py` | Idempotent manifest applier + `create-empty` CLI |
-| `docker/prefect_manifest.yaml` | Declarative list of Variables/Blocks (commit-safe) |
-| `docker/.env.docker.example` | Template for `.env.docker` (real secrets live here, not in git) |
-| `docker/requirements-docker.txt` | UTF-8 dependency list used by the image |
-| `Makefile` | `build`, `up`, `down`, `logs`, `bootstrap`, `shell`, `clean` |
-| `docker/deploy.py` | `flow.serve()` entry point; hydrates env from Prefect before importing `main` |
 
