@@ -6,11 +6,13 @@
   </picture>
 </p>
 
-# Pangolin — Data Ingestion, Validation & Transformation Pipeline
+# Pangolin — Battle-Ready Data Pipeline with Built-in Orchestration
 
-Pangolin is a flexible, modular data processing pipeline built on top of **Prefect** and **Polars**. It automates multi-stage ingestion, validation, transformation, and delivery of data files, ensuring data quality and compliance with user-defined rules at every step.
+**Pangolin** is a production-ready, modular data processing pipeline shipped with **Prefect** as its orchestrator and **Polars** as its dataframe engine. It gives you a complete, deployable system out of the box — with a pipeline infrastructure ready to run.
 
-It is designed to be easy to ship and quick to set up, making it a good fit for personal projects or small/medium enterprise pipelines. If you routinely process and validate data from third-party sources, Pangolin gives you a declarative, YAML-driven approach to defining pipeline stages — no core code changes needed.
+The current implementation targets a **data preboarding** use case: inspecting incoming data from third-party sources, applying validation rules, transforming values, and delivering clean, compliant datasets. However, the underlying architecture is generic and reusable — you can build entirely different workflows on top of the same structure for any project that involves staged data processing.
+
+
 
 ## Key Features
 
@@ -19,86 +21,37 @@ It is designed to be easy to ship and quick to set up, making it a good fit for 
 * **Polars backend** — fast, memory-efficient dataframe processing
 * **fsspec integration** — swap local storage for S3, GCS, or Azure with a one-line config change
 * **DataFacility** — YAML-driven data access layer mapping folder structure into a navigable Python object tree
-* **Per-stage HTML reports** generated automatically for every processed file
 * **Non-destructive processing** — input files are never modified; each stage writes to its own staging folder
 * **Extensible with decorators** — add validators/transformers with `@register_validator` / `@register_transformer`
 
 ## Project Structure
 
 ```
-├── main.py                          # Pipeline entry point (Prefect flows)
-├── example.env                      # Environment variable template
-├── pyproject.toml                   # Project metadata & dependencies
+├── main.py                    # Pipeline entry point (Prefect flows)
 ├── config/
-│   ├── settings.py                  # Settings loader (reads .env, builds paths)
-│   ├── constants.py                 # System-wide constants
-│   ├── data_structure.yaml          # Declarative folder/file schema (DataFacility)
-│   └── registries/                  # YAML-driven stage configuration
-│       ├── 0_raw_validation.yaml
-│       ├── 1_dispatcher.yaml
-│       ├── 2_transform_registry.yaml
-│       ├── 3_validation.yaml
-│       ├── 4_cross_validation.yaml
-│       └── 5_dispatcher.yaml
+│   ├── settings.py            # Settings loader
+│   ├── data_structure.yaml    # Declarative folder/file schema
+│   └── registries/            # YAML-driven stage configuration
 ├── engine/
-│   ├── DataFacility.py              # YAML-driven data access layer
-│   ├── reporter.py                  # Report generation
-│   ├── core/
-│   │   ├── exceptions.py            # Custom pipeline exceptions
-│   │   └── logger.py                # Per-processor logger
-│   └── processors/
-│       ├── BaseProcessor.py         # Shared processor base class
-│       ├── DataValidator.py         # Validation processor
-│       ├── DataTranformer.py        # Transformation processor
-│       └── FileDispatcher.py        # File routing processor
-├── utils/
-│   ├── validators.py                # Built-in validator functions
-│   ├── transformers.py              # Built-in transformer functions
-│   └── fs_wrapper.py                # fsspec filesystem wrapper
-├── docker/
-│   └── deploy.py                    # Prefect deployment script
-├── data/
-│   ├── input/                       # Drop input files here
-│   ├── staging/                     # Per-run intermediate data
-│   ├── delivery/                    # Final outputs (timestamped)
-│   └── reports/                     # Pipeline reports (timestamped)
-└── docs/
-    └── doumentation-obsidian/       # Full documentation (Obsidian vault)
-```
-
-## Quick Start
-
-```bash
-pip install -e .
-```
-
-1. Copy `example.env` to `.env` and fill in the values
-2. Place input files in `data/input/`
-3. Run the pipeline:
-
-```bash
-python main.py
+│   ├── DataFacility.py        # YAML-driven data access layer
+│   ├── reporter.py            # Report generation
+│   ├── core/                  # Exceptions, logging
+│   └── processors/            # BaseProcessor, Validator, Transformer, Dispatcher
+├── utils/                     # Built-in validators, transformers, fs wrapper
+├── docker/                    # Deployment scripts
+├── data/                      # input / staging / delivery / reports
+└── docs/                      # Documentation (Obsidian vault)
 ```
 
 ## Documentation
 
-Full documentation is available in the [`docs/doumentation-obsidian/`](docs/doumentation-obsidian/) folder. It is structured as an [Obsidian](https://obsidian.md/) vault — open the folder in Obsidian for the best reading experience (linked pages, graph view, etc.).
-
-| Guide | Description |
-|-------|-------------|
-| [Welcome](docs/documentation-obsidian/Welcome.md) | Introduction and overview |
-| [Getting Started](docs/documentation-obsidian/Getting%20Started.md) | Installation, configuration, and first run |
-| [Architecture Overview](docs/documentation-obsidian/Architecture%20Overview.md) | Pipeline stages, directory structure, and data flow |
-| [Pipeline Configuration](docs/documentation-obsidian/Pipeline%20Configuration.md) | Registry files and YAML-driven stage configuration |
-| [Registry Reference](docs/documentation-obsidian/Registry%20Reference.md) | Detailed reference for all registry formats |
-| [Data Structure & DataFacility](docs/documentation-obsidian/Data%20Structure%20&%20DataFacility.md) | YAML-driven filesystem mapping |
-| [Writing Validators](docs/documentation-obsidian/Writing%20Validators.md) | How to create custom validation functions |
-| [Writing Transformers](docs/documentation-obsidian/Writing%20Transformers.md) | How to create custom transformation functions |
-| [Creating a New Processor](docs/documentation-obsidian/Creating%20a%20New%20Processor.md) | Extending the engine with new processor types |
+Full documentation lives in the [`docs/documentation-obsidian/`](docs/doumentation-obsidian/) folder. It is structured as an [Obsidian](https://obsidian.md/) vault — open it in Obsidian for the best experience (linked pages, graph view, backlinks). Getting started instructions, architecture details, and guides for extending the pipeline are all included there.
 
 ## Contributing
 
-Contributions are welcome! Priority areas:
+If you run into any problem, feel free to open an issue — feedback and bug reports are always welcome.
+
+The documentation includes a dedicated **Future Developments** section outlining planned improvements and ideas. Contributions are welcome! Priority areas:
 
 * **Dockerization** *(in progress)*
 * **Full Prefect Integration** (deployment manifests, work pools, artifacts, notifications)
