@@ -20,7 +20,7 @@ The Docker stack and cloud-mode infrastructure are implemented in this version. 
 
 Areas that likely need attention:
 
-- **Real cloud testing** — the `cloud` mode has only been exercised in `docker-local`. A deployment to an actual VM or cloud service is needed to validate networking, secrets, volume mounts, and scheduling end-to-end. Not possible at the moment.
+- **Real cloud testing** — the `cloud` mode has only been exercised in `docker-local`. A deployment to an actual VM or cloud service is needed to validate networking, secrets, volume mounts, and scheduling end-to-end. Not possible at the moment. **Contributions and collaboration are very welcome here** — if you have access to a cloud environment and want to help validate or extend this, please open an issue or reach out.
 - **Cloud storage** — `FSWrapper` currently only supports the local filesystem. Extend it to accept a `FILESYSTEM_PROTOCOL` env variable (`local` | `s3` | `az` | `gcs`), threading the right `fsspec` filesystem through without touching processors or registries.
 - **Docker image hardening** — review layer caching, multi-stage builds, non-root user, image size optimization.
 
