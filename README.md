@@ -8,7 +8,9 @@
 
 # Pangolin — Battle-Ready Data Pipeline with Built-in Orchestration
 
-**Pangolin** is a production-ready, modular data processing pipeline shipped with **Prefect** as its orchestrator and **Polars** as its dataframe engine. It gives you a complete, deployable system out of the box — with a pipeline infrastructure ready to run.
+**Pangolin** is a production-ready, modular data processing pipeline shipped with **Prefect** as its orchestrator and **Polars** as its dataframe engine. It gives you a complete, deployable system out of the box — with a minimal pipeline infrastructure ready to run.
+
+Pangolin started as a simple data validation tool. Solving one problem at a time, it gradually grew into something more structured — a framework that gives data specialists a solid foundation to build on, instead of ending up buried in messy, hard-to-maintain scripts.
 
 The current implementation targets a **data preboarding** use case: inspecting incoming data from third-party sources, applying validation rules, transforming values, and delivering clean, compliant datasets. However, the underlying architecture is generic and reusable — you can build entirely different workflows on top of the same structure for any project that involves staged data processing.
 
@@ -21,8 +23,7 @@ The project supports multiple deployment modes: you can run it **locally**, depl
 * **Polars backend** — fast, memory-efficient dataframe processing
 * **fsspec integration** — swap local storage for S3, GCS, or Azure with a one-line config change
 * **DataFacility** — YAML-driven data access layer mapping folder structure into a navigable Python object tree
-* **Non-destructive processing** — input files are never modified; each stage writes to its own staging folder
-* **Extensible with decorators** — add validators/transformers with `@register_validator` / `@register_transformer`
+* **Extensible with decorators** — add custom validators/transformers with `@register_validator` / `@register_transformer`
 
 ## Project Structure
 
