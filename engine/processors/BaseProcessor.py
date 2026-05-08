@@ -10,19 +10,21 @@ import fnmatch
 import polars as pl
 from typing import Dict, List, Tuple, Optional, Any
 from config.settings import get_settings
+from config.run_context import RunContext
 import yaml
 from engine.DataFacility import get_project_data
 from engine.core.logger import ProcessorLogger
 from utils.fs_wrapper import FSWrapper
-S = get_settings()
+_local_fs = FSWrapper(protocol="file")  # always local — for loading repo config files
 
 
 class BaseProcessor:
-    def __init__(self, name: str, registry_path: str, input_folder: str, output_folder: str = None):
+    def __init__(self, CTX: RunContext, name: str, registry_path: str, input_folder: str, output_folder: str = None):
         """
         Initialize the BaseProcessor.
 
         Args:
+            CTX: RunContext with runtime state (RUN_ID)
             name: Step name for identification
             registry_path: Path to the registry file
             input_folder: Name of input folder in data structure
@@ -39,6 +41,8 @@ class BaseProcessor:
             raise ValueError("input_folder must be provided")
         
         S = get_settings()
+        self.S = S
+        self.CTX = CTX
         self.name = name
         self.log = ProcessorLogger(name)
         self.output_folder = output_folder or name  # Default to step name
@@ -50,8 +54,8 @@ class BaseProcessor:
             **getattr(S, "FS_OPTIONS", {})
         )
         
-        # Initialize DataFacility
-        self.D = get_project_data()
+        # Initialize DataFacility with run_id from CTX
+        self.D = get_project_data(run_id=CTX.RUN_ID)
         
         # Get registry
         self.registry_path = registry_path
@@ -79,10 +83,10 @@ class BaseProcessor:
 
     def get_registry(self, file_path: str = 'config/registry.yaml') -> dict:
         """Load registry configuration from YAML file."""
-        if not self.fs.isabs(file_path):
-            file_path = self.fs.join(str(S.BASEPATH), file_path)
+        if not _local_fs.isabs(file_path):
+            file_path = _local_fs.join(str(self.S.BASEPATH), file_path)
         
-        with self.fs.open(file_path, 'r') as file:
+        with _local_fs.open(file_path, 'r') as file:
             registry = yaml.safe_load(file)
         
         return registry
@@ -155,7 +159,7 @@ class BaseProcessor:
             # Read based on format via fs_wrapper
             if file_format == 'csv':
                 with self.fs.open(file_path, 'rb') as f:
-                    data = pl.read_csv(f, separator=S.CSV_DELIMITER)
+                    data = pl.read_csv(f, separator=self.S.CSV_DELIMITER)
             elif file_format == 'parquet':
                 with self.fs.open(file_path, 'rb') as f:
                     data = pl.read_parquet(f)
@@ -199,7 +203,7 @@ class BaseProcessor:
         file_format = self._infer_format(str(relative_path))
         if file_format == 'csv':
             with self.fs.open(output_path, 'wb') as f:
-                data.write_csv(f, separator=S.CSV_DELIMITER)
+                data.write_csv(f, separator=self.S.CSV_DELIMITER)
         elif file_format == 'parquet':
             with self.fs.open(output_path, 'wb') as f:
                 data.write_parquet(f)

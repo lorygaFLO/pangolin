@@ -9,6 +9,7 @@ data/
 pangolinEnv/
 .env
 .env.*
+!docker/.env.docker.example
 *.egg-info/
 .eggs/
 

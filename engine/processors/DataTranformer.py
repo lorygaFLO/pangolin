@@ -10,24 +10,25 @@ from engine.processors.BaseProcessor import BaseProcessor
 from engine.reporter import Reporter
 from engine.core.exceptions import NoInputFilesError, AllFilesFailedError
 from config.settings import get_settings
-S = get_settings()
+from config.run_context import RunContext
 
 
 
 class DataTransformer(BaseProcessor):
-    def __init__(self, name: str, registry_path: str, report_folder: str, input_folder: str, output_folder: str = None):
+    def __init__(self, CTX: RunContext, name: str, registry_path: str, report_folder: str, input_folder: str, output_folder: str = None):
         """
         Initialize the DataTransformer.
         
         Args:
+            CTX: RunContext with runtime state (RUN_ID)
             name: Step name for identification
             registry_path: Path to the registry file
             report_folder: Dot-notation path to report folder in data structure
             input_folder: Dot-notation path to input folder
             output_folder: Dot-notation path to output folder
         """
-        super().__init__(name, registry_path, input_folder, output_folder)
-        self.reporter = Reporter(report_folder, step_name=name)
+        super().__init__(CTX, name, registry_path, input_folder, output_folder)
+        self.reporter = Reporter(CTX, report_folder, step_name=name)
 
     def execute(self, file_paths=None) -> Dict[str, Dict[str, Any]]:
         """
@@ -91,7 +92,7 @@ class DataTransformer(BaseProcessor):
             if all_success:
                 try:
                     relative_path_obj = self.fs.dirname(relative_path)
-                    output_filename = f"{self.fs.splitext(self.fs.basename(relative_path))[0]}.{S.OUTPUT_FORMAT}"
+                    output_filename = f"{self.fs.splitext(self.fs.basename(relative_path))[0]}.{self.S.OUTPUT_FORMAT}"
                     output_relative_path = self.fs.join(relative_path_obj, output_filename) if relative_path_obj else output_filename
                     output_path = self.write_file(modified_data, output_relative_path)
                     self.log.info(f"Transformed file saved to {output_relative_path}")

@@ -333,7 +333,6 @@ Notes
   specific option is available.
 """
 
-from pathlib import Path
 from typing import Any, Optional, Dict, List, Union
 from datetime import datetime
 import yaml
@@ -348,6 +347,7 @@ _fs = FSWrapper(
     protocol=getattr(S, "FS_PROTOCOL", "file"),
     **getattr(S, "FS_OPTIONS", {})
 )
+_local_fs = FSWrapper(protocol="file")  # always local — for loading repo config files
 
 
 class DataNode:
@@ -428,18 +428,20 @@ class DataNode:
                 base = self.fs.join(self.parent_path, self.name)
         
         # Gestione timestamping
-        if self.config.get('_timestamped') or self._parent_is_timestamped():
-            if S.RUN_ID not in str(base):
-                base = self.fs.join(base, S.RUN_ID)
+        if self.d_root.run_id and (self.config.get('_timestamped') or self._parent_is_timestamped()):
+            if self.d_root.run_id not in str(base):
+                base = self.fs.join(base, self.d_root.run_id)
         
         return base
     
     def _parent_is_timestamped(self) -> bool:
         """Controlla se parent ha _timestamped: true."""
+        if not self.d_root.run_id:
+            return False
         # Risali la catena per vedere se un parent ha _timestamped
         parent_str = str(self.parent_path)
         # Se RUN_ID è già nel parent path, allora il parent è timestamped
-        return S.RUN_ID in parent_str
+        return self.d_root.run_id in parent_str
     
     def __getattr__(self, key: str):
         if key.startswith('_') or key in self.__dict__:
@@ -612,21 +614,21 @@ class DataFacility:
     """
     Facility D per navigazione struttura dati.
     
-    RUN_ID viene da Settings, non serve initialize_run().
+    RUN_ID viene da RunContext, passato esplicitamente.
     """
     
-    def __init__(self, structure_file: str = 'config/data_structure.yaml'):  # Use forward slash
+    def __init__(self, structure_file: str = 'config/data_structure.yaml', run_id: str = None):  # Use forward slash
         self.base_path = S.BASEPATH
         self.data_path = S.DATAPATH
-        self.run_id = S.RUN_ID  # Usa RUN_ID da Settings
+        self.run_id = run_id  # Explicitly passed from caller
         self.fs = _fs
         
         # Carica schema — always from local filesystem (config lives in the repo)
-        structure_path = str(Path(self.base_path) / structure_file)
-        if not Path(structure_path).exists():
+        structure_path = _local_fs.join(self.base_path, structure_file)
+        if not _local_fs.exists(structure_path):
             raise FileNotFoundError(f"Data structure file not found: {structure_path}")
         
-        with open(structure_path, 'r', encoding='utf-8') as f:
+        with _local_fs.open(structure_path, 'r', encoding='utf-8') as f:
             self.schema = yaml.safe_load(f)
         
         # Inizializza root nodes
@@ -694,22 +696,16 @@ class DataFacility:
             if run_id not in available_runs:
                 raise ValueError(f"Run not found: {run_id}")
         
-        # Cambia RUN_ID in Settings (temporaneamente)
-        # Nota: questo modifica il singleton, usare con cautela
-        old_run_id = S.RUN_ID
-        S.RUN_ID = run_id
+        old_run_id = self.run_id
         
         # Ricrea i nodi con nuovo RUN_ID
-        self.__init__(structure_file='config/data_structure.yaml')  # Use forward slash
+        self.__init__(structure_file='config/data_structure.yaml', run_id=run_id)  # Use forward slash
         
         return run_id
     
-    def restore_current_run(self):
+    def restore_current_run(self, original_run_id: str):
         """Ripristina RUN_ID originale."""
-        # Ripristina da Settings originale
-        S_fresh = get_settings()
-        S.RUN_ID = S_fresh.RUN_ID
-        self.__init__(structure_file='config/data_structure.yaml')  # Use forward slash
+        self.__init__(structure_file='config/data_structure.yaml', run_id=original_run_id)  # Use forward slash
     
     def list_runs(self, limit: int = 10) -> List[str]:
         """Lista run disponibili."""
@@ -770,8 +766,8 @@ class DataFacility:
         return results
 
 
-def get_project_data(structure_file: str = 'config/data_structure.yaml') -> DataFacility:  # Use forward slash
+def get_project_data(structure_file: str = 'config/data_structure.yaml', run_id: str = None) -> DataFacility:  # Use forward slash
     """Factory function."""
-    return DataFacility(structure_file)
+    return DataFacility(structure_file, run_id=run_id)
 
  

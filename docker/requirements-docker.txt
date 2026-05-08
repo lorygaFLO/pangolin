@@ -1,0 +1,21 @@
+# UTF-8 dependency list used inside the Docker image. Mirrors pyproject.toml
+# (the repo's requirements.txt is UTF-16 and not pip-friendly inside Linux).
+altgraph==0.17.4
+cramjam==2.10.0
+fastparquet==2024.11.0
+fsspec==2025.3.2
+numpy==2.2.3
+packaging==24.2
+pandas==2.2.3
+polars==1.23.0
+python-dateutil==2.9.0.post0
+pytz==2025.1
+PyYAML==6.0.2
+setuptools==76.0.0
+six==1.17.0
+tzdata==2025.1
+Faker==37.12.0
+prefect>=3.0.0,<4
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+httpx>=0.27

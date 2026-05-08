@@ -2,6 +2,8 @@
 
 This page describes the high-level design of Pangolin, its folder structure, and how data flows through the system.
 
+Pangolin is designed as a battle-ready template: every folder, file, and abstraction has a deliberate place so that when you start a new project you fork the repo, adjust the registries and `data_structure.yaml`, and write your domain logic — the engine and scaffolding are already there.
+
 ---
 
 ## Project Structure
@@ -10,7 +12,7 @@ This page describes the high-level design of Pangolin, its folder structure, and
 pangolin/
 ├── main.py                        # Prefect flow entry point
 ├── config/
-│   ├── settings.py                # .env loader → pydantic-settings SETTINGS
+│   ├── settings.py                # pydantic-settings SETTINGS class
 │   ├── constants.py               # Shared constants
 │   ├── data_structure.yaml        # Declarative folder/file schema
 │   └── registries/                # YAML rules for each pipeline step
@@ -28,6 +30,7 @@ pangolin/
 │   │   └── logger.py              # Structured processor logger
 │   └── processors/
 │       ├── BaseProcessor.py       # Abstract base class
+│       ├── BackupRestore.py       # Backup & restore input files
 │       ├── DataValidator.py       # Runs validation rules
 │       ├── DataTranformer.py      # Runs transformation chains
 │       └── FileDispatcher.py      # Routes files to subfolders
@@ -35,12 +38,28 @@ pangolin/
 │   ├── validators.py              # Registered validator functions
 │   ├── transformers.py            # Registered transformer functions
 │   └── fs_wrapper.py              # fsspec-based filesystem abstraction
+├── docker/
+│   ├── Dockerfile                 # Python 3.11-slim image recipe
+│   ├── docker-compose.yml         # 4-service stack (server, bootstrap, worker, caddy)
+│   ├── Caddyfile                  # Reverse-proxy config (*.localhost / cloud hostname)
+│   ├── deploy.py                  # Prefect deployment entry point (worker service)
+│   ├── bootstrap_prefect.py       # Idempotent manifest applier (bootstrap service)
+│   ├── prefect_manifest.yaml      # Declares all Prefect Variables and Blocks
+│   ├── requirements-docker.txt    # UTF-8 pip requirements for the Docker image
+│   ├── .env.docker.example        # Template — copy to .env.docker and fill in
+│   └── .env.docker                # Real runtime env (gitignored, never committed)
+├── docs/
+│   └── doumentation-obsidian/     # Obsidian vault documentation
 ├── test_files_generator/
 │   └── generator.py               # Generates sample test data
-└── .env                           # Environment configuration
+├── docker-compose.yml             # Symlink / alias at repo root (optional)
+├── make.ps1                       # PowerShell task runner (Windows)
+├── Makefile                       # POSIX task runner (Linux / macOS / Git Bash)
+├── .env                           # Local dev environment config (gitignored)
+└── example.env                    # Template for .env
 
 # The data/ folder is NOT in the repo (gitignored).
-# It is created at runtime and structured as:
+# It is created at runtime and in the example is structured as:
 #   data/input/            ← drop raw files here
 #   data/staging/<RUN_ID>/ ← intermediate step outputs
 #   data/delivery/<RUN_ID>/← final pipeline output
@@ -85,7 +104,9 @@ graph TD
 ## Key Components
 
 ### 1. Settings (`config/settings.py`)
-A `pydantic-settings` `BaseSettings` class loaded from `.env` that provides paths, backend engine, CSV delimiter, output format, and run ID. Every module accesses it via `get_settings()`, which returns a fresh `SETTINGS` instance. Fields are type-checked and validated automatically by Pydantic.
+A `pydantic-settings` `BaseSettings` class that provides paths, backend engine, CSV delimiter, output format, and run ID. Every module accesses it via `get_settings()`, which returns a fresh `SETTINGS` instance. Fields are type-checked and validated automatically by Pydantic.
+
+In **local** mode it reads `.env` directly. In **docker-local / cloud** mode, `docker/deploy.py` writes values from Prefect Variables and Blocks into `os.environ` *before* the settings class is ever instantiated, so `SETTINGS` receives them transparently — no code change needed. See [[Docker Deployment]].
 
 ### 2. DataFacility (`engine/DataFacility.py`)
 A YAML-driven data access layer that maps `data_structure.yaml` onto the filesystem. It provides a navigable Python object tree (e.g. `D.static.mappings.product_mapping.read()`) with built-in I/O, versioning, and timestamped folders. See [[Data Structure & DataFacility]].
@@ -108,6 +129,18 @@ Decorated Python functions registered at import time. The registry YAML referenc
 
 ### 6. FSWrapper (`utils/fs_wrapper.py`)
 An `fsspec`-based abstraction that makes all file operations work on local disk, S3, GCS, or Azure — controlled by `FS_PROTOCOL` in `.env`.
+
+### 7. Docker Layer (`docker/`)
+Everything needed to run Pangolin as a containerised stack lives in `docker/`. Four services are orchestrated by `docker-compose.yml`:
+
+| Service | Image | Role |
+|---------|-------|------|
+| `prefect-server` | `prefecthq/prefect` | Prefect API + UI |
+| `bootstrap` | project image | One-shot manifest applier — creates Variables and Blocks, then exits |
+| `worker` | project image | Runs `deploy.py` — registers the flow and serves runs |
+| `caddy` | `caddy:2` | Reverse proxy — exposes UI on `localhost` and `<project>.localhost` |
+
+Runtime config is declared in `docker/prefect_manifest.yaml` (committable) and secrets live in `docker/.env.docker` (gitignored). See [[Docker Deployment]].
 
 ---
 

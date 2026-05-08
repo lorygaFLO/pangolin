@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import os
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from pydantic import Field, computed_field, field_validator, model_validator
+from pydantic import computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +11,9 @@ class SETTINGS(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
+
+    # Project identity (used as UI subdomain in docker-local mode and for tagging)
+    PROJECT_NAME: str = "pangolin"
 
     # Backend
     BACKEND_ENGINE: str = "polars"
@@ -37,11 +38,6 @@ class SETTINGS(BaseSettings):
     # Filesystem
     FS_PROTOCOL: str = "file"
     FS_OPTIONS: dict = {}
-
-    # Run ID (generated per instance, not from env)
-    RUN_ID: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    )
 
     @field_validator("BACKEND_ENGINE")
     @classmethod
@@ -107,17 +103,10 @@ class SETTINGS(BaseSettings):
             self.BASEPATH = str(bp.resolve())
         return self
 
-    # Derived paths
     @computed_field
     @property
     def PATH_REPORTS(self) -> str:
         return self.DATAPATH + "/" + self.REPORTS_FOLDER_NAME
-
-    @staticmethod
-    def create_directories(*paths: str) -> None:
-        """Create local folders if they do not exist. For cloud, use FSWrapper.makedirs."""
-        for p in paths:
-            os.makedirs(p, exist_ok=True)
 
 
 def get_settings() -> SETTINGS:
