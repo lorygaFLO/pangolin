@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo_pangolin.jpg" alt="Pangolin logo" style="width: 200px; aspect-ratio: 1; object-fit: cover; border-radius: 15px;"/>
+  <img src="docs/assets/logo_pangolin_rounded.png" alt="Pangolin logo" width="200" height="200"/>
 </p>
 
 # Pangolin — Battle-Ready Data Pipeline with Built-in Orchestration
