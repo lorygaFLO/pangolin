@@ -186,10 +186,22 @@
   },
   "active": "0e1a4850e6a6e29a",
   "lastOpenFiles": [
+<<<<<<< HEAD
+=======
     "Pipeline Configuration.md",
+>>>>>>> develop
     "Getting Started.md",
+    "Architecture Overview.md",
+    "Docker Deployment.md",
+    "Writing Transformers.md",
     "Welcome.md",
+<<<<<<< HEAD
+    "Registry Reference.md",
+    "Data Structure & DataFacility.md",
+    "Creating a New Processor.md"
+=======
     "Creating a New Processor.md",
     "Data Structure & DataFacility.md"
+>>>>>>> develop
   ]
 }

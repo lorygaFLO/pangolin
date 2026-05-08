@@ -12,7 +12,8 @@ Use the sidebar or the links below to explore each topic:
 | Page                              | What You'll Learn                                                                                        |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | [[Architecture Overview]]         | High-level design, folder layout, and how data flows through the pipeline                                |
-| [[Getting Started]]               | Environment setup, `.env` configuration, and running the pipeline                                        |
+| [[Getting Started]]               | Environment setup, `.env` configuration, and running the pipeline locally                                |
+| [[Docker Deployment]]             | Running with Docker (local, docker-local, cloud modes), security warning on UI access                    |
 | [[Pipeline Configuration]]        | How to wire stages in `main.py` and configure the pipeline                                               |
 | [[Data Structure & DataFacility]] | How `data_structure.yaml` maps folders/files and how to use `DataFacility` in code to do data operations |
 | [[Registry Reference]]            | Full guide on writing registry YAML files for each step                                                  |
@@ -51,7 +52,7 @@ Each step is driven by a **YAML registry** file (in `config/registries/`) that d
 ## Key Concepts at a Glance
 
 - **Registry** — A YAML file that maps file-name patterns to rules (validators, transforms, or dispatch targets).
-- **Processor** — A Python class that reads a registry and applies its rules to input files (`Validator`, `DataTransformer`, `FileDispatcher`).
+- **Processor** — A Python class that reads a registry and applies its rules to input files (`Validator`, `DataTransformer`, `FileDispatcher`, `BackupRestore`).
 - **DataFacility** — A navigable Python object tree that mirrors `data_structure.yaml`, giving you `D.input`, `D.staging`, `D.static.mappings.product_mapping`, etc.
 - **RUN_ID** — A timestamp (`YYYYMMDD_HHMMSS`) that isolates each pipeline execution into its own subfolder.
 
