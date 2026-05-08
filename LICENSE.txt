@@ -26,8 +26,7 @@ License: MIT
 Licensor: lorygaFLO
 
 For commercial licensing inquiries (e.g., reselling, offering as a service, or
-building a paid product on top of this Software), contact the Licensor directly
-via the repository linked above.
+building a paid product on top of this Software), contact the Licensor directly.
 
 ================================================================================
 PRECEDENCE
