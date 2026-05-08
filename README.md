@@ -1,14 +1,10 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo_pangolin_dark.jpg">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/logo_pangolin.jpg">
-    <img src="docs/assets/logo_pangolin.jpg" alt="Pangolin logo" style="width: 200px; aspect-ratio: 1; object-fit: cover; border-radius: 15px;"/>
-  </picture>
+  <img src="docs/assets/logo_pangolin_rounded.png" alt="Pangolin logo" width="200" height="200"/>
 </p>
 
-# Pangolin — Battle-Ready Data Pipeline with Built-in Orchestration
+# Pangolin — Data Pipeline Template with Built-in Orchestration
 
-**Pangolin** is a production-ready, modular data processing pipeline shipped with **Prefect** as its orchestrator and **Polars** as its dataframe engine. It gives you a complete, deployable system out of the box — with a minimal pipeline infrastructure ready to run.
+**Pangolin** is a battle-ready, modular data processing pipeline shipped with **Prefect** as its orchestrator and **Polars** as its dataframe engine. It gives you a complete, deployable system out of the box — with a minimal pipeline infrastructure ready to run.
 
 Pangolin started as a simple data validation tool. Solving one problem at a time, it gradually grew into something more structured — a framework that gives data specialists a solid foundation to build on, instead of ending up buried in messy, hard-to-maintain scripts.
 
