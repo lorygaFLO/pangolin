@@ -8,7 +8,8 @@ Base class for all pipeline processors. Provides:
 
 import fnmatch
 import polars as pl
-from typing import Dict, List, Tuple, Optional, Any
+from dataclasses import dataclass, field
+from typing import Dict, List, Tuple, Optional, Any, Callable
 from config.settings import get_settings
 from config.run_context import RunContext
 import yaml
@@ -16,6 +17,24 @@ from engine.DataFacility import get_project_data
 from engine.core.logger import ProcessorLogger
 from utils.fs_wrapper import FSWrapper
 _local_fs = FSWrapper(protocol="file")  # always local — for loading repo config files
+
+
+@dataclass
+class Operation:
+    """A single resolved operation (transform or validator) ready to run."""
+    name: str
+    func: Callable
+    params: Any = None  # dict (transforms) or list/dict (validators)
+
+
+@dataclass
+class FileOperations:
+    """Pre-resolved plan for one input file."""
+    full_path: str
+    relative_path: str
+    pattern: Optional[str] = None
+    operations: List[Operation] = field(default_factory=list)
+    error: Optional[str] = None
 
 
 class BaseProcessor:

@@ -4,9 +4,9 @@ Transforms datasets according to rules in the transform registry.
 Inherits from BaseProcessor for file operations.
 """
 
-from typing import Dict, Any, Literal
+from typing import Dict, Any, List, Literal, Optional, Tuple
 from utils.transformers import TRANSFORMERS_DICT
-from engine.processors.BaseProcessor import BaseProcessor
+from engine.processors.BaseProcessor import BaseProcessor, Operation, FileOperations
 from engine.reporter import Reporter
 from engine.core.exceptions import NoInputFilesError, AllFilesFailedError
 from config.settings import get_settings
@@ -29,6 +29,81 @@ class DataTransformer(BaseProcessor):
         """
         super().__init__(CTX, name, registry_path, input_folder, output_folder)
         self.reporter = Reporter(CTX, report_folder, step_name=name)
+
+    def build_operations_plan(
+        self,
+        file_paths: Optional[List[Tuple[str, str]]] = None,
+    ) -> Dict[str, FileOperations]:
+        """
+        Pre-resolve, for each input file, the ordered list of transform
+        operations to apply. Does NOT read file contents.
+
+        Verifies during planning that every transformer function referenced
+        in the registry exists in TRANSFORMERS_DICT. All missing functions
+        are collected and reported together via a single ValueError at the
+        end of planning (fail-fast on configuration errors).
+
+        Args:
+            file_paths: Optional list of (full_path, relative_path) tuples.
+                        If None, uses self.get_input_files().
+
+        Returns:
+            Dict keyed by relative_path. Each value is a FileOperations with:
+              - pattern: matched registry pattern (None if no match)
+              - operations: ordered list of Operation objects (sorted by 'order')
+              - error: planning error message (currently only for pattern miss)
+
+        Raises:
+            ValueError: if any referenced transformer function is missing
+                        from TRANSFORMERS_DICT. The message lists every
+                        missing function and the patterns that reference it.
+        """
+        if file_paths is None:
+            file_paths = self.get_input_files()
+
+        plan: Dict[str, FileOperations] = {}
+        missing_functions: Dict[str, set] = {}  # func_name -> {patterns using it}
+
+        for full_path, relative_path in file_paths:
+            fp = FileOperations(full_path=full_path, relative_path=relative_path)
+
+            pattern, match_error = self.match_file(relative_path)
+            if match_error:
+                fp.error = match_error
+                plan[relative_path] = fp
+                continue
+            fp.pattern = pattern
+
+            transforms = self.registry[pattern].get("transforms", []) or []
+            sorted_transforms = sorted(transforms, key=lambda t: t.get("order", 0))
+
+            ops: List[Operation] = []
+            for t in sorted_transforms:
+                func_name = t.get("function")
+                func = TRANSFORMERS_DICT.get(func_name)
+                if func is None:
+                    missing_functions.setdefault(func_name, set()).add(pattern)
+                    continue  # keep collecting; don't bind an Operation for this entry
+                ops.append(Operation(
+                    name=t.get("name", func_name),
+                    func=func,
+                    params=t.get("params", {}) or {},
+                ))
+
+            fp.operations = ops
+            plan[relative_path] = fp
+
+        if missing_functions:
+            lines = [
+                f"  - '{name}' (used by patterns: {sorted(patterns)})"
+                for name, patterns in sorted(missing_functions.items(), key=lambda kv: str(kv[0]))
+            ]
+            raise ValueError(
+                f"[{self.name}] Missing transformer function(s) in TRANSFORMERS_DICT:\n"
+                + "\n".join(lines)
+            )
+
+        return plan
 
     def execute(self, file_paths=None) -> Dict[str, Dict[str, Any]]:
         """
