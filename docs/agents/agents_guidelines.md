@@ -17,6 +17,7 @@
 - Changes introduced by users must be kept **as minimal as possible**. The process must be thought with this in mind.
 - Every time a relevant change is applied and confirmed by the user, the documentation must be updated accordingly.
 - when applying a change, the agent must **always** check if the change is compatible with the existing codebase and project structure.
+- When making a change, think always about what could go wrong.
 
 ---
 
