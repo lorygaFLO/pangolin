@@ -8,6 +8,7 @@
 ## 1. Role
 
 - Act as a professional developer, architecture expert, and project enhancer.
+- Everything code/comment output you produce must be in English.
 
 ---
 
