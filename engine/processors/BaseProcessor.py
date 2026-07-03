@@ -38,24 +38,24 @@ class FileOperations:
 
 
 class BaseProcessor:
-    def __init__(self, CTX: RunContext, name: str, registry_path: str, input_folder: str, output_folder: str = None):
+    def __init__(self, CTX: RunContext, name: str, input_folder: str, output_folder: str = None):
         """
         Initialize the BaseProcessor.
 
         Args:
             CTX: RunContext with runtime state (RUN_ID)
-            name: Step name for identification
-            registry_path: Path to the registry file
+            name: Step name for identification. Must match a node in
+                  data_structure.yaml declaring '_pattern_matching: true'
+                  and '_registry' (the registry YAML used for matching).
             input_folder: Name of input folder in data structure
             output_folder: Name of output folder in data structure
 
         Raises:
-            ValueError: If required parameters are not provided
+            ValueError: If required parameters are not provided or no
+                        '_registry' is declared for this step
         """
         if not name:
             raise ValueError("Step name must be provided")
-        if not registry_path:
-            raise ValueError("registry_path must be provided")
         if not input_folder:
             raise ValueError("input_folder must be provided")
         
@@ -76,9 +76,10 @@ class BaseProcessor:
         # Initialize DataFacility with run_id from CTX
         self.D = get_project_data(run_id=CTX.RUN_ID)
         
-        # Get registry
-        self.registry_path = registry_path
-        self.registry = self.get_registry(registry_path)
+        # Get registry — the node named after this step in data_structure.yaml
+        # declares '_pattern_matching: true' and '_registry' with the path.
+        self.registry_path = self._resolve_registry_path()
+        self.registry = self.get_registry(self.registry_path)
         
         # Setup input/output paths using DataFacility
         self.input_node = self._get_node_by_path(input_folder)
@@ -99,6 +100,56 @@ class BaseProcessor:
         for part in parts:
             node = getattr(node, part)
         return node
+
+    def _resolve_registry_path(self) -> str:
+        """
+        Resolve the registry path for this step from data_structure.yaml.
+
+        Searches the data structure tree for a node whose name matches the
+        step name and that declares a '_registry' attribute. The node must
+        also declare '_pattern_matching: true' — '_pattern_matching' marks
+        the folder as following the pattern-matching approach, '_registry'
+        links it to the registry file used for matching.
+
+        Returns:
+            Registry path (relative to project root) declared in the YAML.
+
+        Raises:
+            ValueError: If no node (or more than one) named after this step
+                        declares '_registry', or if the node declares
+                        '_registry' without '_pattern_matching: true'.
+        """
+        matches = []
+
+        def _walk(node):
+            if node.name == self.name and node.get_attribute('registry'):
+                matches.append(node)
+            if not node.is_file:
+                for child in node.children().values():
+                    _walk(child)
+
+        for root in self.D._nodes.values():
+            _walk(root)
+
+        if not matches:
+            raise ValueError(
+                f"No '_registry' declared for step '{self.name}' in data_structure.yaml. "
+                f"Add '_pattern_matching: true' and '_registry: <path/to/registry.yaml>' "
+                f"to the node named '{self.name}'."
+            )
+        if len(matches) > 1:
+            paths = [str(n.path) for n in matches]
+            raise ValueError(
+                f"Ambiguous '_registry' for step '{self.name}': multiple nodes declare it: {paths}"
+            )
+        node = matches[0]
+        if not node.get_attribute('pattern_matching'):
+            raise ValueError(
+                f"Node '{self.name}' declares '_registry' but not '_pattern_matching: true' "
+                f"in data_structure.yaml. A registry requires the pattern-matching approach: "
+                f"add '_pattern_matching: true' to the node."
+            )
+        return node.get_attribute('registry')
 
     def get_registry(self, file_path: str = 'config/registry.yaml') -> dict:
         """Load registry configuration from YAML file."""

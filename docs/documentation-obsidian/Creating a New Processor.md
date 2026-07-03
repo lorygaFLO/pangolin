@@ -12,7 +12,7 @@ This page explains the `BaseProcessor` API and how to create your own custom pro
 
 | Feature | Method / Attribute |
 |---------|--------------------|
-| Registry loading | `get_registry(path)` → `self.registry` |
+| Registry loading | resolved from `data_structure.yaml` via `_registry` → `self.registry_path`, `self.registry` |
 | DataFacility integration | `self.D` — the project data tree |
 | File I/O | `read_file(path)`, `write_file(data, relative_path)` |
 | Input discovery | `get_input_files()` → list of `(full_path, relative_path)` |
@@ -25,16 +25,18 @@ This page explains the `BaseProcessor` API and how to create your own custom pro
 
 ```python
 class BaseProcessor:
-    def __init__(self, CTX: RunContext, name: str, registry_path: str, input_folder: str, output_folder: str = None):
+    def __init__(self, CTX: RunContext, name: str, input_folder: str, output_folder: str = None):
 ```
 
 | Parameter | Description |
 |-----------|-------------|
 | `CTX` | `RunContext` instance — carries the `RUN_ID` shared across the run |
-| `name` | Unique step name (used in logs and reports) |
-| `registry_path` | Path to the YAML registry file (relative to project root) |
+| `name` | Unique step name (used in logs and reports). Must match a node in `data_structure.yaml` that declares `_pattern_matching: true` and `_registry` — the registry YAML is resolved from there. |
 | `input_folder` | Dot-notation path to the input folder in `data_structure.yaml` |
 | `output_folder` | Dot-notation path to the output folder (optional) |
+
+> [!note]
+> There is no `registry_path` parameter: on the step's node in `data_structure.yaml`, `_pattern_matching: true` declares the pattern-matching approach and `_registry` links the registry file.
 
 ---
 
@@ -77,9 +79,9 @@ from config.run_context import RunContext
 
 
 class DataAggregator(BaseProcessor):
-    def __init__(self, CTX: RunContext, name: str, registry_path: str, report_folder: str,
+    def __init__(self, CTX: RunContext, name: str, report_folder: str,
                  input_folder: str, output_folder: str = None):
-        super().__init__(CTX, name, registry_path, input_folder, output_folder)
+        super().__init__(CTX, name, input_folder, output_folder)
         self.reporter = Reporter(CTX, report_folder, step_name=name)
 
     def execute(self, file_paths=None):
@@ -156,11 +158,14 @@ Create `config/registries/2b_aggregation.yaml`:
 
 ### 3. Add a Staging Folder to `data_structure.yaml`
 
+`_pattern_matching: true` declares the approach; `_registry` links the step to its registry file:
+
 ```yaml
 staging:
   # ... existing entries ...
   2b_aggregation:
     _pattern_matching: true
+    _registry: "config/registries/2b_aggregation.yaml"
 ```
 
 ### 4. Create the Subflow in `main.py`
@@ -173,8 +178,7 @@ def aggregation_flow(CTX):     # ← receives RunContext
     S = get_settings()
     aggregator = DataAggregator(
         CTX,
-        name="2b_aggregation",
-        registry_path="config/registries/2b_aggregation.yaml",
+        name="2b_aggregation",   # registry resolved from data_structure.yaml (_registry)
         report_folder=S.REPORTS_FOLDER_NAME,
         input_folder="staging.2_transform",
         output_folder="staging.2b_aggregation"

@@ -53,7 +53,6 @@ def raw_validation_flow(CTX):
     validator = Validator(
         CTX,
         name="0_validator",
-        registry_path="config/registries/0_raw_validation.yaml",
         report_folder=S.REPORTS_FOLDER_NAME,
         input_folder=S.INPUT_FOLDER_NAME,
         output_folder="staging.0_validator"
@@ -68,7 +67,6 @@ def raw_dispatch_flow(CTX):
     dispatcher = FileDispatcher(
         CTX,
         name="1_dispatcher",
-        registry_path="config/registries/1_dispatcher.yaml",
         report_folder=S.REPORTS_FOLDER_NAME,
         input_folder="staging.0_validator",
         output_folder="staging.1_dispatcher",
@@ -84,7 +82,6 @@ def transform_flow(CTX):
     transformer = DataTransformer(
         CTX,
         name="2_transform",
-        registry_path="config/registries/2_transform_registry.yaml",
         report_folder=S.REPORTS_FOLDER_NAME,
         input_folder="staging.1_dispatcher",
         output_folder="staging.2_transform"
@@ -99,7 +96,6 @@ def validation_flow(CTX):
     validator = Validator(
         CTX,
         name="3_validation",
-        registry_path="config/registries/3_validation.yaml",
         report_folder=S.REPORTS_FOLDER_NAME,
         input_folder="staging.2_transform",
         output_folder="staging.3_validation"
@@ -114,7 +110,6 @@ def cross_validation_flow(CTX):
     validator = Validator(
         CTX,
         name="4_cross_validation",
-        registry_path="config/registries/4_cross_validation.yaml",
         report_folder=S.REPORTS_FOLDER_NAME,
         input_folder="staging.3_validation",
         output_folder="staging.4_cross_validation"
@@ -129,7 +124,6 @@ def final_dispatch_flow(CTX):
     dispatcher = FileDispatcher(
         CTX,
         name="5_dispatcher",
-        registry_path="config/registries/5_dispatcher.yaml",
         report_folder=S.REPORTS_FOLDER_NAME,
         input_folder="staging.4_cross_validation",
         output_folder=S.DELIVERY_FOLDER_NAME,

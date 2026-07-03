@@ -14,20 +14,20 @@ from config.run_context import RunContext
 
 
 class FileDispatcher(BaseProcessor):
-    def __init__(self, CTX: RunContext, name: str, registry_path: str, report_folder: str, input_folder: str, output_folder: str = None, rm_from_input_folder: bool = False):
+    def __init__(self, CTX: RunContext, name: str, report_folder: str, input_folder: str, output_folder: str = None, rm_from_input_folder: bool = False):
         """
         Initialize the FileDispatcher.
         
         Args:
             CTX: RunContext with runtime state (RUN_ID)
-            name: Step name for identification
-            registry_path: Path to the registry file
+            name: Step name for identification (must match a node with
+                  '_registry' in data_structure.yaml)
             report_folder: Dot-notation path to report folder in data structure
             input_folder: Dot-notation path to input folder
             output_folder: Dot-notation path to output folder
             rm_from_input_folder: Whether to remove files from input after processing
         """
-        super().__init__(CTX, name, registry_path, input_folder, output_folder)
+        super().__init__(CTX, name, input_folder, output_folder)
         self.reporter = Reporter(CTX, report_folder, step_name=name)
         self.rm_from_input = rm_from_input_folder
 
