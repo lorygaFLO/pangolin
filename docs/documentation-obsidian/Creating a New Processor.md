@@ -25,18 +25,20 @@ This page explains the `BaseProcessor` API and how to create your own custom pro
 
 ```python
 class BaseProcessor:
-    def __init__(self, CTX: RunContext, name: str, input_folder: str, output_folder: str = None):
+    def __init__(self, CTX: RunContext, name: str, input_folder: str, output_folder: str = None,
+                 registry: Optional[Union[dict, str]] = None):
 ```
 
 | Parameter | Description |
 |-----------|-------------|
 | `CTX` | `RunContext` instance — carries the `RUN_ID` shared across the run |
-| `name` | Unique step name (used in logs and reports). Must match a node in `data_structure.yaml` that declares `_pattern_matching: true` and `_registry` — the registry YAML is resolved from there. |
+| `name` | Unique step name (used in logs and reports). Must match a node in `data_structure.yaml` that declares `_pattern_matching: true` and `_registry` — the registry YAML is resolved from there (unless `registry` is passed). |
 | `input_folder` | Dot-notation path to the input folder in `data_structure.yaml` |
 | `output_folder` | Dot-notation path to the output folder (optional) |
+| `registry` | Optional custom registry: a `dict` (in-memory, e.g. hand-written or from another source) or a `str` path to a registry YAML. **Takes priority** over the `_registry` declared in `data_structure.yaml`. |
 
 > [!note]
-> There is no `registry_path` parameter: on the step's node in `data_structure.yaml`, `_pattern_matching: true` declares the pattern-matching approach and `_registry` links the registry file.
+> Registry resolution priority: the `registry` parameter wins over `_registry` in `data_structure.yaml`. If neither is provided (or the registry is empty), the processor raises a `ValueError` and the pipeline breaks.
 
 ---
 

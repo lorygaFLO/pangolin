@@ -8,25 +8,28 @@ from utils.validators import VALIDATORS_DICT
 from engine.processors.BaseProcessor import BaseProcessor, Operation, FileOperations
 from engine.reporter import Reporter
 from engine.core.exceptions import NoInputFilesError, AllFilesFailedError
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List, Tuple, Union
 from utils.fs_wrapper import FSWrapper
 from config.settings import get_settings
 from config.run_context import RunContext
 
 class Validator(BaseProcessor):
-    def __init__(self, CTX: RunContext, name: str, report_folder: str, input_folder: str, output_folder: str = None):
+    def __init__(self, CTX: RunContext, name: str, report_folder: str, input_folder: str, output_folder: str = None,
+                 registry: Optional[Union[dict, str]] = None):
         """
         Initialize the Validator class.
         
         Args:
             CTX: RunContext with runtime state (RUN_ID)
             name: Step name for identification (must match a node with
-                  '_registry' in data_structure.yaml)
+                  '_registry' in data_structure.yaml, unless 'registry' is passed)
             report_folder: Dot-notation path to report folder in data structure
             input_folder: Dot-notation path to input folder
             output_folder: Dot-notation path to output folder
+            registry: Optional custom registry (dict or YAML path). Takes
+                      priority over '_registry' in data_structure.yaml.
         """
-        super().__init__(CTX, name, input_folder, output_folder)
+        super().__init__(CTX, name, input_folder, output_folder, registry=registry)
         self.reporter = Reporter(CTX, report_folder, step_name=name)
 
     def build_operations_plan(

@@ -9,7 +9,7 @@ Base class for all pipeline processors. Provides:
 import fnmatch
 import polars as pl
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Optional, Any, Callable
+from typing import Dict, List, Tuple, Optional, Any, Callable, Union
 from config.settings import get_settings
 from config.run_context import RunContext
 import yaml
@@ -38,7 +38,8 @@ class FileOperations:
 
 
 class BaseProcessor:
-    def __init__(self, CTX: RunContext, name: str, input_folder: str, output_folder: str = None):
+    def __init__(self, CTX: RunContext, name: str, input_folder: str, output_folder: str = None,
+                 registry: Optional[Union[dict, str]] = None):
         """
         Initialize the BaseProcessor.
 
@@ -46,13 +47,20 @@ class BaseProcessor:
             CTX: RunContext with runtime state (RUN_ID)
             name: Step name for identification. Must match a node in
                   data_structure.yaml declaring '_pattern_matching: true'
-                  and '_registry' (the registry YAML used for matching).
+                  and '_registry' (the registry YAML used for matching),
+                  unless a custom 'registry' is passed.
             input_folder: Name of input folder in data structure
             output_folder: Name of output folder in data structure
+            registry: Optional custom registry. Takes priority over the
+                      '_registry' declared in data_structure.yaml. Either a
+                      dict (in-memory, e.g. hand-written or from another
+                      source) or a str path to a registry YAML file.
 
         Raises:
-            ValueError: If required parameters are not provided or no
-                        '_registry' is declared for this step
+            ValueError: If required parameters are not provided, if 'registry'
+                        has an unsupported type, or if no custom registry is
+                        passed AND no '_registry' is declared for this step
+                        (the pipeline must break when both are missing).
         """
         if not name:
             raise ValueError("Step name must be provided")
@@ -76,10 +84,32 @@ class BaseProcessor:
         # Initialize DataFacility with run_id from CTX
         self.D = get_project_data(run_id=CTX.RUN_ID)
         
-        # Get registry — the node named after this step in data_structure.yaml
-        # declares '_pattern_matching: true' and '_registry' with the path.
-        self.registry_path = self._resolve_registry_path()
-        self.registry = self.get_registry(self.registry_path)
+        # Get registry — a custom 'registry' parameter (dict or YAML path)
+        # takes priority; otherwise it is resolved from data_structure.yaml
+        # ('_pattern_matching: true' + '_registry' on the step's node).
+        # If both are missing, _resolve_registry_path raises and the
+        # pipeline breaks.
+        if registry is not None:
+            if isinstance(registry, dict):
+                self.registry_path = None  # in-memory registry, no file
+                self.registry = registry
+            elif isinstance(registry, str):
+                self.registry_path = registry
+                self.registry = self.get_registry(registry)
+            else:
+                raise ValueError(
+                    f"[{name}] Unsupported 'registry' type: {type(registry).__name__}. "
+                    f"Pass a dict (in-memory registry) or a str (path to a registry YAML)."
+                )
+        else:
+            self.registry_path = self._resolve_registry_path()
+            self.registry = self.get_registry(self.registry_path)
+
+        if not self.registry:
+            raise ValueError(
+                f"[{name}] Registry is empty. Provide a non-empty custom 'registry' "
+                f"or a valid '_registry' file in data_structure.yaml."
+            )
         
         # Setup input/output paths using DataFacility
         self.input_node = self._get_node_by_path(input_folder)

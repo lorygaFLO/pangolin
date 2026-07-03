@@ -69,6 +69,29 @@ def transform_flow(CTX):           # ← receives RunContext from the parent flo
 | `report_folder` | Dot-notation path to the reports folder in `data_structure.yaml` |
 | `input_folder` | Dot-notation path to the input folder — reads files from here |
 | `output_folder` | Dot-notation path to the output folder — writes results here |
+| `registry` | *(optional)* Custom registry — a `dict` (in-memory) or a `str` path to a YAML file. Takes priority over `_registry` in `data_structure.yaml`. If neither is available, the processor raises a `ValueError`. |
+
+### Passing a Custom Registry
+
+A registry can also come from another source (hand-written dict, database, API, …) instead of `data_structure.yaml`:
+
+```python
+transformer = DataTransformer(
+    CTX,
+    name="2_transform",
+    report_folder=S.REPORTS_FOLDER_NAME,
+    input_folder="staging.1_dispatcher",
+    output_folder="staging.2_transform",
+    registry={  # ← in-memory registry, overrides data_structure.yaml
+        "*sales*": {
+            "transforms": [
+                {"name": "clean", "function": "drop_nulls", "order": 1}
+            ]
+        }
+    }
+    # or: registry="path/to/custom_registry.yaml"
+)
+```
 
 ### Dot-Notation Paths
 
