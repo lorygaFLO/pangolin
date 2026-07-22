@@ -63,5 +63,11 @@ Grow the built-in library in `engine/processors`, `utils/validators.py`, and `ut
 
 Pangolin is hard-wired to Polars. Explore adopting [Narwhals](https://narwhals-dev.github.io/narwhals/) or another generalization layer as a compatibility layer so users could pick another backend (e.g. DuckDB, Spark) without rewriting processors, validators, and transformers.
 
+---
+
+## 9. Data Contract Standard for Validation
+
+Evaluate using the [Data Contract](https://datacontract.com/) standard to drive validation, instead of (or alongside) the current registry-based validators.
+
 
 
