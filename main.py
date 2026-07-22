@@ -14,7 +14,7 @@ from engine.processors.DataValidator import Validator
 from engine.processors.DataTransformer import DataTransformer
 from engine.processors.FileDispatcher import FileDispatcher
 from engine.processors.BackupRestore import BackupRestore
-from engine.core.exceptions import PipelineError
+from engine.common.exceptions import PipelineError
 from config.settings import get_settings
 from config.run_context import RunContext
 

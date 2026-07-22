@@ -75,7 +75,7 @@ DataAggregator: Groups data by specified columns and aggregates.
 import polars as pl
 from engine.processors.BaseProcessor import BaseProcessor
 from engine.reporter import Reporter
-from engine.core.exceptions import NoInputFilesError, AllFilesFailedError
+from engine.common.exceptions import NoInputFilesError, AllFilesFailedError
 from config.settings import get_settings
 from config.run_context import RunContext
 

@@ -9,8 +9,8 @@ from typing import List, Tuple, Optional
 from config.settings import get_settings
 from config.run_context import RunContext
 from engine.DataFacility import get_project_data
-from engine.core.logger import ProcessorLogger
-from engine.core.exceptions import NoInputFilesError
+from engine.common.logger import ProcessorLogger
+from engine.common.exceptions import NoInputFilesError
 from utils.fs_wrapper import FSWrapper
 
 

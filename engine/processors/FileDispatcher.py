@@ -6,7 +6,7 @@ Inherits from BaseProcessor for file operations.
 
 from engine.processors.BaseProcessor import BaseProcessor
 from engine.reporter import Reporter
-from engine.core.exceptions import NoInputFilesError, AllFilesFailedError
+from engine.common.exceptions import NoInputFilesError, AllFilesFailedError
 from utils.fs_wrapper import FSWrapper
 from typing import List, Tuple, Optional, Union
 from config.settings import get_settings

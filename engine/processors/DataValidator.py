@@ -7,7 +7,7 @@ Inherits from BaseProcessor for file operations.
 from utils.validators import VALIDATORS_DICT
 from engine.processors.BaseProcessor import BaseProcessor, Operation, FileOperations
 from engine.reporter import Reporter
-from engine.core.exceptions import NoInputFilesError, AllFilesFailedError
+from engine.common.exceptions import NoInputFilesError, AllFilesFailedError
 from typing import Dict, Any, Optional, List, Tuple, Union
 from utils.fs_wrapper import FSWrapper
 from config.settings import get_settings

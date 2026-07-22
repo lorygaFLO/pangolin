@@ -14,7 +14,7 @@ from config.settings import get_settings
 from config.run_context import RunContext
 import yaml
 from engine.DataFacility import get_project_data
-from engine.core.logger import ProcessorLogger
+from engine.common.logger import ProcessorLogger
 from utils.fs_wrapper import FSWrapper
 _local_fs = FSWrapper(protocol="file")  # always local — for loading repo config files
 
