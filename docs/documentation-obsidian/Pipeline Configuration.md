@@ -38,7 +38,7 @@ def data_pipeline(restore_from: Optional[str] = None, clear_input: bool = False)
 
 Each subflow:
 1. Creates a **Processor** instance (`Validator`, `DataTransformer`, `FileDispatcher`, or `BackupRestore`)
-2. Points it to a **registry YAML** file
+2. Names it after a node in `data_structure.yaml` that declares `_pattern_matching: true` and `_registry` — the **registry YAML** is resolved from there
 3. Specifies **input** and **output** folders using dot-notation paths into `data_structure.yaml`
 4. Calls `.execute()`
 
@@ -53,12 +53,11 @@ Here is a dissected example — step 2 (Transformation):
 def transform_flow(CTX):           # ← receives RunContext from the parent flow
     S = get_settings()
     transformer = DataTransformer(
-        CTX,                                                          # 1. RunContext
-        name="2_transform",                                           # 2. Step name (used in logs)
-        registry_path="config/registries/2_transform_registry.yaml", # 3. Rules file
-        report_folder=S.REPORTS_FOLDER_NAME,                          # 4. Where reports go
-        input_folder="staging.1_dispatcher",                          # 5. Input (dot-notation)
-        output_folder="staging.2_transform"                           # 6. Output (dot-notation)
+        CTX,                                  # 1. RunContext
+        name="2_transform",                   # 2. Step name — must match a data_structure.yaml node with '_registry'
+        report_folder=S.REPORTS_FOLDER_NAME,  # 3. Where reports go
+        input_folder="staging.1_dispatcher",  # 4. Input (dot-notation)
+        output_folder="staging.2_transform"   # 5. Output (dot-notation)
     )
     transformer.execute()
 ```
@@ -66,11 +65,33 @@ def transform_flow(CTX):           # ← receives RunContext from the parent flo
 | Parameter | Description |
 |-----------|-------------|
 | `CTX` | `RunContext` instance — carries the `RUN_ID` shared across all steps of a run |
-| `name` | Unique step identifier, appears in logs and report subfolder names |
-| `registry_path` | Path to the YAML registry file (relative to project root) |
+| `name` | Unique step identifier, appears in logs and report subfolder names. The registry YAML is resolved from the `_registry` key on the `data_structure.yaml` node with this name (which must also declare `_pattern_matching: true`). |
 | `report_folder` | Dot-notation path to the reports folder in `data_structure.yaml` |
 | `input_folder` | Dot-notation path to the input folder — reads files from here |
 | `output_folder` | Dot-notation path to the output folder — writes results here |
+| `registry` | *(optional)* Custom registry — a `dict` (in-memory) or a `str` path to a YAML file. Takes priority over `_registry` in `data_structure.yaml`. If neither is available, the processor raises a `ValueError`. |
+
+### Passing a Custom Registry
+
+A registry can also come from another source (hand-written dict, database, API, …) instead of `data_structure.yaml`:
+
+```python
+transformer = DataTransformer(
+    CTX,
+    name="2_transform",
+    report_folder=S.REPORTS_FOLDER_NAME,
+    input_folder="staging.1_dispatcher",
+    output_folder="staging.2_transform",
+    registry={  # ← in-memory registry, overrides data_structure.yaml
+        "*sales*": {
+            "transforms": [
+                {"name": "clean", "function": "drop_nulls", "order": 1}
+            ]
+        }
+    }
+    # or: registry="path/to/custom_registry.yaml"
+)
+```
 
 ### Dot-Notation Paths
 
@@ -118,13 +139,14 @@ Create a new YAML file in `config/registries/`. Follow the naming convention `<N
 
 ### 2. Update `data_structure.yaml`
 
-Add folders for staging input/output under `staging`:
+Add the staging folder under `staging` — `_pattern_matching: true` declares the approach, `_registry` links the registry file:
 
 ```yaml
 staging:
   # ... existing entries ...
   2b_custom_validation:
     _pattern_matching: true
+    _registry: "config/registries/2b_custom_validation.yaml"
 ```
 
 ### 3. Define the Subflow in `main.py`
@@ -135,8 +157,7 @@ def custom_validation_flow(CTX):    # ← receives RunContext
     S = get_settings()
     validator = Validator(
         CTX,
-        name="2b_custom_validation",
-        registry_path="config/registries/2b_custom_validation.yaml",
+        name="2b_custom_validation",   # registry resolved from data_structure.yaml (_registry)
         report_folder=S.REPORTS_FOLDER_NAME,
         input_folder="staging.2_transform",
         output_folder="staging.2b_custom_validation"
@@ -196,7 +217,6 @@ The `FileDispatcher` has an extra parameter:
 dispatcher = FileDispatcher(
     CTX,
     name="5_dispatcher",
-    registry_path="config/registries/5_dispatcher.yaml",
     report_folder=S.REPORTS_FOLDER_NAME,
     input_folder="staging.4_cross_validation",
     output_folder=S.DELIVERY_FOLDER_NAME,

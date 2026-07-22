@@ -6,28 +6,31 @@ Inherits from BaseProcessor for file operations.
 
 from engine.processors.BaseProcessor import BaseProcessor
 from engine.reporter import Reporter
-from engine.core.exceptions import NoInputFilesError, AllFilesFailedError
+from engine.common.exceptions import NoInputFilesError, AllFilesFailedError
 from utils.fs_wrapper import FSWrapper
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Union
 from config.settings import get_settings
 from config.run_context import RunContext
 
 
 class FileDispatcher(BaseProcessor):
-    def __init__(self, CTX: RunContext, name: str, registry_path: str, report_folder: str, input_folder: str, output_folder: str = None, rm_from_input_folder: bool = False):
+    def __init__(self, CTX: RunContext, name: str, report_folder: str, input_folder: str, output_folder: str = None,
+                 rm_from_input_folder: bool = False, registry: Optional[Union[dict, str]] = None):
         """
         Initialize the FileDispatcher.
         
         Args:
             CTX: RunContext with runtime state (RUN_ID)
-            name: Step name for identification
-            registry_path: Path to the registry file
+            name: Step name for identification (must match a node with
+                  '_registry' in data_structure.yaml, unless 'registry' is passed)
             report_folder: Dot-notation path to report folder in data structure
             input_folder: Dot-notation path to input folder
             output_folder: Dot-notation path to output folder
             rm_from_input_folder: Whether to remove files from input after processing
+            registry: Optional custom registry (dict or YAML path). Takes
+                      priority over '_registry' in data_structure.yaml.
         """
-        super().__init__(CTX, name, registry_path, input_folder, output_folder)
+        super().__init__(CTX, name, input_folder, output_folder, registry=registry)
         self.reporter = Reporter(CTX, report_folder, step_name=name)
         self.rm_from_input = rm_from_input_folder
 

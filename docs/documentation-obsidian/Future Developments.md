@@ -39,3 +39,23 @@ The clearest way to demonstrate that Pangolin is a battle-ready template is a ri
 - **Notifications** — configure a Prefect notification block for Slack/email alerts on flow failure.
 - **Scheduled deployments** — document the full cycle: build image → push → create work pool → deploy with `PANGOLIN_CRON`.
 
+---
+
+## 5. OpenLineage for Data & Event Lineage
+
+Lineage today is implicit (the `lineage` list on each `Batch`, plus reports/logs). Explore adopting [OpenLineage](https://openlineage.io/) to emit standardized lineage events across runs and pipelines, giving a queryable, visualizable trail of how datasets flow through the dispatcher/validation/transform steps — and potentially generalizing beyond data lineage to broader event/decision tracing (routing, cross-validation outcomes, etc.). Also expose a simple way for users to emit their own custom lineage/event messages from within a processor, rather than being limited to the built-in ones.
+
+---
+
+## 6. Scalability Across Data Scales
+
+Pangolin is currently exercised mostly against small-to-medium files that fit comfortably in memory via Polars. Investigate how the engine behaves and should adapt as data volumes grow — from lightweight local runs up to large, high-throughput datasets — so the same pipeline shape scales gracefully instead of requiring a rewrite (e.g. lazy/streaming evaluation, chunked/batched processing, partitioned reads and writes).
+
+---
+
+## 7. More Built-in Processors, Validators & Transformers
+
+Grow the built-in library in `engine/processors`, `utils/validators.py`, and `utils/transformers.py` so more pipelines can be assembled from registry configuration alone, without writing custom code. Fewer gaps to fill means a smoother experience for anyone adapting Pangolin to a new use case.
+
+
+

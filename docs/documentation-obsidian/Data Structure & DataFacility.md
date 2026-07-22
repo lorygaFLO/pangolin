@@ -19,16 +19,22 @@ staging:
   _timestamped: true
   0_validator:
     _pattern_matching: true
+    _registry: "config/registries/0_raw_validation.yaml"
   1_dispatcher:
     _pattern_matching: true
+    _registry: "config/registries/1_dispatcher.yaml"
   2_transform:
     _pattern_matching: true
+    _registry: "config/registries/2_transform_registry.yaml"
   3_validation:
     _pattern_matching: true
+    _registry: "config/registries/3_validation.yaml"
   4_cross_validation:
     _pattern_matching: true
+    _registry: "config/registries/4_cross_validation.yaml"
   5_dispatcher:
     _pattern_matching: true
+    _registry: "config/registries/5_dispatcher.yaml"
 
 delivery:
   _description: "Final output"
@@ -72,12 +78,15 @@ Keys starting with `_` are metadata directives:
 | `_required` | `bool` | Can be bulk-checked with `D.validate_required()`. |
 | `_description` | `str` | Human-readable description. Exposed as `node.description`. |
 | `_path` | `str` | Explicit path relative to `DATAPATH` (overrides name-based resolution). |
+| `_pattern_matching` | `bool` | Marks the folder as following the **pattern-matching approach**. Can be used standalone — DataFacility is not limited to processor steps. |
+| `_registry` | `str` | Path to the registry YAML used for pattern matching. Requires `_pattern_matching: true`. Processors named after the node resolve their registry from here (no `registry_path` parameter). |
 
-Any other `_`-prefixed key (e.g. `_pattern_matching: true`) is exposed as a Python attribute with the leading underscore stripped:
+Any other `_`-prefixed key is exposed as a Python attribute with the leading underscore stripped:
 
 ```python
 node = D.get_node("staging.0_validator")
 node.pattern_matching  # True
+node.registry          # "config/registries/0_raw_validation.yaml"
 ```
 
 ---
@@ -273,9 +282,10 @@ To make a new folder/file accessible via DataFacility, add it to `data_structure
 staging:
   my_new_step:
     _pattern_matching: true
+    _registry: "config/registries/my_new_step.yaml"
 ```
 
-Then access it: `D.get_node("staging.my_new_step")`
+Then access it: `D.get_node("staging.my_new_step")`. `_pattern_matching` declares the approach; `_registry` tells the processor named `my_new_step` which registry YAML to load. A folder can also declare `_pattern_matching: true` alone if it follows the approach without a processor registry.
 
 ### New static file:
 

@@ -4,31 +4,109 @@ Transforms datasets according to rules in the transform registry.
 Inherits from BaseProcessor for file operations.
 """
 
-from typing import Dict, Any, Literal
+from typing import Dict, Any, List, Literal, Optional, Tuple, Union
 from utils.transformers import TRANSFORMERS_DICT
-from engine.processors.BaseProcessor import BaseProcessor
+from engine.processors.BaseProcessor import BaseProcessor, Operation, FileOperations
 from engine.reporter import Reporter
-from engine.core.exceptions import NoInputFilesError, AllFilesFailedError
+from engine.common.exceptions import NoInputFilesError, AllFilesFailedError
 from config.settings import get_settings
 from config.run_context import RunContext
 
 
 
 class DataTransformer(BaseProcessor):
-    def __init__(self, CTX: RunContext, name: str, registry_path: str, report_folder: str, input_folder: str, output_folder: str = None):
+    def __init__(self, CTX: RunContext, name: str, report_folder: str, input_folder: str, output_folder: str = None,
+                 registry: Optional[Union[dict, str]] = None):
         """
         Initialize the DataTransformer.
         
         Args:
             CTX: RunContext with runtime state (RUN_ID)
-            name: Step name for identification
-            registry_path: Path to the registry file
+            name: Step name for identification (must match a node with
+                  '_registry' in data_structure.yaml, unless 'registry' is passed)
             report_folder: Dot-notation path to report folder in data structure
             input_folder: Dot-notation path to input folder
             output_folder: Dot-notation path to output folder
+            registry: Optional custom registry (dict or YAML path). Takes
+                      priority over '_registry' in data_structure.yaml.
         """
-        super().__init__(CTX, name, registry_path, input_folder, output_folder)
+        super().__init__(CTX, name, input_folder, output_folder, registry=registry)
         self.reporter = Reporter(CTX, report_folder, step_name=name)
+
+    def build_operations_plan(
+        self,
+        file_paths: Optional[List[Tuple[str, str]]] = None,
+    ) -> Dict[str, FileOperations]:
+        """
+        Pre-resolve, for each input file, the ordered list of transform
+        operations to apply. Does NOT read file contents.
+
+        Verifies during planning that every transformer function referenced
+        in the registry exists in TRANSFORMERS_DICT. All missing functions
+        are collected and reported together via a single ValueError at the
+        end of planning (fail-fast on configuration errors).
+
+        Args:
+            file_paths: Optional list of (full_path, relative_path) tuples.
+                        If None, uses self.get_input_files().
+
+        Returns:
+            Dict keyed by relative_path. Each value is a FileOperations with:
+              - pattern: matched registry pattern (None if no match)
+              - operations: ordered list of Operation objects (sorted by 'order')
+              - error: planning error message (currently only for pattern miss)
+
+        Raises:
+            ValueError: if any referenced transformer function is missing
+                        from TRANSFORMERS_DICT. The message lists every
+                        missing function and the patterns that reference it.
+        """
+        if file_paths is None:
+            file_paths = self.get_input_files()
+
+        plan: Dict[str, FileOperations] = {}
+        missing_functions: Dict[str, set] = {}  # func_name -> {patterns using it}
+
+        for full_path, relative_path in file_paths:
+            fp = FileOperations(full_path=full_path, relative_path=relative_path)
+
+            pattern, match_error = self.match_file(relative_path)
+            if match_error:
+                fp.error = match_error
+                plan[relative_path] = fp
+                continue
+            fp.pattern = pattern
+
+            transforms = self.registry[pattern].get("transforms", []) or []
+            sorted_transforms = sorted(transforms, key=lambda t: t.get("order", 0))
+
+            ops: List[Operation] = []
+            for t in sorted_transforms:
+                func_name = t.get("function")
+                func = TRANSFORMERS_DICT.get(func_name)
+                if func is None:
+                    missing_functions.setdefault(func_name, set()).add(pattern)
+                    continue  # keep collecting; don't bind an Operation for this entry
+                ops.append(Operation(
+                    name=t.get("name", func_name),
+                    func=func,
+                    params=t.get("params", {}) or {},
+                ))
+
+            fp.operations = ops
+            plan[relative_path] = fp
+
+        if missing_functions:
+            lines = [
+                f"  - '{name}' (used by patterns: {sorted(patterns)})"
+                for name, patterns in sorted(missing_functions.items(), key=lambda kv: str(kv[0]))
+            ]
+            raise ValueError(
+                f"[{self.name}] Missing transformer function(s) in TRANSFORMERS_DICT:\n"
+                + "\n".join(lines)
+            )
+
+        return plan
 
     def execute(self, file_paths=None) -> Dict[str, Dict[str, Any]]:
         """
@@ -148,7 +226,6 @@ if __name__ == "__main__":
     
     transformer = DataTransformer(
         name='transformation_step',
-        registry_path='config/registry.yaml',
         report_folder='reports.transformation',
         input_folder='staging.validated',
         output_folder='staging.transformed'

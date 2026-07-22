@@ -1,5 +1,6 @@
 # VS Code
 .vscode/
+.github/
 
 # Python
 **/__pycache__/
@@ -18,3 +19,5 @@ pangolinEnv/
 .obsidian/workspace-mobile.json
 .obsidian/graph.json
 .obsidian/app.json
+
+.github/

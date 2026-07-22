@@ -72,7 +72,7 @@ underscore stripped:
     # data_structure.yaml excerpt
     staging:
       0_validator:
-        _pattern_matching: true
+        _registry: "config/registries/0_raw_validation.yaml"
 
 .. code-block:: python
 
@@ -80,8 +80,8 @@ underscore stripped:
     a digit), but you can use ``get_node``:
 
     node = D.get_node("staging.0_validator")
-    node.pattern_matching    # True   (originally _pattern_matching)
-    node.list_attributes()   # {'pattern_matching': True}
+    node.registry            # 'config/registries/0_raw_validation.yaml'
+    node.list_attributes()   # {'registry': 'config/registries/0_raw_validation.yaml'}
 
 
 Reading files

@@ -5,29 +5,105 @@ Inherits from BaseProcessor for file operations.
 """
 
 from utils.validators import VALIDATORS_DICT
-from engine.processors.BaseProcessor import BaseProcessor
+from engine.processors.BaseProcessor import BaseProcessor, Operation, FileOperations
 from engine.reporter import Reporter
-from engine.core.exceptions import NoInputFilesError, AllFilesFailedError
-from typing import Dict, Any, Optional, List
+from engine.common.exceptions import NoInputFilesError, AllFilesFailedError
+from typing import Dict, Any, Optional, List, Tuple, Union
 from utils.fs_wrapper import FSWrapper
 from config.settings import get_settings
 from config.run_context import RunContext
 
 class Validator(BaseProcessor):
-    def __init__(self, CTX: RunContext, name: str, registry_path: str, report_folder: str, input_folder: str, output_folder: str = None):
+    def __init__(self, CTX: RunContext, name: str, report_folder: str, input_folder: str, output_folder: str = None,
+                 registry: Optional[Union[dict, str]] = None):
         """
         Initialize the Validator class.
         
         Args:
             CTX: RunContext with runtime state (RUN_ID)
-            name: Step name for identification
-            registry_path: Path to the registry file
+            name: Step name for identification (must match a node with
+                  '_registry' in data_structure.yaml, unless 'registry' is passed)
             report_folder: Dot-notation path to report folder in data structure
             input_folder: Dot-notation path to input folder
             output_folder: Dot-notation path to output folder
+            registry: Optional custom registry (dict or YAML path). Takes
+                      priority over '_registry' in data_structure.yaml.
         """
-        super().__init__(CTX, name, registry_path, input_folder, output_folder)
+        super().__init__(CTX, name, input_folder, output_folder, registry=registry)
         self.reporter = Reporter(CTX, report_folder, step_name=name)
+
+    def build_operations_plan(
+        self,
+        file_paths: Optional[List[Tuple[str, str]]] = None,
+    ) -> Dict[str, FileOperations]:
+        """
+        Pre-resolve, for each input file, the list of validator operations
+        to run. Does NOT read file contents.
+
+        Verifies during planning that every validator referenced in the
+        registry exists in VALIDATORS_DICT. All missing validators are
+        collected and reported together via a single ValueError at the
+        end of planning (fail-fast on configuration errors).
+
+        Args:
+            file_paths: Optional list of (full_path, relative_path) tuples.
+                        If None, uses self.get_input_files().
+
+        Returns:
+            Dict keyed by relative_path. Each value is a FileOperations with:
+              - pattern: matched registry pattern (None if no match)
+              - operations: list of Operation objects (registry insertion order)
+              - error: planning error message (currently only for pattern miss)
+
+        Raises:
+            ValueError: if any referenced validator is missing from
+                        VALIDATORS_DICT. The message lists every missing
+                        validator and the patterns that reference it.
+        """
+        if file_paths is None:
+            file_paths = self.get_input_files()
+
+        plan: Dict[str, FileOperations] = {}
+        missing_validators: Dict[str, set] = {}  # validator_name -> {patterns using it}
+
+        for full_path, relative_path in file_paths:
+            fp = FileOperations(full_path=full_path, relative_path=relative_path)
+
+            pattern, match_error = self.match_file(relative_path)
+            if match_error:
+                fp.error = match_error
+                plan[relative_path] = fp
+                continue
+            fp.pattern = pattern
+
+            validators = self.registry[pattern].get("validators", {}) or {}
+
+            ops: List[Operation] = []
+            for validator_name, params in validators.items():
+                func = VALIDATORS_DICT.get(validator_name)
+                if func is None:
+                    missing_validators.setdefault(validator_name, set()).add(pattern)
+                    continue  # keep collecting; don't bind an Operation for this entry
+                ops.append(Operation(
+                    name=validator_name,
+                    func=func,
+                    params=params,
+                ))
+
+            fp.operations = ops
+            plan[relative_path] = fp
+
+        if missing_validators:
+            lines = [
+                f"  - '{name}' (used by patterns: {sorted(patterns)})"
+                for name, patterns in sorted(missing_validators.items(), key=lambda kv: str(kv[0]))
+            ]
+            raise ValueError(
+                f"[{self.name}] Missing validator(s) in VALIDATORS_DICT:\n"
+                + "\n".join(lines)
+            )
+
+        return plan
 
     def _execute_validator(self, validator_func, dataset: Any, messages: List[str], params: Optional[Dict] = None) -> bool:
         """Execute a validator function."""
@@ -120,7 +196,6 @@ class Validator(BaseProcessor):
 if __name__ == "__main__":
     validator = Validator(
         name='validation_step',
-        registry_path='config/registry.yaml',
         report_folder='reports.validation',  # Using dot notation
         input_folder='input.raw',            # Using dot notation
         output_folder='staging.validated'     # Using dot notation
