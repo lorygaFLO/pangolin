@@ -33,11 +33,12 @@ The project supports multiple deployment modes: you can run it **locally**, depl
 ├── engine/
 │   ├── DataFacility.py        # YAML-driven data access layer
 │   ├── reporter.py            # Report generation
-│   ├── core/                  # Exceptions, logging
+│   ├── common/                # Exceptions, logging
 │   └── processors/            # BaseProcessor, Validator, Transformer, Dispatcher, BackupRestore
 ├── utils/                     # Built-in validators, transformers, fs wrapper
 ├── docker/                    # Deployment scripts
 ├── data/                      # input / staging / delivery / backup / reports
+├── test_files_generator/      # Synthetic input data generator
 └── docs/                      # Documentation (Obsidian vault)
 ```
 
