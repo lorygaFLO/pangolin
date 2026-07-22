@@ -57,5 +57,11 @@ Pangolin is currently exercised mostly against small-to-medium files that fit co
 
 Grow the built-in library in `engine/processors`, `utils/validators.py`, and `utils/transformers.py` so more pipelines can be assembled from registry configuration alone, without writing custom code. Fewer gaps to fill means a smoother experience for anyone adapting Pangolin to a new use case.
 
+---
+
+## 8. Backend-Agnostic DataFrame Engine (Narwhals)
+
+Pangolin is hard-wired to Polars. Explore adopting [Narwhals](https://narwhals-dev.github.io/narwhals/) or another generalization layer as a compatibility layer so users could pick another backend (e.g. DuckDB, Spark) without rewriting processors, validators, and transformers.
+
 
 
