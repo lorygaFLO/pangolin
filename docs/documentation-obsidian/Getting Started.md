@@ -274,7 +274,7 @@ This launches the Prefect flow with the default pipeline configuration:
 6. **Final Dispatch** — delivers files into region folders (`FR/`, `US/`)
 
 > [!tip]
-> The pipeline structure is fully configurable. You can add, remove, or reorder steps in `main.py`. See [[Pipeline Configuration]] for details.
+> The pipeline structure is fully configurable. You can add, remove, or reorder steps in `pipelines/full_processing.py`, or add a whole new pipeline under `pipelines/`. See [[Pipeline Configuration]] for details.
 
 ### Running via the Prefect UI (persistent server)
 
@@ -302,7 +302,7 @@ python docker\deploy.py
 > [!important]
 > Without `PREFECT_API_URL` pointing at the server from Terminal 1, `deploy.py` spins up its own **temporary, throwaway** Prefect server instead of using the persistent one — your deployments won't show up in the dashboard from Terminal 1.
 
-`deploy.py` registers the **Full Processing Pipeline** and **Generate Test Data** deployments and polls for scheduled/manual runs. Trigger them from the dashboard (**Deployments → Quick Run**) or via CLI:
+`deploy.py` auto-discovers every pipeline under `pipelines/` and registers a deployment for each — by default **Full Processing Pipeline** and **Generate Test Data** — then polls for scheduled/manual runs. Trigger them from the dashboard (**Deployments → Quick Run**) or via CLI:
 
 ```powershell
 prefect deployment run "Full Processing Pipeline/pangolin-daily"
@@ -336,6 +336,9 @@ If any file fails validation or transformation, a plain-text report is written u
 | `NoInputFilesError`                  | No files in `data/input/` or previous step produced no output | Check input folder or registry patterns                |
 | `AllFilesFailedError`                | Every file failed a step                                      | Check reports in `data/reports/<RUN_ID>/`              |
 | `FileNotFoundError: product_mapping` | Missing static mapping file                                   | Place `product_mapping.csv` in `data/static/mappings/` |
+
+> [!tip]
+> Need to test or debug a single step in isolation (e.g. from the debugger) instead of the whole pipeline? See **Debugging a Single Step** in [[Pipeline Configuration]].
 
 ---
 

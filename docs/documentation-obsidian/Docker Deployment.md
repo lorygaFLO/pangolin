@@ -64,7 +64,7 @@ Browser ──► http://localhost:8080
 
 1. **prefect-server** — Hosts the Prefect UI and API. Persists run history on the `prefect-data` volume.
 2. **bootstrap** — One-shot: reads `docker/prefect_manifest.yaml`, creates/updates Blocks and Variables in Prefect, then exits (exit code 0 = success).
-3. **worker** — Waits for bootstrap to finish, then runs `docker/deploy.py` which calls `data_pipeline.serve()` and polls for scheduled or manual runs.
+3. **worker** — Waits for bootstrap to finish, then runs `docker/deploy.py`, which auto-discovers every pipeline under `pipelines/` and serves a deployment for each, polling for scheduled or manual runs.
 4. **caddy** — Lightweight reverse proxy. Exposes the UI on `localhost:8080` and `<PROJECT_NAME>.localhost:8080` without any `/etc/hosts` edits (modern browsers resolve `*.localhost` to `127.0.0.1` automatically).
 
 ---

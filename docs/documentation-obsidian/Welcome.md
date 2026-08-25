@@ -2,7 +2,7 @@
 
 **Pangolin** is a battle-ready structured template for data pipelines, built on [Prefect](https://www.prefect.io/) and powered by [Polars](https://pola.rs/). The intent is not just to provide a working example, but a solid, opinionated foundation you can fork and build a real production project on — without having to design the scaffolding yourself. It ships with a sensible folder layout, a config-driven engine, and a clear extension model, so your first commit can focus on business logic rather than plumbing.
 
-This documentation is structured as an [Obsidian](https://obsidian.md/) vault. For the best experience — including linked pages, graph view, and sidebar navigation — open the `docs/doumentation-obsidian/` folder as a vault in Obsidian.
+This documentation is structured as an [Obsidian](https://obsidian.md/) vault. For the best experience — including linked pages, graph view, and sidebar navigation — open the `docs/documentation-obsidian/` folder as a vault in Obsidian.
 ---
 
 ## How to Navigate This Documentation
@@ -14,7 +14,7 @@ Use the sidebar or the links below to explore each topic:
 | [[Architecture Overview]]         | High-level design, folder layout, and how data flows through the pipeline                                |
 | [[Getting Started]]               | Environment setup, `.env` configuration, and running the pipeline locally                                |
 | [[Docker Deployment]]             | Running with Docker (local, docker-local, cloud modes), security warning on UI access                    |
-| [[Pipeline Configuration]]        | How to wire stages in `main.py` and configure the pipeline                                               |
+| [[Pipeline Configuration]]        | How pipelines are auto-discovered from `pipelines/`, and how to wire or add stages                        |
 | [[Data Structure & DataFacility]] | How `data_structure.yaml` maps folders/files and how to use `DataFacility` in code to do data operations |
 | [[Registry Reference]]            | Full guide on writing registry YAML files for each step                                                  |
 | [[Writing Validators]]            | How to create and register a new validator function                                                      |

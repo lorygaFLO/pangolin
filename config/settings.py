@@ -35,6 +35,11 @@ class SETTINGS(BaseSettings):
     CSV_DELIMITER: str = ";"
     OUTPUT_FORMAT: str = "parquet"
 
+    # Debug mode: pin RUN_ID to a fixed value so staging folders from a
+    # previous debug run stay reachable when re-running a single step.
+    DEBUG: bool = False
+    DEBUG_RUN_ID: str = "debug_run"
+
     # Filesystem
     FS_PROTOCOL: str = "file"
     FS_OPTIONS: dict = {}
