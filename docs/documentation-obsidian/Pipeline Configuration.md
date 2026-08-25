@@ -13,6 +13,8 @@ python main.py --list-pipelines     # list all discovered pipelines
 python main.py --pipeline <name>    # run one by name
 python main.py                      # runs the default pipeline (full_processing)
 python main.py --generate           # shorthand for --pipeline generate_test_data
+python main.py --pipeline <name> --list-steps      # list a pipeline's debuggable steps
+python main.py --pipeline <name> --step <step>     # run a single step in isolation (see below)
 ```
 
 To add a brand-new pipeline: drop a new file in `pipelines/`, define its flow(s), and set `PIPELINE = <your_flow>` — no other registration is needed. It automatically gets its own Prefect deployment (see [[Docker Deployment]]).
@@ -264,9 +266,27 @@ if os.getenv("PANGOLIN_CRON"):
 
 ## Debugging a Single Step
 
-Every subflow is a plain function that accepts a `RunContext` — you can call it directly from the debugger without running the whole pipeline (e.g. set a breakpoint and evaluate `raw_dispatch_flow(RunContext())` in the Debug Console).
+Every subflow is a plain function that accepts a `RunContext` — you don't need to run the whole pipeline to exercise or debug just one of them. `main.py` exposes this directly:
 
-The catch: staging folders are namespaced by `RUN_ID`, which is normally a fresh timestamp on every run, so a standalone step call wouldn't find any previously staged input. Set `DEBUG=True` in `.env` to pin `RUN_ID` to a fixed `DEBUG_RUN_ID` (default `"debug_run"`) instead:
+```bash
+# List steps discovered for a pipeline (any module-level @flow that isn't its PIPELINE)
+python main.py --pipeline full_processing --list-steps
+
+# Run a single step in isolation
+python main.py --pipeline full_processing --step transform_flow
+
+# Steps that take extra arguments (e.g. restore_flow's run_id) forward them positionally
+python main.py --pipeline full_processing --step restore_flow 20260324_185705
+```
+
+Steps are **auto-discovered** by inspecting the pipeline module for `Flow` objects (excluding the one assigned to `PIPELINE`) — so nothing needs to be kept in sync by hand when you add, rename, or remove a subflow.
+
+> [!important]
+> Unknown/mistyped flags (e.g. `--lists-steps`) are rejected with a `unrecognized arguments` error instead of silently falling through to running the whole pipeline.
+
+### Staging Data with `DEBUG=True`
+
+The catch: staging folders are namespaced by `RUN_ID`, which is normally a fresh timestamp on every run, so a standalone step call wouldn't find any previously staged input. Set `DEBUG=True` in `.env` (or as an env var) to pin `RUN_ID` to a fixed `DEBUG_RUN_ID` (default `"debug_run"`) instead:
 
 ```env
 DEBUG=True
@@ -274,6 +294,37 @@ DEBUG_RUN_ID=debug_run
 ```
 
 Run the pipeline (or just the steps you need) once with `DEBUG=True` to populate `data/staging/debug_run/...`, then re-run individual steps against that same folder as many times as you like. Remember to set `DEBUG=False` before running for real — every run in debug mode overwrites the same `debug_run` folder.
+
+### Configuring the VS Code Debugger
+
+`.vscode/launch.json` ships with a template configuration for this:
+
+```jsonc
+{
+    // Template: duplicate me and edit "args" (and "name") to debug a
+    // different step. Run `python main.py --pipeline <name> --list-steps`
+    // to see valid step names for a given pipeline.
+    "name": "Python: Debug Step - full_processing/transform_flow",
+    "type": "debugpy",
+    "request": "launch",
+    "program": "${workspaceFolder}/main.py",
+    "args": ["--pipeline", "full_processing", "--step", "transform_flow"],
+    "console": "integratedTerminal",
+    "justMyCode": false,
+    "env": {
+        "DEBUG": "True"
+    }
+}
+```
+
+To debug a different step:
+
+1. Duplicate the whole block inside `configurations` in `.vscode/launch.json`.
+2. Change `"name"` to something recognizable (e.g. `"...  - full_processing/raw_dispatch_flow"`).
+3. Change the last element of `"args"` to the step you want (see `--list-steps` for valid names), and the `--pipeline` value if it's a different pipeline.
+4. Pick it from the Run and Debug dropdown (or `F5`) and set breakpoints anywhere — including inside `engine/processors/*`, since `justMyCode` is `false`.
+
+`"env": {"DEBUG": "True"}` is already set on the template, so `RUN_ID` stays pinned without touching `.env`.
 
 ---
 

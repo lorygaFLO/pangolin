@@ -52,7 +52,7 @@ pangolin/
 │   ├── .env.docker.example        # Template — copy to .env.docker and fill in
 │   └── .env.docker                # Real runtime env (gitignored, never committed)
 ├── docs/
-│   └── doumentation-obsidian/     # Obsidian vault documentation
+│   └── documentation-obsidian/     # Obsidian vault documentation
 ├── test_files_generator/
 │   └── generator.py               # Generates sample test data
 ├── docker-compose.yml             # Symlink / alias at repo root (optional)

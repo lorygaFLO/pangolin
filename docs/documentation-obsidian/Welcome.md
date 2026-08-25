@@ -2,7 +2,7 @@
 
 **Pangolin** is a battle-ready structured template for data pipelines, built on [Prefect](https://www.prefect.io/) and powered by [Polars](https://pola.rs/). The intent is not just to provide a working example, but a solid, opinionated foundation you can fork and build a real production project on — without having to design the scaffolding yourself. It ships with a sensible folder layout, a config-driven engine, and a clear extension model, so your first commit can focus on business logic rather than plumbing.
 
-This documentation is structured as an [Obsidian](https://obsidian.md/) vault. For the best experience — including linked pages, graph view, and sidebar navigation — open the `docs/doumentation-obsidian/` folder as a vault in Obsidian.
+This documentation is structured as an [Obsidian](https://obsidian.md/) vault. For the best experience — including linked pages, graph view, and sidebar navigation — open the `docs/documentation-obsidian/` folder as a vault in Obsidian.
 ---
 
 ## How to Navigate This Documentation

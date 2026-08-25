@@ -47,7 +47,7 @@ The project supports multiple deployment modes: you can run it **locally**, depl
 
 ## Documentation
 
-Full documentation lives in the [`docs/documentation-obsidian/`](docs/doumentation-obsidian/) folder. It is structured as an [Obsidian](https://obsidian.md/) vault — open it in Obsidian for the best experience (linked pages, graph view, backlinks). Getting started instructions, architecture details, and guides for extending the pipeline are all included there.
+Full documentation lives in the [`docs/documentation-obsidian/`](docs/documentation-obsidian/) folder. It is structured as an [Obsidian](https://obsidian.md/) vault — open it in Obsidian for the best experience (linked pages, graph view, backlinks). Getting started instructions, architecture details, and guides for extending the pipeline are all included there.
 
 ## Contributing
 
