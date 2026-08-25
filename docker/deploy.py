@@ -1,12 +1,14 @@
 """
-Registers the data_pipeline as a Prefect deployment and serves it.
+Auto-discovers every pipeline in pipelines/ (see pipelines/__init__.py) and
+registers + serves a Prefect deployment for each.
 
 - Without a cron: the deployment is only triggered manually from the UI (Quick Run).
-- To add a daily schedule, set the PANGOLIN_CRON env variable, e.g.:
+- To add a daily schedule to the full_processing pipeline, set PANGOLIN_CRON, e.g.:
     PANGOLIN_CRON="0 6 * * *"  ->  every day at 06:00 UTC
+  (each pipeline module may read its own env vars to build DEPLOYMENT_KWARGS).
 
-The flow parameters (restore_from, clear_input) are automatically
-exposed in the Prefect UI under "Custom Run" → "Parameters":
+The full_processing flow parameters (restore_from, clear_input) are
+automatically exposed in the Prefect UI under "Custom Run" → "Parameters":
   - restore_from: leave empty for normal run, or paste a backup run_id
   - clear_input:  toggle on to empty input folder after backup
 """
@@ -27,7 +29,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 
 
 # ---------------------------------------------------------------------------
-# Settings hydration (must run BEFORE `from main import data_pipeline`,
+# Settings hydration (must run BEFORE `from pipelines import PIPELINES`,
 # because main.py does `from config.settings import *` at import time).
 # ---------------------------------------------------------------------------
 
@@ -155,31 +157,28 @@ if _MODE in ("docker-local", "cloud"):
     _hydrate_from_prefect()
 
 
-# Now it is safe to import the flow (which imports SETTINGS).
-from main import data_pipeline, generate_test_data  # noqa: E402
-
-CRON_SCHEDULE = os.getenv("PANGOLIN_CRON") or None
+# Now it is safe to import the flows (which import SETTINGS).
+# Every file in pipelines/ is auto-discovered and deployed below — add a new
+# pipeline by dropping a new file there, no changes needed here.
+import importlib
+from pipelines import PIPELINES  # noqa: E402
 
 if __name__ == "__main__":
     from prefect import serve as prefect_serve
 
-    tags = [t for t in (os.getenv("GIT_BRANCH"), os.getenv("GIT_SHA")) if t]
+    base_tags = [t for t in (os.getenv("GIT_BRANCH"), os.getenv("GIT_SHA")) if t]
 
-    pipeline_deploy_kwargs: dict = {
-        "name": "pangolin-daily",
-        "tags": tags,
-    }
-    # Prefect 3.6+ rejects cron=None; only pass it when set.
-    if CRON_SCHEDULE:
-        pipeline_deploy_kwargs["cron"] = CRON_SCHEDULE
+    deployments = []
+    for pipeline_name, pipeline_flow in PIPELINES.items():
+        module = importlib.import_module(f"pipelines.{pipeline_name}")
+        deploy_kwargs = dict(getattr(module, "DEPLOYMENT_KWARGS", {}))
+        extra_tags = deploy_kwargs.pop("extra_tags", [])
+        kwargs: dict = {
+            "name": getattr(module, "DEPLOYMENT_NAME", f"pangolin-{pipeline_name.replace('_', '-')}"),
+            "tags": base_tags + extra_tags,
+        }
+        kwargs.update(deploy_kwargs)
+        deployments.append(pipeline_flow.to_deployment(**kwargs))
 
-    generate_deploy_kwargs: dict = {
-        "name": "pangolin-generate-test-data",
-        "tags": tags + ["test-data"],
-    }
-
-    # Serve both deployments in the same process
-    prefect_serve(
-        data_pipeline.to_deployment(**pipeline_deploy_kwargs),
-        generate_test_data.to_deployment(**generate_deploy_kwargs),
-    )
+    # Serve all discovered pipeline deployments in the same process
+    prefect_serve(*deployments)

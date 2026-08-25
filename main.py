@@ -1,292 +1,95 @@
 """
 Main entry point for the data processing pipeline using Prefect.
-Handles both transformation and validation of data files.
-Pipeline is defined in Python code using Prefect's @flow decorators.
+
+Pipelines are auto-discovered from the pipelines/ folder — each file there
+defines one @flow (see pipelines/__init__.py for the discovery rules).
+
+Usage:
+    python main.py                     # run the default pipeline (full_processing)
+    python main.py --pipeline <name>   # run a specific pipeline by name
+    python main.py --list-pipelines    # list all available pipeline names
+    python main.py --generate          # shorthand for --pipeline generate_test_data
+    python main.py --pipeline <name> --list-steps    # list debuggable steps of a pipeline
+    python main.py --pipeline <name> --step <step>   # run a single step of that pipeline
+                                        # (use with DEBUG=True so RUN_ID is pinned and
+                                        # the step finds staging left by a previous run)
 """
 
 import os
 os.environ.setdefault("PREFECT_LOGGING_EXTRA_LOGGERS", "pangolin") # Ensure pangolin logger is included in Prefect's logging configuration
 
+import argparse
+import importlib
 import sys
-from typing import Optional
-from prefect import flow, get_run_logger
-from engine.processors.DataValidator import Validator
-from engine.processors.DataTransformer import DataTransformer
-from engine.processors.FileDispatcher import FileDispatcher
-from engine.processors.BackupRestore import BackupRestore
-from engine.common.exceptions import PipelineError
-from config.settings import get_settings
+
+from prefect.flows import Flow
+
+from pipelines import PIPELINES
 from config.run_context import RunContext
 
-
-# ================================
-# Subflow Definitions
-# ================================
-
-@flow(name="Backup Input")
-def backup_flow(CTX):
-    """Backup current input files to backup/<run_id>/."""
-    S = get_settings()
-    backup = BackupRestore(CTX, name="backup", input_folder=S.INPUT_FOLDER_NAME, output_folder="backup")
-    backup.execute()
+DEFAULT_PIPELINE = "full_processing"
 
 
-@flow(name="Restore from Backup")
-def restore_flow(CTX, restore_from: str):
-    """Restore files from a previous backup run into the input folder."""
-    S = get_settings()
-    backup = BackupRestore(CTX, name="backup", input_folder=S.INPUT_FOLDER_NAME, output_folder="backup")
-    backup.restore(restore_from)
+def _pipeline_steps(pipeline_name: str) -> dict:
+    """Debug-only: auto-discover a pipeline's internal subflows (any
+    module-level @flow that isn't the pipeline's own PIPELINE flow), so
+    there's no separate step list to keep in sync by hand."""
+    module = importlib.import_module(f"pipelines.{pipeline_name}")
+    main_flow = getattr(module, "PIPELINE", None)
+    return {
+        name: obj
+        for name, obj in vars(module).items()
+        if isinstance(obj, Flow) and obj is not main_flow
+    }
 
 
-@flow(name="Clear Input Folder")
-def clear_input_flow(CTX):
-    """Remove all files from the input folder after successful processing."""
-    S = get_settings()
-    backup = BackupRestore(CTX, name="backup", input_folder=S.INPUT_FOLDER_NAME, output_folder="backup")
-    backup.clear_input_folder()
-
-@flow(name="0 - Raw Data Validation")
-def raw_validation_flow(CTX):
-    """Step 0: Validate raw input files."""
-    S = get_settings()
-    validator = Validator(
-        CTX,
-        name="0_validator",
-        report_folder=S.REPORTS_FOLDER_NAME,
-        input_folder=S.INPUT_FOLDER_NAME,
-        output_folder="staging.0_validator"
-    )
-    validator.execute()
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Pangolin pipeline runner")
+    parser.add_argument("--pipeline", default=DEFAULT_PIPELINE, help="Pipeline to run (default: %(default)s)")
+    parser.add_argument("--generate", action="store_true", help="Shorthand for --pipeline generate_test_data")
+    parser.add_argument("--list-pipelines", action="store_true", help="List all available pipeline names")
+    parser.add_argument("--list-steps", action="store_true", help="List debuggable steps of --pipeline")
+    parser.add_argument("--step", metavar="STEP", help="Run a single step of --pipeline in isolation")
+    parser.add_argument("step_args", nargs="*", help="Extra positional args forwarded to --step (e.g. restore_flow's run_id)")
+    return parser
 
 
-@flow(name="1 - Raw Data Dispatch")
-def raw_dispatch_flow(CTX):
-    """Step 1: Dispatch raw files based on file type/pattern."""
-    S = get_settings()
-    dispatcher = FileDispatcher(
-        CTX,
-        name="1_dispatcher",
-        report_folder=S.REPORTS_FOLDER_NAME,
-        input_folder="staging.0_validator",
-        output_folder="staging.1_dispatcher",
-        rm_from_input_folder=False
-    )
-    dispatcher.execute()
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    args = _build_parser().parse_args(argv)  # unknown/mistyped flags raise here instead of silently running the pipeline
 
+    if args.list_pipelines:
+        for name in PIPELINES:
+            print(name)
+        return
 
-@flow(name="2 - Data Transformation")
-def transform_flow(CTX):
-    """Step 2: Transform data according to business rules."""
-    S = get_settings()
-    transformer = DataTransformer(
-        CTX,
-        name="2_transform",
-        report_folder=S.REPORTS_FOLDER_NAME,
-        input_folder="staging.1_dispatcher",
-        output_folder="staging.2_transform"
-    )
-    transformer.execute()
+    pipeline_name = "generate_test_data" if args.generate else args.pipeline
 
+    if pipeline_name not in PIPELINES:
+        available = ", ".join(PIPELINES)
+        raise SystemExit(f"Unknown pipeline '{pipeline_name}'. Available: {available}")
 
-@flow(name="3 - Transformed Data Validation")
-def validation_flow(CTX):
-    """Step 3: Validate transformed data."""
-    S = get_settings()
-    validator = Validator(
-        CTX,
-        name="3_validation",
-        report_folder=S.REPORTS_FOLDER_NAME,
-        input_folder="staging.2_transform",
-        output_folder="staging.3_validation"
-    )
-    validator.execute()
+    if args.list_steps or args.step:
+        steps = _pipeline_steps(pipeline_name)
+        if not steps:
+            raise SystemExit(f"Pipeline '{pipeline_name}' has no debuggable steps.")
 
+        if args.list_steps:
+            for name in steps:
+                print(name)
+            return
 
-@flow(name="4 - Cross Validation")
-def cross_validation_flow(CTX):
-    """Step 4: Perform cross-validation checks between datasets."""
-    S = get_settings()
-    validator = Validator(
-        CTX,
-        name="4_cross_validation",
-        report_folder=S.REPORTS_FOLDER_NAME,
-        input_folder="staging.3_validation",
-        output_folder="staging.4_cross_validation"
-    )
-    validator.execute()
+        if args.step not in steps:
+            raise SystemExit(f"Unknown step '{args.step}' for pipeline '{pipeline_name}'. Available: {', '.join(steps)}")
+        CTX = RunContext()
+        steps[args.step](CTX, *args.step_args)
+        return
 
+    PIPELINES[pipeline_name]()
 
-@flow(name="5 - Final Data Dispatch")
-def final_dispatch_flow(CTX):
-    """Step 5: Dispatch validated and processed data to delivery folder."""
-    S = get_settings()
-    dispatcher = FileDispatcher(
-        CTX,
-        name="5_dispatcher",
-        report_folder=S.REPORTS_FOLDER_NAME,
-        input_folder="staging.4_cross_validation",
-        output_folder=S.DELIVERY_FOLDER_NAME,
-        rm_from_input_folder=True
-    )
-    dispatcher.execute()
-
-
-# ================================
-# Test Data Generation Flow
-# ================================
-
-@flow(name="Generate Test Data", description="Generate test input files for the pipeline")
-def generate_test_data():
-    """
-    Generates test CSV files (sales, inventory, edge cases) and product mappings
-    into the pipeline's input folder. Uses the logic from test_files_generator.
-    """
-    import random
-    import pandas as pd
-    from test_files_generator.generator import (
-        generate_product_mapping,
-        save_product_mapping,
-        generate_sales_data,
-        generate_inventory_data,
-    )
-
-    logger = get_run_logger()
-    S = get_settings()
-
-    input_path = os.path.join(S.DATAPATH, S.INPUT_FOLDER_NAME)
-    os.makedirs(input_path, exist_ok=True)
-
-    logger.info(f"Generating test data into {input_path}")
-
-    # Product mapping
-    max_products = 100
-    product_registry = generate_product_mapping(num_products=max_products)
-    save_product_mapping(product_registry, settings=S)
-    logger.info("Product mapping generated")
-
-    # CASE 1 - US sales, all correct
-    sales_df = generate_sales_data(num_records=500, num_products=8, num_stores=3)
-    sales_df.to_csv(os.path.join(input_path, "US_sales_data_case1_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
-
-    # CASE 2 - FR sales, all correct
-    sales_df = generate_sales_data(num_records=1000, num_products=50, num_stores=3)
-    sales_df.to_csv(os.path.join(input_path, "FR_sales_data_case2_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
-
-    # CASE 3 - FR sales, price is string
-    sales_df = generate_sales_data(num_records=200, num_products=3, num_stores=3)
-    for idx in random.sample(range(len(sales_df)), k=5):
-        sales_df.at[idx, 'price'] = "test"
-    sales_df.to_csv(os.path.join(input_path, "FR_sales_data_case3_price_is_string.csv"), index=False, sep=S.CSV_DELIMITER)
-
-    # CASE 4 - US sales, quantity is string
-    sales_df = generate_sales_data(num_records=200, num_products=3, num_stores=3)
-    for idx in random.sample(range(len(sales_df)), k=5):
-        sales_df.at[idx, 'quantity'] = "test"
-    sales_df.to_csv(os.path.join(input_path, "US_sales_data_case4_quantity_is_string.csv"), index=False, sep=S.CSV_DELIMITER)
-
-    # CASE 5 - No nation prefix
-    sales_df = generate_sales_data(num_records=800, num_products=8, num_stores=5)
-    sales_df.to_csv(os.path.join(input_path, "sales_data_case5_no_nation.csv"), index=False, sep=S.CSV_DELIMITER)
-
-    # CASE 6 - US sales, with duplicates
-    sales_df = generate_sales_data(num_records=200, num_products=3, num_stores=3)
-    duplicates = sales_df.sample(n=10, random_state=1)
-    sales_df = pd.concat([sales_df, duplicates], ignore_index=True)
-    sales_df.to_csv(os.path.join(input_path, "US_sales_data_case6_with_duplicates.csv"), index=False, sep=S.CSV_DELIMITER)
-
-    # CASE 7 - FR sales, with missing values
-    sales_df = generate_sales_data(num_records=200, num_products=3, num_stores=3)
-    for col in ['price', 'quantity']:
-        for idx in random.sample(range(len(sales_df)), k=5):
-            sales_df.at[idx, col] = pd.NA
-    sales_df.to_csv(os.path.join(input_path, "FR_sales_data_case7_with_missing_values.csv"), index=False, sep=S.CSV_DELIMITER)
-
-    # CASE 8 - FR sales, missing product_id column
-    sales_df = generate_sales_data(num_records=200, num_products=3, num_stores=3)
-    sales_df.drop(columns=['product_id'], inplace=True)
-    sales_df.to_csv(os.path.join(input_path, "FR_sales_data_case8_missing_product_id.csv"), index=False, sep=S.CSV_DELIMITER)
-
-    # CASE 9 - FR sales, out-of-scale values
-    sales_df = generate_sales_data(num_records=200, num_products=3, num_stores=3)
-    sales_df.at[random.randint(0, len(sales_df) - 1), 'price'] = 10000
-    sales_df.at[random.randint(0, len(sales_df) - 1), 'quantity'] = 10000
-    sales_df.to_csv(os.path.join(input_path, "FR_sales_data_case9_out_of_scale.csv"), index=False, sep=S.CSV_DELIMITER)
-
-    # CASE 10 - Empty file
-    empty_df = pd.DataFrame()
-    empty_df.to_csv(os.path.join(input_path, "sales_data_case10_empty_file.csv"), index=False, sep=S.CSV_DELIMITER)
-
-    # INVENTORY - FR
-    inventory_df = generate_inventory_data(num_records=1500, num_products=3, num_stores=4)
-    inventory_df.to_csv(os.path.join(input_path, "FR_inventory_data_case1_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
-
-    # INVENTORY - US
-    inventory_df = generate_inventory_data(num_records=2000, num_products=3, num_stores=6)
-    inventory_df.to_csv(os.path.join(input_path, "US_inventory_data_case2_all_correct.csv"), index=False, sep=S.CSV_DELIMITER)
-
-    logger.info("Test data generation completed")
-
-
-# ================================
-# Main Flow Definition
-# ================================
-
-@flow(name="Full Processing Pipeline", description="End-to-end data validation, transformation, and delivery pipeline")
-def data_pipeline(restore_from: Optional[str] = None, clear_input: bool = False):
-    """
-    Main data processing pipeline flow.
-    Orchestrates the following subflows:
-    -1. Backup / Restore (skipped when restoring from backup)
-    0. Raw Data Validation
-    1. Raw Data Dispatch
-    2. Data Transformation
-    3. Transformed Data Validation
-    4. Cross Validation
-    5. Final Data Dispatch
-
-    Args:
-        restore_from: If specified, restore input from this backup run_id
-                      (e.g. "20260429_193608") instead of backing up.
-        clear_input: If True (and not restoring), clear input folder after backup.
-    """
-    logger = get_run_logger()
-    CTX = RunContext()
-    restore_from = restore_from.strip() if restore_from else None
-
-    if restore_from:
-        logger.info(f"Process started - PANGOLIN_RUN_ID: {CTX.RUN_ID} - RESTORING from backup {restore_from}")
-    else:
-        logger.info(f"Process started - PANGOLIN_RUN_ID: {CTX.RUN_ID}")
-    
-    # Either restore from a previous backup, or backup current input
-    if restore_from:
-        s_init = restore_flow(CTX, restore_from=restore_from, return_state=True)
-    else:
-        s_init = backup_flow(CTX, return_state=True)
-
-    s0 = raw_validation_flow(CTX, return_state=True, wait_for=[s_init])
-    s1 = raw_dispatch_flow(CTX, return_state=True, wait_for=[s0])
-    s2 = transform_flow(CTX, return_state=True, wait_for=[s1])
-    s3 = validation_flow(CTX, return_state=True, wait_for=[s2])
-    s4 = cross_validation_flow(CTX, return_state=True, wait_for=[s3])
-    s5 = final_dispatch_flow(CTX, return_state=True, wait_for=[s4])
-
-    if clear_input and not restore_from:
-        clear_input_flow(CTX, wait_for=[s5])
-
-    logger.info("Process ended successfully")
-
-
-# ================================
-# Entry Point
-# ================================
 
 if __name__ == "__main__":
-    if "--generate" in sys.argv:
-        generate_test_data()
-    else:
-        data_pipeline()
+    main()
 
 
 

@@ -3,8 +3,26 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
+import yaml
 from pydantic import computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _folder_names_from_data_structure(basepath: str) -> dict[str, str]:
+    """Map SETTINGS_KEY -> folder name by reading config/data_structure.yaml."""
+    structure_path = Path(basepath) / "config" / "data_structure.yaml"
+    if not structure_path.exists():
+        raise FileNotFoundError(
+            f"data_structure.yaml not found at '{structure_path}'; "
+            "folder names cannot be resolved."
+        )
+    with open(structure_path, "r", encoding="utf-8") as f:
+        schema = yaml.safe_load(f) or {}
+    return {
+        node["_settings_key"]: key
+        for key, node in schema.items()
+        if isinstance(node, dict) and "_settings_key" in node
+    }
 
 
 class SETTINGS(BaseSettings):
@@ -23,17 +41,19 @@ class SETTINGS(BaseSettings):
     BASEPATH: str = "."
     DATAPATH: Optional[str] = None
 
-    # Folder names
-    INPUT_FOLDER_NAME: str = "input"
-    STAGING_FOLDER_NAME: str = "staging"
-    DELIVERY_FOLDER_NAME: str = "delivery"
-    REPORTS_FOLDER_NAME: str = "reports"
-    BACKUP_FOLDER_NAME: str = "backup"
+    # NOTE: folder-name fields (e.g. INPUT_FOLDER_NAME, STAGING_FOLDER_NAME, ...) are
+    # not declared here. They are added dynamically in `_resolve_paths` for every node
+    # in data_structure.yaml that declares a `_settings_key`.
 
     # IO options
     DISABLE_REPORTS: bool = False
     CSV_DELIMITER: str = ";"
     OUTPUT_FORMAT: str = "parquet"
+
+    # Debug mode: pin RUN_ID to a fixed value so staging folders from a
+    # previous debug run stay reachable when re-running a single step.
+    DEBUG: bool = False
+    DEBUG_RUN_ID: str = "debug_run"
 
     # Filesystem
     FS_PROTOCOL: str = "file"
@@ -101,6 +121,11 @@ class SETTINGS(BaseSettings):
             if not bp.is_absolute():
                 bp = Path.cwd() / bp
             self.BASEPATH = str(bp.resolve())
+
+        # Every _settings_key declared in data_structure.yaml becomes a SETTINGS
+        # attribute here, named exactly as declared — nothing is hardcoded.
+        for settings_key, folder_name in _folder_names_from_data_structure(self.BASEPATH).items():
+            object.__setattr__(self, settings_key, folder_name)
         return self
 
     @computed_field
