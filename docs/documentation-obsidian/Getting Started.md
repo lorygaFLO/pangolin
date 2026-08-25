@@ -276,6 +276,38 @@ This launches the Prefect flow with the default pipeline configuration:
 > [!tip]
 > The pipeline structure is fully configurable. You can add, remove, or reorder steps in `main.py`. See [[Pipeline Configuration]] for details.
 
+### Running via the Prefect UI (persistent server)
+
+`python main.py` runs the flow once, directly, in the foreground. If you instead want to trigger runs from the **Prefect dashboard** (Quick Run, schedules, run history), you need a persistent Prefect server plus the deployments served — this requires **two terminals, both with the virtual environment activated**:
+
+**Terminal 1 — start the Prefect server**
+
+```powershell
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+prefect server start
+```
+
+Leave this running. The dashboard is now available at `http://127.0.0.1:4200`.
+
+**Terminal 2 — serve the deployments**
+
+```powershell
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+$env:PREFECT_API_URL = "http://127.0.0.1:4200/api"
+python docker\deploy.py
+```
+
+> [!important]
+> Without `PREFECT_API_URL` pointing at the server from Terminal 1, `deploy.py` spins up its own **temporary, throwaway** Prefect server instead of using the persistent one — your deployments won't show up in the dashboard from Terminal 1.
+
+`deploy.py` registers the **Full Processing Pipeline** and **Generate Test Data** deployments and polls for scheduled/manual runs. Trigger them from the dashboard (**Deployments → Quick Run**) or via CLI:
+
+```powershell
+prefect deployment run "Full Processing Pipeline/pangolin-daily"
+```
+
 ### Output
 
 After a successful run, find your outputs at:
