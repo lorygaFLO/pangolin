@@ -170,7 +170,7 @@ staging:
     _registry: "config/registries/2b_aggregation.yaml"
 ```
 
-### 4. Create the Subflow in `main.py`
+### 4. Create the Subflow in `pipelines/full_processing.py`
 
 ```python
 from engine.processors.DataAggregator import DataAggregator

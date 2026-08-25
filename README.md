@@ -24,7 +24,10 @@ The project supports multiple deployment modes: you can run it **locally**, depl
 ## Project Structure
 
 ```
-├── main.py                    # Pipeline entry point (Prefect flows)
+├── main.py                    # CLI entry point (runs a pipeline by name)
+├── pipelines/                 # One self-contained pipeline per file (auto-discovered)
+│   ├── full_processing.py      # Default end-to-end pipeline (own subflow steps)
+│   └── generate_test_data.py   # Synthetic input data generator flow
 ├── config/
 │   ├── settings.py            # Settings loader
 │   ├── run_context.py         # Runtime context object

@@ -208,7 +208,7 @@ Files are dispatched by region into `FR/` and `US/` subfolders.
 1. Create a YAML file in `config/registries/` following the naming convention `<N>_<name>.yaml`
 2. Choose the format based on the processor type you'll use
 3. Add the appropriate glob patterns as keys
-4. Reference the registry path when creating the processor in `main.py`
+4. Reference the registry path when creating the processor in your pipeline file (e.g. `pipelines/full_processing.py`)
 
 See [[Pipeline Configuration]] for how to wire a new step into the pipeline.
 

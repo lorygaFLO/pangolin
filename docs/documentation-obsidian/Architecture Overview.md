@@ -10,7 +10,10 @@ Pangolin is designed as a battle-ready template: every folder, file, and abstrac
 
 ```
 pangolin/
-├── main.py                        # Prefect flow entry point
+├── main.py                        # CLI entry point — runs a pipeline by name
+├── pipelines/                      # One self-contained pipeline per file (auto-discovered)
+│   ├── full_processing.py          # Default end-to-end pipeline + its subflow steps
+│   └── generate_test_data.py       # Synthetic input data generator flow
 ├── config/
 │   ├── settings.py                # pydantic-settings SETTINGS class
 │   ├── constants.py               # Shared constants

@@ -1,12 +1,30 @@
 # Pipeline Configuration
 
-This page explains how the main pipeline is assembled in `main.py` and how to add, remove, or reorder stages.
+This page explains how pipelines are structured, how the default pipeline is assembled in `pipelines/full_processing.py`, and how to add, remove, or reorder stages — or add a whole new pipeline.
 
 ---
 
-## How the Pipeline Works
+## Pipelines Are Auto-Discovered
 
-The pipeline is defined in `main.py` using **Prefect flows**. The structure is **fully configurable** — you choose how many steps to include and in what order. The default configuration chains the following subflows as an example:
+Every file in `pipelines/` (except ones prefixed with `_`) is a **self-contained pipeline**: it can define as many internal `@flow`-decorated subflow steps as it needs, but must expose a module-level `PIPELINE = <flow>` pointing at the flow to run/deploy. `pipelines/__init__.py` scans the folder at import time and builds a `PIPELINES: dict[str, Flow]` registry — used by both `main.py` (CLI) and `docker/deploy.py` (Prefect deployments).
+
+```bash
+python main.py --list-pipelines     # list all discovered pipelines
+python main.py --pipeline <name>    # run one by name
+python main.py                      # runs the default pipeline (full_processing)
+python main.py --generate           # shorthand for --pipeline generate_test_data
+```
+
+To add a brand-new pipeline: drop a new file in `pipelines/`, define its flow(s), and set `PIPELINE = <your_flow>` — no other registration is needed. It automatically gets its own Prefect deployment (see [[Docker Deployment]]).
+
+> [!warning]
+> Don't import subflow steps from another pipeline's file unless you actually want that coupling — steps are typically written around one pipeline's own staging folder layout (e.g. `staging.0_validator`). If two pipelines truly need the same step, that import is explicit and visible in the code, which is intentional: it should look like a deliberate choice, not something that happens by accident.
+
+---
+
+## How the Default Pipeline Works
+
+The default pipeline is defined in `pipelines/full_processing.py` using **Prefect flows**. The structure is **fully configurable** — you choose how many steps to include and in what order. It chains the following subflows as an example:
 
 ```python
 @flow(name="Full Processing Pipeline")
@@ -149,7 +167,7 @@ staging:
     _registry: "config/registries/2b_custom_validation.yaml"
 ```
 
-### 3. Define the Subflow in `main.py`
+### 3. Define the Subflow in `pipelines/full_processing.py`
 
 ```python
 @flow(name="2b - Custom Validation")
@@ -226,6 +244,36 @@ dispatcher = FileDispatcher(
 
 - `rm_from_input_folder=True` — the file is removed from the input after dispatch (move semantics)
 - `rm_from_input_folder=False` (default) — the file is copied (original stays)
+
+---
+
+## Deployment Config Per Pipeline
+
+Each pipeline module may optionally declare how `docker/deploy.py` should deploy it:
+
+```python
+DEPLOYMENT_NAME = "pangolin-daily"      # optional, defaults to "pangolin-<module_name>"
+DEPLOYMENT_KWARGS: dict = {}            # optional extra kwargs merged into .to_deployment()
+if os.getenv("PANGOLIN_CRON"):
+    DEPLOYMENT_KWARGS["cron"] = os.getenv("PANGOLIN_CRON")
+```
+
+`extra_tags` is a special key inside `DEPLOYMENT_KWARGS`, merged into the deployment's tag list (e.g. `generate_test_data.py` uses it to add a `"test-data"` tag). Both attributes are optional — without them, `deploy.py` falls back to `pangolin-<module_name>` with no schedule.
+
+---
+
+## Debugging a Single Step
+
+Every subflow is a plain function that accepts a `RunContext` — you can call it directly from the debugger without running the whole pipeline (e.g. set a breakpoint and evaluate `raw_dispatch_flow(RunContext())` in the Debug Console).
+
+The catch: staging folders are namespaced by `RUN_ID`, which is normally a fresh timestamp on every run, so a standalone step call wouldn't find any previously staged input. Set `DEBUG=True` in `.env` to pin `RUN_ID` to a fixed `DEBUG_RUN_ID` (default `"debug_run"`) instead:
+
+```env
+DEBUG=True
+DEBUG_RUN_ID=debug_run
+```
+
+Run the pipeline (or just the steps you need) once with `DEBUG=True` to populate `data/staging/debug_run/...`, then re-run individual steps against that same folder as many times as you like. Remember to set `DEBUG=False` before running for real — every run in debug mode overwrites the same `debug_run` folder.
 
 ---
 
