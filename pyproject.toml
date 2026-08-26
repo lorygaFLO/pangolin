@@ -27,10 +27,18 @@ dependencies = [
     "pydantic==2.13.4",
     "pydantic-settings==2.14.2",
     "httpx==0.28.1",
+    "typer==0.21.2",
 ]
 
+[project.scripts]
+pangolin = "pangolin.cli:app"
+
 [tool.setuptools.packages.find]
+include = ["pangolin*"]
 exclude = ["data", "tests*"]
+
+[tool.setuptools.package-data]
+"pangolin._scaffold" = ["project_template/**/*"]
 
 [build-system]
 requires = ["setuptools", "wheel"]
