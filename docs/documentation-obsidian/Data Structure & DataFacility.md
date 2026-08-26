@@ -130,7 +130,7 @@ data/staging/  →  data/staging/20260324_185705/
 ### Getting the Instance
 
 ```python
-from engine.DataFacility import get_project_data
+from pangolin.engine.DataFacility import get_project_data
 
 D = get_project_data()
 ```

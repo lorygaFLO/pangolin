@@ -27,6 +27,10 @@ RENAMED_FILES = {
 
 SKIPPED_DIRS = {"__pycache__", "data"}
 
+# Template folder whose files are copied into the project's data/input/
+# so the example pipeline is runnable right after init.
+EXAMPLE_INPUT_DIR = "example_input"
+
 
 def _template_root() -> Path:
     return Path(str(resources.files(TEMPLATE_PACKAGE))) / TEMPLATE_DIR_NAME
@@ -77,7 +81,10 @@ def init(
     copied: list[Path] = []
     skipped: list[Path] = []
     for src, rel in _iter_template_files(template_root):
-        rel = rel.with_name(RENAMED_FILES.get(rel.name, rel.name))
+        if rel.parts[0] == EXAMPLE_INPUT_DIR:
+            rel = Path("data", "input", *rel.parts[1:])
+        else:
+            rel = rel.with_name(RENAMED_FILES.get(rel.name, rel.name))
         dest = target / rel
         if dest.exists() and not force:
             skipped.append(rel)

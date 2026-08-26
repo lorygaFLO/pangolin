@@ -31,7 +31,7 @@ def my_validator(df, messages, params=None) -> bool:
 Decorate the function with `@register_validator`:
 
 ```python
-from utils.validators import register_validator
+from pangolin.utils.validators import register_validator
 
 @register_validator
 def my_validator(df, messages, params=None):
@@ -174,7 +174,7 @@ Called as: `check_null_values(df, messages, {"columns": [...], "custom_null_valu
 - Validators run **in the order they appear** in the registry YAML. If `required_columns` raises `ValueError`, subsequent validators for that file are skipped.
 - You can access `DataFacility` from inside a validator — it is already imported at module level as `D`:
   ```python
-  from engine.DataFacility import DataFacility
+  from pangolin.engine.DataFacility import DataFacility
   D = DataFacility()
   ```
 

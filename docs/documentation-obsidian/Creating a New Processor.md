@@ -73,11 +73,11 @@ DataAggregator: Groups data by specified columns and aggregates.
 """
 
 import polars as pl
-from engine.processors.BaseProcessor import BaseProcessor
-from engine.reporter import Reporter
-from engine.common.exceptions import NoInputFilesError, AllFilesFailedError
-from config.settings import get_settings
-from config.run_context import RunContext
+from pangolin.engine.processors.BaseProcessor import BaseProcessor
+from pangolin.engine.reporter import Reporter
+from pangolin.engine.common.exceptions import NoInputFilesError, AllFilesFailedError
+from pangolin.config.settings import get_settings
+from pangolin.config.run_context import RunContext
 
 
 class DataAggregator(BaseProcessor):
@@ -173,7 +173,7 @@ staging:
 ### 4. Create the Subflow in `pipelines/full_processing.py`
 
 ```python
-from engine.processors.DataAggregator import DataAggregator
+from pangolin.engine.processors.DataAggregator import DataAggregator
 
 @flow(name="2b - Data Aggregation")
 def aggregation_flow(CTX):     # ← receives RunContext

@@ -25,7 +25,7 @@ import sys
 from prefect.flows import Flow
 
 from pipelines import PIPELINES
-from config.run_context import RunContext
+from pangolin.config.run_context import RunContext
 
 DEFAULT_PIPELINE = "full_processing"
 

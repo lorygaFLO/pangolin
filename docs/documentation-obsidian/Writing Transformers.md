@@ -31,7 +31,7 @@ def my_transformer(df, messages=None, **kwargs) -> pl.DataFrame:
 Decorate the function with `@register_transformer`:
 
 ```python
-from utils.transformers import register_transformer
+from pangolin.utils.transformers import register_transformer
 
 @register_transformer
 def my_transformer(df, messages=None, **kwargs) -> pl.DataFrame:
@@ -133,7 +133,7 @@ params:
 Then resolve it in the transformer:
 
 ```python
-from engine.DataFacility import DataFacility
+from pangolin.engine.DataFacility import DataFacility
 D = DataFacility()
 
 @register_transformer

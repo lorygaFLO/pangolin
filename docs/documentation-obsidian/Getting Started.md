@@ -145,7 +145,7 @@ The `SETTINGS` class in `config/settings.py` uses **`pydantic-settings`** to aut
 
 3. **Access it anywhere in your code:**
    ```python
-   from config.settings import get_settings
+   from pangolin.config.settings import get_settings
    S = get_settings()
    print(S.MY_CUSTOM_OPTION)
    ```

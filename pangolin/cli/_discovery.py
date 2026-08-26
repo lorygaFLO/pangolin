@@ -64,12 +64,7 @@ def pipeline_steps(pipeline_name: str) -> dict:
 
 
 def new_run_context():
-    """Instantiate the project's RunContext (needed to run a step standalone)."""
-    try:
-        run_context_module = importlib.import_module("config.run_context")
-    except ModuleNotFoundError:
-        raise fail(
-            "config/run_context.py not found in the project; "
-            "cannot build a RunContext to run a step standalone."
-        )
-    return run_context_module.RunContext()
+    """Instantiate a RunContext (needed to run a step standalone)."""
+    from pangolin.config.run_context import RunContext
+
+    return RunContext()

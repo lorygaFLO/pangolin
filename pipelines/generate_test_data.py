@@ -10,7 +10,7 @@ import random
 import pandas as pd
 from prefect import flow, get_run_logger
 
-from config.settings import get_settings
+from pangolin.config.settings import get_settings
 from test_files_generator.generator import (
     generate_product_mapping,
     save_product_mapping,

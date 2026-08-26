@@ -9,7 +9,7 @@ import json
 from faker import Faker
 import pandas as pd
 from datetime import datetime, timedelta
-from config.settings import *
+from pangolin.config.settings import *
 
 
 fake = Faker()
