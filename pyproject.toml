@@ -34,8 +34,8 @@ dependencies = [
 pangolin = "pangolin.cli:app"
 
 [tool.setuptools.packages.find]
+where = ["src"]
 include = ["pangolin*"]
-exclude = ["data", "tests*"]
 
 [tool.setuptools.package-data]
 "pangolin._scaffold" = ["project_template/**/*"]

@@ -2,7 +2,7 @@
 
 This page describes the high-level design of Pangolin, its folder structure, and how data flows through the system.
 
-Pangolin is designed as a battle-ready template: every folder, file, and abstraction has a deliberate place so that when you start a new project you fork the repo, adjust the registries and `data_structure.yaml`, and write your domain logic — the engine and scaffolding are already there.
+Pangolin is an installable library with a CLI: `pip install` it, run `pangolin init` in an empty folder, and you get a ready-to-run project (config, registries, example pipeline, custom code stubs) — the engine ships inside the `pangolin` package. This repository is also a working project itself (the library source under `src/pangolin/` plus a dev project at the root used to develop and test the engine).
 
 ---
 
@@ -15,7 +15,6 @@ pangolin/
 │   ├── full_processing.py          # Default end-to-end pipeline + its subflow steps
 │   └── generate_test_data.py       # Synthetic input data generator flow
 ├── config/
-│   ├── settings.py                # pydantic-settings SETTINGS class
 │   ├── constants.py               # Shared constants
 │   ├── data_structure.yaml        # Declarative folder/file schema
 │   └── registries/                # YAML rules for each pipeline step
@@ -25,22 +24,29 @@ pangolin/
 │       ├── 3_validation.yaml
 │       ├── 4_cross_validation.yaml
 │       └── 5_dispatcher.yaml
-├── engine/
-│   ├── DataFacility.py            # YAML-driven data access layer
-│   ├── reporter.py                # Per-step report writer
-│   ├── core/
-│   │   ├── exceptions.py          # Pipeline exception hierarchy
-│   │   └── logger.py              # Structured processor logger
-│   └── processors/
-│       ├── BaseProcessor.py       # Abstract base class
-│       ├── BackupRestore.py       # Backup & restore input files
-│       ├── DataValidator.py       # Runs validation rules
-│       ├── DataTranformer.py      # Runs transformation chains
-│       └── FileDispatcher.py      # Routes files to subfolders
-├── utils/
-│   ├── validators.py              # Registered validator functions
-│   ├── transformers.py            # Registered transformer functions
-│   └── fs_wrapper.py              # fsspec-based filesystem abstraction
+├── src/pangolin/                  # The installable pangolin library
+│   ├── cli/                       # Typer CLI (pangolin init/run/list/step/restore/version)
+│   ├── _scaffold/
+│   │   └── project_template/      # Project skeleton copied by `pangolin init`
+│   ├── config/
+│   │   ├── settings.py            # pydantic-settings SETTINGS class
+│   │   └── run_context.py         # RunContext (per-run dynamic state)
+│   ├── engine/
+│   │   ├── DataFacility.py        # YAML-driven data access layer
+│   │   ├── reporter.py            # Per-step report writer
+│   │   ├── common/
+│   │   │   ├── exceptions.py      # Pipeline exception hierarchy
+│   │   │   └── logger.py          # Structured processor logger
+│   │   └── processors/
+│   │       ├── BaseProcessor.py   # Abstract base class
+│   │       ├── BackupRestore.py   # Backup & restore input files
+│   │       ├── DataValidator.py   # Runs validation rules
+│   │       ├── DataTransformer.py # Runs transformation chains
+│   │       └── FileDispatcher.py  # Routes files to subfolders
+│   └── utils/
+│       ├── validators.py          # Built-in validator functions
+│       ├── transformers.py        # Built-in transformer functions
+│       └── fs_wrapper.py          # fsspec-based filesystem abstraction
 ├── docker/
 │   ├── Dockerfile                 # Python 3.11-slim image recipe
 │   ├── docker-compose.yml         # 4-service stack (server, bootstrap, worker, caddy)
@@ -106,15 +112,15 @@ graph TD
 
 ## Key Components
 
-### 1. Settings (`config/settings.py`)
+### 1. Settings (`src/pangolin/config/settings.py`)
 A `pydantic-settings` `BaseSettings` class that provides paths, backend engine, CSV delimiter, output format, and run ID. Every module accesses it via `get_settings()`, which returns a fresh `SETTINGS` instance. Fields are type-checked and validated automatically by Pydantic.
 
 In **local** mode it reads `.env` directly. In **docker-local / cloud** mode, `docker/deploy.py` writes values from Prefect Variables and Blocks into `os.environ` *before* the settings class is ever instantiated, so `SETTINGS` receives them transparently — no code change needed. See [[Docker Deployment]].
 
-### 2. DataFacility (`engine/DataFacility.py`)
+### 2. DataFacility (`src/pangolin/engine/DataFacility.py`)
 A YAML-driven data access layer that maps `data_structure.yaml` onto the filesystem. It provides a navigable Python object tree (e.g. `D.static.mappings.product_mapping.read()`) with built-in I/O, versioning, and timestamped folders. See [[Data Structure & DataFacility]].
 
-### 3. Processors (`engine/processors/`)
+### 3. Processors (`src/pangolin/engine/processors/`)
 Each processor inherits from `BaseProcessor`, which handles:
 - Loading the YAML registry
 - Discovering input files

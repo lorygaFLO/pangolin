@@ -8,7 +8,7 @@ Planned improvements. No committed timeline.
 
 Add a `tests/` folder covering three layers:
 
-- **Unit** — pure functions in `utils/validators.py` and `utils/transformers.py`, parametrized with in-memory `pl.DataFrame` fixtures. No filesystem, no Prefect.
+- **Unit** — pure functions in `pangolin/utils/validators.py` and `pangolin/utils/transformers.py`, parametrized with in-memory `pl.DataFrame` fixtures. No filesystem, no Prefect.
 - **Integration** — each `Processor` subclass run via `processor.execute()` against a `tmp_path` directory and a minimal registry YAML.
 - **End-to-end** — full Prefect flow against the existing `data/input/case*` files, gated behind a `@pytest.mark.e2e` marker.
 
@@ -55,7 +55,7 @@ Pangolin is currently exercised mostly against small-to-medium files that fit co
 
 ## 7. More Built-in Processors, Validators & Transformers
 
-Grow the built-in library in `engine/processors`, `utils/validators.py`, and `utils/transformers.py` so more pipelines can be assembled from registry configuration alone, without writing custom code. Fewer gaps to fill means a smoother experience for anyone adapting Pangolin to a new use case.
+Grow the built-in library in `pangolin/engine/processors`, `pangolin/utils/validators.py`, and `pangolin/utils/transformers.py` so more pipelines can be assembled from registry configuration alone, without writing custom code. Fewer gaps to fill means a smoother experience for anyone adapting Pangolin to a new use case.
 
 ---
 

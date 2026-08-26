@@ -1,6 +1,6 @@
 # Writing Validators
 
-Validators are Python functions that check a DataFrame against specific rules and return `True` (pass) or `False` (fail). They live in `utils/validators.py` and are automatically registered via a decorator.
+Validators are Python functions that check a DataFrame against specific rules and return `True` (pass) or `False` (fail). Built-in validators ship with the library in `pangolin/utils/validators.py`; project-specific ones live in your project's `custom/validators.py`. Both are registered automatically via the same decorator.
 
 ---
 
@@ -48,7 +48,7 @@ This adds the function to `VALIDATORS_DICT` under its `__name__`. The validator 
 
 ## Step-by-Step: Creating a New Validator
 
-### 1. Write the Function in `utils/validators.py`
+### 1. Write the Function in `custom/validators.py`
 
 ```python
 @register_validator

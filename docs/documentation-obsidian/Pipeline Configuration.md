@@ -6,15 +6,20 @@ This page explains how pipelines are structured, how the default pipeline is ass
 
 ## Pipelines Are Auto-Discovered
 
-Every file in `pipelines/` (except ones prefixed with `_`) is a **self-contained pipeline**: it can define as many internal `@flow`-decorated subflow steps as it needs, but must expose a module-level `PIPELINE = <flow>` pointing at the flow to run/deploy. `pipelines/__init__.py` scans the folder at import time and builds a `PIPELINES: dict[str, Flow]` registry — used by both `main.py` (CLI) and `docker/deploy.py` (Prefect deployments).
+Every file in `pipelines/` (except ones prefixed with `_`) is a **self-contained pipeline**: it can define as many internal `@flow`-decorated subflow steps as it needs, but must expose a module-level `PIPELINE = <flow>` pointing at the flow to run/deploy. `pipelines/__init__.py` scans the folder at import time and builds a `PIPELINES: dict[str, Flow]` registry — used by the `pangolin` CLI, `main.py`, and `docker/deploy.py` (Prefect deployments).
 
 ```bash
-python main.py --list-pipelines     # list all discovered pipelines
-python main.py --pipeline <name>    # run one by name
-python main.py                      # runs the default pipeline (full_processing)
-python main.py --generate           # shorthand for --pipeline generate_test_data
-python main.py --pipeline <name> --list-steps      # list a pipeline's debuggable steps
-python main.py --pipeline <name> --step <step>     # run a single step in isolation (see below)
+pangolin list                     # list all discovered pipelines and their steps
+pangolin run <name>               # run one by name
+pangolin run                      # runs the default pipeline (full_processing)
+pangolin step <name> <step>       # run a single step in isolation (see below)
+
+# main.py equivalents (repo development):
+python main.py --list-pipelines
+python main.py --pipeline <name>
+python main.py --generate         # shorthand for --pipeline generate_test_data
+python main.py --pipeline <name> --list-steps
+python main.py --pipeline <name> --step <step>
 ```
 
 To add a brand-new pipeline: drop a new file in `pipelines/`, define its flow(s), and set `PIPELINE = <your_flow>` — no other registration is needed. It automatically gets its own Prefect deployment (see [[Docker Deployment]]).
@@ -266,17 +271,17 @@ if os.getenv("PANGOLIN_CRON"):
 
 ## Debugging a Single Step
 
-Every subflow is a plain function that accepts a `RunContext` — you don't need to run the whole pipeline to exercise or debug just one of them. `main.py` exposes this directly:
+Every subflow is a plain function that accepts a `RunContext` — you don't need to run the whole pipeline to exercise or debug just one of them. The CLI exposes this directly (the pipeline name is always required):
 
 ```bash
-# List steps discovered for a pipeline (any module-level @flow that isn't its PIPELINE)
-python main.py --pipeline full_processing --list-steps
+# List steps discovered for each pipeline (any module-level @flow that isn't its PIPELINE)
+pangolin list
 
 # Run a single step in isolation
-python main.py --pipeline full_processing --step transform_flow
+pangolin step full_processing transform_flow
 
 # Steps that take extra arguments (e.g. restore_flow's run_id) forward them positionally
-python main.py --pipeline full_processing --step restore_flow 20260324_185705
+pangolin step full_processing restore_flow 20260324_185705
 ```
 
 Steps are **auto-discovered** by inspecting the pipeline module for `Flow` objects (excluding the one assigned to `PIPELINE`) — so nothing needs to be kept in sync by hand when you add, rename, or remove a subflow.
@@ -302,13 +307,13 @@ Run the pipeline (or just the steps you need) once with `DEBUG=True` to populate
 ```jsonc
 {
     // Template: duplicate me and edit "args" (and "name") to debug a
-    // different step. Run `python main.py --pipeline <name> --list-steps`
-    // to see valid step names for a given pipeline.
+    // different step. Run `pangolin list` to see valid step names.
+    // Equivalent CLI: pangolin step <pipeline> <step> [args...]
     "name": "Python: Debug Step - full_processing/transform_flow",
     "type": "debugpy",
     "request": "launch",
-    "program": "${workspaceFolder}/main.py",
-    "args": ["--pipeline", "full_processing", "--step", "transform_flow"],
+    "module": "pangolin.cli",
+    "args": ["step", "full_processing", "transform_flow"],
     "console": "integratedTerminal",
     "justMyCode": false,
     "env": {
@@ -321,8 +326,8 @@ To debug a different step:
 
 1. Duplicate the whole block inside `configurations` in `.vscode/launch.json`.
 2. Change `"name"` to something recognizable (e.g. `"...  - full_processing/raw_dispatch_flow"`).
-3. Change the last element of `"args"` to the step you want (see `--list-steps` for valid names), and the `--pipeline` value if it's a different pipeline.
-4. Pick it from the Run and Debug dropdown (or `F5`) and set breakpoints anywhere — including inside `engine/processors/*`, since `justMyCode` is `false`.
+3. Change the step name in `"args"` to the one you want (see `pangolin list` for valid names), and the pipeline name if it's a different pipeline.
+4. Pick it from the Run and Debug dropdown (or `F5`) and set breakpoints anywhere — including inside `pangolin/engine/processors/*`, since `justMyCode` is `false`.
 
 `"env": {"DEBUG": "True"}` is already set on the template, so `RUN_ID` stays pinned without touching `.env`.
 

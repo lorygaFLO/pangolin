@@ -4,6 +4,25 @@ This guide walks you through setting up Pangolin from scratch and running the pi
 
 ---
 
+## Quickstart — Use Pangolin as a Library
+
+Pangolin is an installable package with a CLI. To start a brand-new project you don't need to clone this repo:
+
+```bash
+pip install <path-to-pangolin-repo-or-package>
+mkdir my_project && cd my_project
+pangolin init                     # scaffolds config/, custom/, pipelines/, data/ (+ .env, .gitignore)
+pangolin run example_pipeline     # runs the bundled, fully working example
+```
+
+`pangolin init` generates a complete example: an example pipeline (backup → validation → transform → custom audit processor → delivery), custom validator/transformer stubs, filled-in registries, and a sample CSV in `data/input/`. The generated `.gitignore` keeps `data/` and `.env` out of version control.
+
+Other commands: `pangolin list`, `pangolin step <pipeline> <step> [args...]`, `pangolin restore <run_id>`, `pangolin version`.
+
+The rest of this guide covers working on the **pangolin repository itself** (engine development).
+
+---
+
 ## Prerequisites
 
 - **Python 3.10+**
@@ -243,7 +262,8 @@ If you don't have real data yet, use the built-in test data generator to populat
 
 **Command line:**
 ```bash
-python main.py --generate
+pangolin run generate_test_data
+# or: python main.py --generate
 ```
 
 **Prefect UI:** trigger the **"Generate Test Data"** flow directly from the Prefect dashboard — no parameters required.
@@ -261,7 +281,8 @@ Both methods call the same `generate_test_data()` Prefect flow, which produces:
 ## 6. Run the Pipeline
 
 ```bash
-python main.py
+pangolin run
+# or: python main.py
 ```
 
 This launches the Prefect flow with the default pipeline configuration:
@@ -278,7 +299,7 @@ This launches the Prefect flow with the default pipeline configuration:
 
 ### Running via the Prefect UI (persistent server)
 
-`python main.py` runs the flow once, directly, in the foreground. If you instead want to trigger runs from the **Prefect dashboard** (Quick Run, schedules, run history), you need a persistent Prefect server plus the deployments served — this requires **two terminals, both with the virtual environment activated**:
+`pangolin run` executes the flow once, directly, in the foreground. If you instead want to trigger runs from the **Prefect dashboard** (Quick Run, schedules, run history), you need a persistent Prefect server plus the deployments served — this requires **two terminals, both with the virtual environment activated**:
 
 **Terminal 1 — start the Prefect server**
 

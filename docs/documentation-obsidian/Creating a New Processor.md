@@ -8,7 +8,7 @@ This page explains the `BaseProcessor` API and how to create your own custom pro
 
 ## BaseProcessor Overview
 
-`BaseProcessor` (in `engine/processors/BaseProcessor.py`) provides:
+`BaseProcessor` (in `src/pangolin/engine/processors/BaseProcessor.py`) provides:
 
 | Feature | Method / Attribute |
 |---------|--------------------|
@@ -65,7 +65,7 @@ Let's create a **DataAggregator** that groups data by specified columns and save
 
 ### 1. Create the Processor Class
 
-Create `engine/processors/DataAggregator.py`:
+Create `custom/processors/DataAggregator.py` in your project (custom processors live in the project's `custom/processors/` package; processors meant to ship with the library go in `src/pangolin/engine/processors/`):
 
 ```python
 """

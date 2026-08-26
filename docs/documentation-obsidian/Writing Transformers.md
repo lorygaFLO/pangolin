@@ -1,6 +1,6 @@
 # Writing Transformers
 
-Transformers are Python functions that take a Polars DataFrame, apply a modification, and return the modified DataFrame. They live in `utils/transformers.py` and are registered automatically via a decorator.
+Transformers are Python functions that take a Polars DataFrame, apply a modification, and return the modified DataFrame. Built-in transformers ship with the library in `pangolin/utils/transformers.py`; project-specific ones live in your project's `custom/transformers.py`. Both are registered automatically via the same decorator.
 
 ---
 
@@ -48,7 +48,7 @@ This adds the function to `TRANSFORMERS_DICT` under its `__name__`.
 
 ## Step-by-Step: Creating a New Transformer
 
-### 1. Write the Function in `utils/transformers.py`
+### 1. Write the Function in `custom/transformers.py`
 
 ```python
 @register_transformer
