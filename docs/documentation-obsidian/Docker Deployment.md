@@ -3,12 +3,13 @@
 > [!warning] AI-Generated
 > This Docker setup (Dockerfile, docker-compose, bootstrap, deploy scripts) is for the most part AI-generated and has not been battle-tested in production. It likely requires refinements — treat it as a working starting point, not a hardened deployment.
 
-This guide covers running Pangolin inside Docker using the bundled 4-service stack (Prefect server, bootstrap, worker, reverse proxy).
+This guide covers running a pangolin **project** inside Docker using the 4-service stack scaffolded by `pangolin init --dockerization` (Prefect server, bootstrap, worker, reverse proxy). It doesn't apply to the `pangolin` library repo itself — only to a project generated from it.
 
 ---
 
 ## Prerequisites
 
+- A project scaffolded with `pangolin init --dockerization` (or `-d`) — see [[Getting Started]]
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running (whale icon steady in the system tray)
 - Git (to capture the branch name at build time)
 
@@ -63,9 +64,11 @@ Browser ──► http://localhost:8080
 ```
 
 1. **prefect-server** — Hosts the Prefect UI and API. Persists run history on the `prefect-data` volume.
-2. **bootstrap** — One-shot: reads `docker/prefect_manifest.yaml`, creates/updates Blocks and Variables in Prefect, then exits (exit code 0 = success).
-3. **worker** — Waits for bootstrap to finish, then runs `docker/deploy.py`, which auto-discovers every pipeline under `pipelines/` and serves a deployment for each, polling for scheduled or manual runs.
+2. **bootstrap** — One-shot: runs `pangolin bootstrap`, which reads `docker/prefect_manifest.yaml`, creates/updates Blocks and Variables in Prefect, then exits (exit code 0 = success).
+3. **worker** — Waits for bootstrap to finish, then runs `pangolin deploy`, which auto-discovers every pipeline under `pipelines/` and serves a deployment for each, polling for scheduled or manual runs.
 4. **caddy** — Lightweight reverse proxy. Exposes the UI on `localhost:8080` and `<PROJECT_NAME>.localhost:8080` without any `/etc/hosts` edits (modern browsers resolve `*.localhost` to `127.0.0.1` automatically).
+
+`pangolin deploy` and `pangolin bootstrap` are CLI commands shipped by the library itself (they replaced the old copied-into-every-project `docker/deploy.py` / `docker/bootstrap_prefect.py` scripts) — the project's `docker/Dockerfile` installs `pangolin` as a real package, so both are just on `PATH` inside the container.
 
 ---
 
@@ -76,7 +79,6 @@ Browser ──► http://localhost:8080
 ```powershell
 Copy-Item docker\.env.docker.example docker\.env.docker
 # edit docker\.env.docker if needed — defaults work out of the box
-git checkout develop          # or whichever branch you want baked in
 .\make.ps1 build              # builds the image (~2 min first time)
 .\make.ps1 up                 # starts all 4 containers
 .\make.ps1 logs               # follow logs (Ctrl+C to stop tailing)
@@ -86,7 +88,6 @@ git checkout develop          # or whichever branch you want baked in
 
 ```bash
 cp docker/.env.docker.example docker/.env.docker
-git checkout develop
 make build
 make up
 make logs
@@ -94,9 +95,9 @@ make logs
 
 Open the UI at:
 - http://localhost:8080
-- http://pangolin.localhost:8080
+- http://pangolin.localhost:8080 (or `http://<PROJECT_NAME>.localhost:8080` if you changed `PROJECT_NAME` in `docker/.env.docker`)
 
-Go to **Deployments → Full Processing Pipeline / pangolin-daily → Quick Run** to trigger the pipeline manually.
+Go to **Deployments → Example Pipeline / pangolin-example-pipeline → Quick Run** to trigger the pipeline manually (the deployment name matches whatever pipeline(s) you have under `pipelines/`).
 
 ---
 
@@ -105,10 +106,9 @@ Go to **Deployments → Full Processing Pipeline / pangolin-daily → Quick Run*
 1. **On your machine** — build and push the image to a registry (e.g. GitHub Container Registry, Docker Hub, Azure ACR):
 
 ```powershell
-git checkout main
 .\make.ps1 build
-docker tag pangolin:main ghcr.io/your-org/pangolin:main
-docker push ghcr.io/your-org/pangolin:main
+docker tag pangolin:main ghcr.io/your-org/my-project:main
+docker push ghcr.io/your-org/my-project:main
 ```
 
 2. **On the server** — copy only these three files (no need for the whole repo):

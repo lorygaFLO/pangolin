@@ -1,25 +1,19 @@
 # Pipeline Configuration
 
-This page explains how pipelines are structured, how the default pipeline is assembled in `pipelines/full_processing.py`, and how to add, remove, or reorder stages — or add a whole new pipeline.
+This page explains how pipelines are structured, how the example pipeline is assembled in `pipelines/example_pipeline.py` (scaffolded by `pangolin init`), and how to add, remove, or reorder stages — or add a whole new pipeline.
 
 ---
 
 ## Pipelines Are Auto-Discovered
 
-Every file in `pipelines/` (except ones prefixed with `_`) is a **self-contained pipeline**: it can define as many internal `@flow`-decorated subflow steps as it needs, but must expose a module-level `PIPELINE = <flow>` pointing at the flow to run/deploy. `pipelines/__init__.py` scans the folder at import time and builds a `PIPELINES: dict[str, Flow]` registry — used by the `pangolin` CLI, `main.py`, and `docker/deploy.py` (Prefect deployments).
+Every file in your project's `pipelines/` (except ones prefixed with `_`) is a **self-contained pipeline**: it can define as many internal `@flow`-decorated subflow steps as it needs, but must expose a module-level `PIPELINE = <flow>` pointing at the flow to run/deploy. `pipelines/__init__.py` scans the folder at import time and builds a `PIPELINES: dict[str, Flow]` registry — used by every pipeline-related `pangolin` CLI command.
 
 ```bash
 pangolin list                     # list all discovered pipelines and their steps
 pangolin run <name>               # run one by name
-pangolin run                      # runs the default pipeline (full_processing)
+pangolin run                      # runs the default pipeline (example_pipeline, or the only one)
 pangolin step <name> <step>       # run a single step in isolation (see below)
-
-# main.py equivalents (repo development):
-python main.py --list-pipelines
-python main.py --pipeline <name>
-python main.py --generate         # shorthand for --pipeline generate_test_data
-python main.py --pipeline <name> --list-steps
-python main.py --pipeline <name> --step <step>
+pangolin deploy                   # serve every pipeline as a Prefect deployment
 ```
 
 To add a brand-new pipeline: drop a new file in `pipelines/`, define its flow(s), and set `PIPELINE = <your_flow>` — no other registration is needed. It automatically gets its own Prefect deployment (see [[Docker Deployment]]).
@@ -29,37 +23,24 @@ To add a brand-new pipeline: drop a new file in `pipelines/`, define its flow(s)
 
 ---
 
-## How the Default Pipeline Works
+## How the Example Pipeline Works
 
-The default pipeline is defined in `pipelines/full_processing.py` using **Prefect flows**. The structure is **fully configurable** — you choose how many steps to include and in what order. It chains the following subflows as an example:
+The example pipeline is defined in `pipelines/example_pipeline.py` using **Prefect flows**. The structure is **fully configurable** — you choose how many steps to include and in what order. It chains the following subflows as an example:
 
 ```python
-@flow(name="Full Processing Pipeline")
-def data_pipeline(restore_from: Optional[str] = None, clear_input: bool = False):
+@flow(name="Example Pipeline")
+def example_pipeline():
     logger = get_run_logger()
     CTX = RunContext()
 
-    # Either restore from a previous backup, or backup current input
-    if restore_from:
-        s_init = restore_flow(CTX, restore_from=restore_from, return_state=True)
-    else:
-        s_init = backup_flow(CTX, return_state=True)
-
+    s_init = backup_flow(CTX, return_state=True)
     s0 = raw_validation_flow(CTX, return_state=True, wait_for=[s_init])
-    s1 = raw_dispatch_flow(CTX, return_state=True, wait_for=[s0])
-    s2 = transform_flow(CTX, return_state=True, wait_for=[s1])
-    s3 = validation_flow(CTX, return_state=True, wait_for=[s2])
-    s4 = cross_validation_flow(CTX, return_state=True, wait_for=[s3])
-    s5 = final_dispatch_flow(CTX, return_state=True, wait_for=[s4])
-
-    if clear_input and not restore_from:
-        clear_input_flow(CTX, wait_for=[s5])
+    s1 = transform_flow(CTX, return_state=True, wait_for=[s0])
+    s2 = audit_flow(CTX, return_state=True, wait_for=[s1])
+    delivery_flow(CTX, return_state=True, wait_for=[s2])
 ```
 
-| Parameter | Description |
-|-----------|-------------|
-| `restore_from` | If set (e.g. `"20260324_185705"`), restores files from that backup run instead of backing up fresh input. See [[#BackupRestore]] below. |
-| `clear_input` | If `True`, deletes all files from `data/input/` after the pipeline completes (only when not restoring). |
+The bundled `BackupRestore` processor also supports restoring from a previous backup instead of backing up fresh input, and clearing `data/input/` after a successful run — the example pipeline above doesn't expose these as flow parameters, but you can add them the same way the processor supports them (`backup.restore(run_id)` / `backup.clear_input_folder()`, see [[Creating a New Processor]] for the `BackupRestore` API, or just add `restore_from`/`clear_input` parameters to your own `@flow` the way you would any Prefect flow).
 
 Each subflow:
 1. Creates a **Processor** instance (`Validator`, `DataTransformer`, `FileDispatcher`, or `BackupRestore`)
@@ -71,18 +52,18 @@ Each subflow:
 
 ## Anatomy of a Subflow
 
-Here is a dissected example — step 2 (Transformation):
+Here is a dissected example — step 1 (Transform):
 
 ```python
-@flow(name="2 - Data Transformation")
+@flow(name="1 - Transform")
 def transform_flow(CTX):           # ← receives RunContext from the parent flow
     S = get_settings()
     transformer = DataTransformer(
         CTX,                                  # 1. RunContext
-        name="2_transform",                   # 2. Step name — must match a data_structure.yaml node with '_registry'
+        name="1_transform",                   # 2. Step name — must match a data_structure.yaml node with '_registry'
         report_folder=S.REPORTS_FOLDER_NAME,  # 3. Where reports go
-        input_folder="staging.1_dispatcher",  # 4. Input (dot-notation)
-        output_folder="staging.2_transform"   # 5. Output (dot-notation)
+        input_folder="staging.0_validator",   # 4. Input (dot-notation)
+        output_folder="staging.1_transform"   # 5. Output (dot-notation)
     )
     transformer.execute()
 ```
@@ -103,10 +84,10 @@ A registry can also come from another source (hand-written dict, database, API, 
 ```python
 transformer = DataTransformer(
     CTX,
-    name="2_transform",
+    name="1_transform",
     report_folder=S.REPORTS_FOLDER_NAME,
-    input_folder="staging.1_dispatcher",
-    output_folder="staging.2_transform",
+    input_folder="staging.0_validator",
+    output_folder="staging.1_transform",
     registry={  # ← in-memory registry, overrides data_structure.yaml
         "*sales*": {
             "transforms": [
@@ -122,8 +103,8 @@ transformer = DataTransformer(
 
 Input and output folders use **dot-notation** to navigate the `data_structure.yaml` tree:
 
-- `"staging.1_dispatcher"` → `data/staging/<RUN_ID>/1_dispatcher/`
-- `"staging.2_transform"` → `data/staging/<RUN_ID>/2_transform/`
+- `"staging.0_validator"` → `data/staging/<RUN_ID>/0_validator/`
+- `"staging.1_transform"` → `data/staging/<RUN_ID>/1_transform/`
 - `S.INPUT_FOLDER_NAME` → `"input"` → `data/input/`
 - `S.DELIVERY_FOLDER_NAME` → `"delivery"` → `data/delivery/<RUN_ID>/`
 
@@ -135,10 +116,12 @@ See [[Data Structure & DataFacility]] for the complete path resolution rules.
 
 | Processor | Class | Used For | Registry Format |
 |-----------|-------|----------|-----------------|
-| **Validator** | `engine.processors.DataValidator.Validator` | Running validation rules on each file | `pattern → {validators: {func_name: params}}` |
-| **Transformer** | `engine.processors.DataTranformer.DataTransformer` | Applying ordered transformations | `pattern → {transforms: [{name, function, params, order}]}` |
-| **Dispatcher** | `engine.processors.FileDispatcher.FileDispatcher` | Routing files into subfolders | `pattern → "target_folder"` |
-| **BackupRestore** | `engine.processors.BackupRestore.BackupRestore` | Backup/restore input files | No registry — uses input/output folders directly |
+| **Validator** | `pangolin.engine.processors.DataValidator.Validator` | Running validation rules on each file | `pattern → {validators: {func_name: params}}` |
+| **Transformer** | `pangolin.engine.processors.DataTransformer.DataTransformer` | Applying ordered transformations | `pattern → {transforms: [{name, function, params, order}]}` |
+| **Dispatcher** | `pangolin.engine.processors.FileDispatcher.FileDispatcher` | Routing files into subfolders | `pattern → "target_folder"` |
+| **BackupRestore** | `pangolin.engine.processors.BackupRestore.BackupRestore` | Backup/restore input files | No registry — uses input/output folders directly |
+
+A custom processor type (like the `AuditProcessor` in the example project's `custom/processors/`) can implement whatever registry format it wants — see [[Creating a New Processor]].
 
 See [[Registry Reference]] for detailed YAML formats.
 
@@ -169,23 +152,23 @@ Add the staging folder under `staging` — `_pattern_matching: true` declares th
 ```yaml
 staging:
   # ... existing entries ...
-  2b_custom_validation:
+  1b_custom_validation:
     _pattern_matching: true
-    _registry: "config/registries/2b_custom_validation.yaml"
+    _registry: "config/registries/1b_custom_validation.yaml"
 ```
 
-### 3. Define the Subflow in `pipelines/full_processing.py`
+### 3. Define the Subflow in `pipelines/example_pipeline.py`
 
 ```python
-@flow(name="2b - Custom Validation")
+@flow(name="1b - Custom Validation")
 def custom_validation_flow(CTX):    # ← receives RunContext
     S = get_settings()
     validator = Validator(
         CTX,
-        name="2b_custom_validation",   # registry resolved from data_structure.yaml (_registry)
+        name="1b_custom_validation",   # registry resolved from data_structure.yaml (_registry)
         report_folder=S.REPORTS_FOLDER_NAME,
-        input_folder="staging.2_transform",
-        output_folder="staging.2b_custom_validation"
+        input_folder="staging.1_transform",
+        output_folder="staging.1b_custom_validation"
     )
     validator.execute()
 ```
@@ -195,11 +178,10 @@ def custom_validation_flow(CTX):    # ← receives RunContext
 Insert it in the correct order with `wait_for` dependencies:
 
 ```python
-    s2 = transform_flow(CTX, return_state=True, wait_for=[s1])
-    s2b = custom_validation_flow(CTX, return_state=True, wait_for=[s2])  # ← new
-    s3 = validation_flow(CTX, return_state=True, wait_for=[s2b])         # ← updated
-    s4 = cross_validation_flow(CTX, return_state=True, wait_for=[s3])
-    s5 = final_dispatch_flow(CTX, return_state=True, wait_for=[s4])
+    s1 = transform_flow(CTX, return_state=True, wait_for=[s0])
+    s1b = custom_validation_flow(CTX, return_state=True, wait_for=[s1])  # ← new
+    s2 = audit_flow(CTX, return_state=True, wait_for=[s1b])              # ← updated
+    delivery_flow(CTX, return_state=True, wait_for=[s2])
 ```
 
 > [!important]
@@ -241,9 +223,9 @@ The `FileDispatcher` has an extra parameter:
 ```python
 dispatcher = FileDispatcher(
     CTX,
-    name="5_dispatcher",
+    name="3_dispatcher",
     report_folder=S.REPORTS_FOLDER_NAME,
-    input_folder="staging.4_cross_validation",
+    input_folder="staging.2_audit",
     output_folder=S.DELIVERY_FOLDER_NAME,
     rm_from_input_folder=True   # ← moves files instead of copying
 )
@@ -256,7 +238,7 @@ dispatcher = FileDispatcher(
 
 ## Deployment Config Per Pipeline
 
-Each pipeline module may optionally declare how `docker/deploy.py` should deploy it:
+Each pipeline module may optionally declare how `pangolin deploy` should deploy it:
 
 ```python
 DEPLOYMENT_NAME = "pangolin-daily"      # optional, defaults to "pangolin-<module_name>"
@@ -265,7 +247,7 @@ if os.getenv("PANGOLIN_CRON"):
     DEPLOYMENT_KWARGS["cron"] = os.getenv("PANGOLIN_CRON")
 ```
 
-`extra_tags` is a special key inside `DEPLOYMENT_KWARGS`, merged into the deployment's tag list (e.g. `generate_test_data.py` uses it to add a `"test-data"` tag). Both attributes are optional — without them, `deploy.py` falls back to `pangolin-<module_name>` with no schedule.
+`extra_tags` is a special key inside `DEPLOYMENT_KWARGS`, merged into the deployment's tag list. Both attributes are optional — without them, `pangolin deploy` falls back to `pangolin-<module_name>` (e.g. `example_pipeline` → `pangolin-example-pipeline`) with no schedule.
 
 ---
 
@@ -278,10 +260,11 @@ Every subflow is a plain function that accepts a `RunContext` — you don't need
 pangolin list
 
 # Run a single step in isolation
-pangolin step full_processing transform_flow
+pangolin step example_pipeline transform_flow
 
-# Steps that take extra arguments (e.g. restore_flow's run_id) forward them positionally
-pangolin step full_processing restore_flow 20260324_185705
+# Steps that take extra arguments forward them positionally, e.g. a subflow
+# that wraps BackupRestore.restore(run_id):
+pangolin step example_pipeline restore_flow 20260324_185705
 ```
 
 Steps are **auto-discovered** by inspecting the pipeline module for `Flow` objects (excluding the one assigned to `PIPELINE`) — so nothing needs to be kept in sync by hand when you add, rename, or remove a subflow.
@@ -302,18 +285,18 @@ Run the pipeline (or just the steps you need) once with `DEBUG=True` to populate
 
 ### Configuring the VS Code Debugger
 
-`.vscode/launch.json` ships with a template configuration for this:
+`pangolin init` doesn't scaffold a `.vscode/launch.json` (editor config is a personal/project choice, not something the library should impose). Add one yourself with a config like this:
 
 ```jsonc
 {
     // Template: duplicate me and edit "args" (and "name") to debug a
     // different step. Run `pangolin list` to see valid step names.
     // Equivalent CLI: pangolin step <pipeline> <step> [args...]
-    "name": "Python: Debug Step - full_processing/transform_flow",
+    "name": "Python: Debug Step - example_pipeline/transform_flow",
     "type": "debugpy",
     "request": "launch",
     "module": "pangolin.cli",
-    "args": ["step", "full_processing", "transform_flow"],
+    "args": ["step", "example_pipeline", "transform_flow"],
     "console": "integratedTerminal",
     "justMyCode": false,
     "env": {
@@ -325,7 +308,7 @@ Run the pipeline (or just the steps you need) once with `DEBUG=True` to populate
 To debug a different step:
 
 1. Duplicate the whole block inside `configurations` in `.vscode/launch.json`.
-2. Change `"name"` to something recognizable (e.g. `"...  - full_processing/raw_dispatch_flow"`).
+2. Change `"name"` to something recognizable (e.g. `"...  - example_pipeline/audit_flow"`).
 3. Change the step name in `"args"` to the one you want (see `pangolin list` for valid names), and the pipeline name if it's a different pipeline.
 4. Pick it from the Run and Debug dropdown (or `F5`) and set breakpoints anywhere — including inside `pangolin/engine/processors/*`, since `justMyCode` is `false`.
 

@@ -29,7 +29,7 @@ Areas that likely need attention:
 
 ## 3. Enhanced Example — Unified Dataset Pipeline
 
-The clearest way to demonstrate that Pangolin is a battle-ready template is a richer end-to-end example. Add a second pipeline shape that consolidates multiple input files into one unified dataset and then builds something meaningful on top: demand forecasting, a BI-ready star schema, an anomaly detection report. The goal is to give anyone who forks the repo a concrete, production-shaped starting point they can adapt rather than build from scratch. 
+The clearest way to demonstrate that Pangolin is a battle-ready foundation is a richer end-to-end example. Add a second pipeline shape (as an alternative or addition to the `pangolin init` scaffold's `example_pipeline.py`) that consolidates multiple input files into one unified dataset and then builds something meaningful on top: demand forecasting, a BI-ready star schema, an anomaly detection report. The goal is to give anyone running `pangolin init` a concrete, production-shaped starting point they can adapt rather than build from scratch.
 
 ---
 

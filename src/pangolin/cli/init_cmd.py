@@ -37,7 +37,7 @@ EXAMPLE_INPUT_DIR = "example_input"
 
 # Top-level template entries only copied with --dockerization (checked
 # against the on-disk template name, before RENAMED_FILES is applied).
-DOCKER_ENTRIES = {"docker", "docker-compose.yml", "Makefile", "template.dockerignore"}
+DOCKER_ENTRIES = {"docker", "docker-compose.yml", "Makefile", "make.ps1", "template.dockerignore"}
 
 
 def _template_root() -> Path:

@@ -79,7 +79,7 @@ def rename_columns(
 ### 2. Reference It in a Registry YAML
 
 ```yaml
-# config/registries/2_transform_registry.yaml
+# config/registries/1_transform.yaml
 "*_sales_*":
   transforms:
     - name: "rename_columns"
@@ -116,8 +116,15 @@ So each key in `params` must match a parameter name in your function signature.
 | `strings_strip_whitespace` | `columns`, `strip_whitespace` | Strips leading/trailing whitespace from string columns |
 | `case_transform` | `columns`, `to_uppercase`, `to_lowercase` | Converts string columns to upper or lower case |
 | `multiply_columns` | `columns_to_multiply`, `output_column` | Creates a new column as the product of multiple columns |
+| `sum_columns` | `columns_to_sum`, `output_column` | Creates a new column as the sum of multiple columns |
+| `subtract_columns` | `columns_to_subtract`, `output_column` | Creates a new column as the difference of multiple columns |
+| `divide_columns` | `columns_to_divide`, `output_column` | Creates a new column as the quotient of multiple columns |
+| `drop_columns` | `columns` | Drops the listed columns |
 | `save_inventory_snapshot` | `snapshot_file`, `product_id_column` | Appends distinct product IDs to a versioned snapshot file |
 | `blank` | (none) | No-op transformer. Returns the DataFrame unchanged. |
+
+> [!note]
+> Check the exact parameter names in `pangolin/utils/transformers.py` before using one — this table is a quick reference, not the source of truth.
 
 ---
 

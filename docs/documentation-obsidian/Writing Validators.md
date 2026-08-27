@@ -76,7 +76,7 @@ def no_duplicate_rows(df, messages, params=None):
 ### 2. Reference It in a Registry YAML
 
 ```yaml
-# config/registries/3_validation.yaml
+# config/registries/0_raw_validation.yaml
 "*sales*":
   validators:
     no_duplicate_rows:

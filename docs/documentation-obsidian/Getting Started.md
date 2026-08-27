@@ -1,25 +1,42 @@
 # Getting Started
 
-This guide walks you through setting up Pangolin from scratch and running the pipeline for the first time.
+This guide walks you through installing Pangolin, scaffolding a project, and running the example pipeline for the first time.
 
 ---
 
 ## Quickstart — Use Pangolin as a Library
 
-Pangolin is an installable package with a CLI. To start a brand-new project you don't need to clone this repo:
+Pangolin is an installable package with a CLI. To start a brand-new project you don't need to clone this repo — a project lives in its **own** folder/repo, separate from the pangolin library:
 
 ```bash
-pip install <path-to-pangolin-repo-or-package>
-mkdir my_project && cd my_project
-pangolin init                     # scaffolds config/, custom/, pipelines/, data/ (+ .env, .gitignore)
-pangolin run example_pipeline     # runs the bundled, fully working example
+pip install pangolin           # or, until published: pip install git+https://github.com/lorygaFLO/pangolin.git
+mkdir my-project && cd my-project
+pangolin init                     # scaffolds config/, custom/, pipelines/, data/, README.md
+pangolin run                      # runs the bundled, fully working example pipeline
 ```
 
-`pangolin init` generates a complete example: an example pipeline (backup → validation → transform → custom audit processor → delivery), custom validator/transformer stubs, filled-in registries, and a sample CSV in `data/input/`. The generated `.gitignore` keeps `data/` and `.env` out of version control.
+`pangolin init` generates a complete example: an example pipeline (backup → raw validation → transform → custom audit processor → delivery dispatch), custom validator/transformer stubs, filled-in registries, and a sample CSV in `data/input/`. It also writes a **`README.md`** in the new project listing the mandatory setup steps and a settings reference table generated live from your installed pangolin version — read that first, it's the authoritative reference for whatever version you have installed (this guide covers the concepts, that file covers the exact fields).
 
-Other commands: `pangolin list`, `pangolin step <pipeline> <step> [args...]`, `pangolin restore <run_id>`, `pangolin version`.
+Pass `--dockerization` (or `-d`) to also scaffold the Docker deployment stack:
 
-The rest of this guide covers working on the **pangolin repository itself** (engine development).
+```bash
+pangolin init my-project -d
+```
+
+See [[Docker Deployment]] for that flow.
+
+Other commands:
+
+```bash
+pangolin list                      # discovered pipelines + their debuggable steps
+pangolin step <pipeline> <step>    # run a single step in isolation (debugging)
+pangolin restore <run_id>          # restore input from a previous backup
+pangolin deploy                    # serve every pipeline as a Prefect deployment
+pangolin bootstrap                 # apply docker/prefect_manifest.yaml to a Prefect server
+pangolin --version                 # show the installed pangolin version
+```
+
+The rest of this guide covers the concepts in more depth. The last section covers working on the **pangolin library itself** (this repository).
 
 ---
 
@@ -30,68 +47,22 @@ The rest of this guide covers working on the **pangolin repository itself** (eng
 
 ---
 
-## 1. Clone the Repository
+## Configuring `.env`
 
-```bash
-git clone <repo-url> pangolin
-cd pangolin
-```
-
----
-
-## 2. Create a Virtual Environment
-
-```bash
-# Windows (PowerShell)
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-
-# Linux / macOS
-python -m venv .venv
-source .venv/bin/activate
-```
-
----
-
-## 3. Install Dependencies
-
-```bash
-pip install -e .
-```
-
-This installs Pangolin in editable mode along with all dependencies declared in `pyproject.toml` (Prefect, Polars, Pandas, PyYAML, fsspec, etc.).
-
----
-
-## 4. Configure the Environment
-
-Copy the example environment file and edit it:
-
-```bash
-cp example.env .env
-```
-
-Open `.env` and set the required values:
+`pangolin init` writes a starter `.env`. Open it and set the values for your machine:
 
 ```ini
 # Backend engine (only "polars" is supported)
 BACKEND_ENGINE=polars
 
-# Filesystem protocol ("file" for local, "s3", "gcs", "abfs" for cloud)
+# Filesystem protocol ("file" for local, "s3", "gcs", "az" for cloud)
 FS_PROTOCOL=file
 
-# Base path to the repository root
-BASEPATH=C:\path\to\pangolin
+# Base path to your project
+BASEPATH=C:\path\to\my-project
 
-# Path to the data folder (absolute or relative to BASEPATH)
-DATAPATH=C:\path\to\pangolin\data
-
-# Folder names (these match the top-level keys in data_structure.yaml)
-INPUT_FOLDER_NAME=input
-STAGING_FOLDER_NAME=staging
-DELIVERY_FOLDER_NAME=delivery
-REPORTS_FOLDER_NAME=reports
-BACKUP_FOLDER_NAME=backup
+# Path to the data folder (absolute, or relative to BASEPATH)
+DATAPATH=C:\path\to\my-project\data
 
 # Set to True to skip report generation
 DISABLE_REPORTS=False
@@ -102,6 +73,8 @@ CSV_DELIMITER=;
 # Output format for processed files: "csv" or "parquet"
 OUTPUT_FORMAT=parquet
 ```
+
+Folder-name settings (`INPUT_FOLDER_NAME`, `STAGING_FOLDER_NAME`, ...) are **not fixed** — every project declares its own by adding a `_settings_key` to a top-level node in `config/data_structure.yaml`. The example project ships with `INPUT_FOLDER_NAME`, `STAGING_FOLDER_NAME`, `DELIVERY_FOLDER_NAME`, `REPORTS_FOLDER_NAME`, `BACKUP_FOLDER_NAME`. Your generated project's `README.md` lists the exact set for your `data_structure.yaml`, and the full field list (with defaults and descriptions) for every core setting. See [[Data Structure & DataFacility]] for how `_settings_key` works.
 
 > [!tip]
 > On Linux/macOS, use forward slashes for paths. On Windows, both `\` and `/` work.
@@ -126,186 +99,74 @@ FS_OPTIONS={"key": "AKIAIOSFODNN7EXAMPLE", "secret": "wJalrXUtnFEMI/K7MDENG/bPxR
 > | `az` (Azure Blob) | `pip install adlfs` |
 > | `gcs` (Google Cloud Storage) | `pip install gcsfs` |
 >
-> For **Docker deployments**, add the package to `docker/requirements-docker.txt` and rebuild the image (`make build` / `.\make.ps1 build`).
+> For **Docker deployments**, add a `RUN pip install <package>` line to your project's `docker/Dockerfile` (after the `pip install "pangolin @ ..."` line) and rebuild the image.
 
 ---
 
-## 4b. Adapting `settings.py` to Your Own Project
+## Settings: What's Fixed vs. What's Yours
 
-The `SETTINGS` class in `config/settings.py` uses **`pydantic-settings`** to automatically load and validate values from `.env` and environment variables. You do **not** need to modify `settings.py` for normal usage — just change `.env`. However, if you are building your own project on top of Pangolin, here is what you can customize:
+`SETTINGS` (in `pangolin.config.settings`, part of the library) is a `pydantic-settings` `BaseSettings` class. It has two kinds of fields:
 
-### Adding a New Setting
+- **Core fields** — `BASEPATH`, `DATAPATH`, `BACKEND_ENGINE`, `CSV_DELIMITER`, `OUTPUT_FORMAT`, `DEBUG`, `FS_PROTOCOL`, `FS_OPTIONS`, etc. Fixed, declared once in the library, the same across every project. Your project's generated `README.md` has the full table.
+- **Folder fields** — `INPUT_FOLDER_NAME`, `STAGING_FOLDER_NAME`, and whatever else you declare. **Not fixed.** They're added dynamically at runtime, one per top-level node in *your* `config/data_structure.yaml` that has a `_settings_key`. Two projects can have entirely different folder settings.
 
-1. **Add the variable to your `.env`:**
-   ```ini
-   MY_CUSTOM_OPTION=some_value
-   ```
+You do **not** edit `settings.py` for normal usage — it lives inside the installed `pangolin` package now, not in your project. To add a new *folder*, add a `_settings_key` to `data_structure.yaml` (see [[Data Structure & DataFacility]]). To read a setting that isn't a folder and isn't one of pangolin's core fields — a project-specific option your own code needs — read it directly with `os.getenv(...)` (or your own small `pydantic-settings` class) from `custom/`, rather than extending the library's `SETTINGS`. If you find yourself wanting the same core setting across many projects, that's a case for contributing it to the library itself (see the last section of this guide).
 
-2. **Add a field to the `SETTINGS` class** in `config/settings.py`:
-   ```python
-   class SETTINGS(BaseSettings):
-       # ... existing fields ...
-       
-       # Simple string with a default
-       MY_CUSTOM_OPTION: str = "default_value"
-       
-       # Required field (no default — raises if missing from .env)
-       MY_REQUIRED_SETTING: int
-       
-       # Optional field
-       MY_OPTIONAL_SETTING: Optional[str] = None
-       
-       # Boolean (pydantic handles "true"/"false"/"1"/"0" automatically)
-       ENABLE_FEATURE_X: bool = False
-   ```
-
-   > [!important]
-   > The field name **must match** the env variable name exactly (case-sensitive).
-
-3. **Access it anywhere in your code:**
-   ```python
-   from pangolin.config.settings import get_settings
-   S = get_settings()
-   print(S.MY_CUSTOM_OPTION)
-   ```
-
-### Supported Types
-
-Pydantic automatically coerces `.env` strings into the declared type:
-
-| Field Type | `.env` Value | Python Result |
-|------------|-------------|---------------|
-| `str` | `MY_VAR=hello` | `"hello"` |
-| `int` | `MY_VAR=42` | `42` |
-| `bool` | `MY_VAR=true` | `True` (accepts `1`, `true`, `yes`, `on`) |
-| `float` | `MY_VAR=3.14` | `3.14` |
-| `Path` | `MY_VAR=C:\data` | `Path("C:/data")` |
-| `dict` | `MY_VAR={"k": "v"}` | `{"k": "v"}` (parsed as JSON) |
-| `Optional[str]` | *(not set)* | `None` |
-
-### Adding Validation
-
-Use `@field_validator` to enforce constraints:
+Access settings anywhere in your code:
 
 ```python
-from pydantic import field_validator
-
-@field_validator("MY_CUSTOM_OPTION")
-@classmethod
-def _validate_my_option(cls, v: str) -> str:
-    if v not in ("option_a", "option_b"):
-        raise ValueError(f"Invalid MY_CUSTOM_OPTION: {v}")
-    return v
+from pangolin.config.settings import get_settings
+S = get_settings()
+print(S.BASEPATH, S.INPUT_FOLDER_NAME)
 ```
-
-### Adding a Derived / Computed Path
-
-Use `@computed_field` for values derived from other settings (not stored, recalculated on access):
-
-```python
-from pydantic import computed_field
-
-@computed_field
-@property
-def PATH_MY_THING(self) -> Path:
-    return self.DATAPATH / self.MY_CUSTOM_OPTION
-```
-
-### Changing Folder Names
-
-The `INPUT_FOLDER_NAME`, `STAGING_FOLDER_NAME`, etc. are logical folder names that match the `_settings_key` values in `data_structure.yaml`. If you rename them in `.env`, also update `data_structure.yaml` to match (see [[Data Structure & DataFacility]]).
-
-### Key Properties You Get for Free
-
-| Property            | Value               | Description                                                   |
-| ------------------- | ------------------- | ------------------------------------------------------------- |
-| `CTX.RUN_ID`        | `"20260324_185705"` | Unique timestamp for the current run — lives on `RunContext`, not `SETTINGS` |
-| `S.BASEPATH`        | `Path(...)`         | Absolute path to the project root                             |
-| `S.DATAPATH`        | `Path(...)`         | Absolute path to the data folder                              |
-| `S.BACKEND_ENGINE`  | `"polars"`          | The DataFrame backend (only `polars` supported)               |
-| `S.CSV_DELIMITER`   | `";"`               | Delimiter used for reading/writing CSV files                  |
-| `S.OUTPUT_FORMAT`   | `"parquet"`         | Output file format (`csv` or `parquet`)                       |
-| `S.FS_PROTOCOL`     | `"file"`            | Filesystem protocol for `fsspec`                              |
-| `S.FS_OPTIONS`      | `{}`                | Storage options for cloud protocols                           |
-| `S.DISABLE_REPORTS` | `False`             | Whether to skip report generation                             |
-| `S.PATH_REPORTS`    | `Path(...)`         | Computed: `DATAPATH / REPORTS_FOLDER_NAME`                    |
 
 > [!note]
-> `get_settings()` returns a **fresh instance** each time — it holds static config from `.env`. The `RUN_ID` is **not** part of `SETTINGS`; it belongs to `RunContext`, which is instantiated once in the main flow and passed down to every subflow and processor. This keeps per-run state separate from environment configuration.
+> `get_settings()` returns a **fresh instance** each time — it holds static config from `.env`. The `RUN_ID` is **not** part of `SETTINGS`; it belongs to `RunContext`, instantiated once per run in the main flow and passed down to every subflow and processor. This keeps per-run state separate from environment configuration.
+
+| Property | Example | Description |
+| --- | --- | --- |
+| `CTX.RUN_ID` | `"20260324_185705"` | Unique timestamp for the current run — lives on `RunContext` |
+| `S.BASEPATH` / `S.DATAPATH` | `Path(...)` | Absolute paths, resolved at startup |
+| `S.PATH_REPORTS` | `Path(...)` | Computed: `DATAPATH / REPORTS_FOLDER_NAME` |
 
 ---
 
-## 5. Prepare Input Data
+## Prepare Input Data
 
-The `data/` folder is **not part of the repository** — it is created automatically when you run the pipeline and is listed in `.gitignore`. The pipeline creates all subfolders it needs (`staging/`, `delivery/`, `reports/`) on the fly during execution.
+The `data/` folder is **not part of your project's repo** — `pangolin init` creates it on disk (git-ignored). The pipeline creates all subfolders it needs (`staging/`, `delivery/`, `reports/`) on the fly during execution.
 
-All you need to do is:
-
-1. **Create the `data/input/` folder** (if it doesn't exist yet)
-2. **Drop your CSV files** into `data/input/`
-
-File names must match the glob patterns in your registry files (e.g. `*sales*`, `*inventory*`). A typical naming convention includes the country prefix:
-
-```
-data/input/
-├── FR_sales_data_202601.csv
-├── US_sales_data_202601.csv
-├── FR_inventory_data_202601.csv
-└── US_inventory_data_202601.csv
-```
-
-The `data/static/mappings/product_mapping.csv` file is also required by the default pipeline (used by the `enrich_with_mapping` transformer).
+`pangolin init` already drops a sample CSV into `data/input/` so the example pipeline runs immediately. To add your own files, drop them into `data/input/` — file names must match the glob patterns in your registry files (e.g. `*sales*`).
 
 ### Quick Test with Generated Data
 
-If you don't have real data yet, use the built-in test data generator to populate `data/input/` and `data/static/` with realistic sample files. There are two ways to run it:
-
-**Command line:**
-```bash
-pangolin run generate_test_data
-# or: python main.py --generate
-```
-
-**Prefect UI:** trigger the **"Generate Test Data"** flow directly from the Prefect dashboard — no parameters required.
-
-Both methods call the same `generate_test_data()` Prefect flow, which produces:
-- **Sales CSV files** — multiple test cases (correct data, missing values, type errors, duplicates, out-of-range values, empty files)
-- **Inventory CSV files** — with daily/weekly stock snapshots
-- **Product mapping** — `product_mapping.csv` and `product_mapping.json` in `data/static/mappings/`
-
-> [!tip]
-> The generator uses your `.env` settings (paths, CSV delimiter), so make sure `.env` is configured before running it.
+The example project doesn't ship a synthetic-data generator by default (that was specific to an earlier example pipeline in this repo's history). If you need one, write a small pipeline under `pipelines/` that produces sample files into `data/input/` and register it like any other pipeline — see [[Pipeline Configuration]].
 
 ---
 
-## 6. Run the Pipeline
+## Run the Pipeline
 
 ```bash
 pangolin run
-# or: python main.py
 ```
 
-This launches the Prefect flow with the default pipeline configuration:
+This launches the Prefect flow for the example pipeline:
 
-1. **Raw Validation** — checks column presence, empty files, product ID validity
-2. **Dispatch** — routes files into `SALES/`, `INVENTORY/` subfolders
-3. **Transformation** — enriches with mappings, cleans strings, calculates fields
-4. **Post-Transform Validation** — verifies the schema after transformation
-5. **Cross-Validation** — checks null values, value ranges, data consistency
-6. **Final Dispatch** — delivers files into region folders (`FR/`, `US/`)
+1. **Backup** — copies current input to `backup/<RUN_ID>/`
+2. **Raw Validation** — checks column presence, empty files
+3. **Transform** — calculates fields, adds an ingestion timestamp
+4. **Audit** (custom processor) — counts nulls per file, demonstrates extending the engine beyond the three built-in processor types
+5. **Delivery Dispatch** — delivers files into `delivery/<RUN_ID>/`
 
 > [!tip]
-> The pipeline structure is fully configurable. You can add, remove, or reorder steps in `pipelines/full_processing.py`, or add a whole new pipeline under `pipelines/`. See [[Pipeline Configuration]] for details.
+> The pipeline structure is fully configurable. Add, remove, or reorder steps in `pipelines/example_pipeline.py`, or add a whole new pipeline under `pipelines/`. See [[Pipeline Configuration]] for details.
 
 ### Running via the Prefect UI (persistent server)
 
-`pangolin run` executes the flow once, directly, in the foreground. If you instead want to trigger runs from the **Prefect dashboard** (Quick Run, schedules, run history), you need a persistent Prefect server plus the deployments served — this requires **two terminals, both with the virtual environment activated**:
+`pangolin run` executes the flow once, directly, in the foreground. If you instead want to trigger runs from the **Prefect dashboard** (Quick Run, schedules, run history), you need a persistent Prefect server plus the deployments served — two terminals:
 
 **Terminal 1 — start the Prefect server**
 
-```powershell
-# Windows (PowerShell)
-.venv\Scripts\Activate.ps1
+```bash
 prefect server start
 ```
 
@@ -313,20 +174,18 @@ Leave this running. The dashboard is now available at `http://127.0.0.1:4200`.
 
 **Terminal 2 — serve the deployments**
 
-```powershell
-# Windows (PowerShell)
-.venv\Scripts\Activate.ps1
-$env:PREFECT_API_URL = "http://127.0.0.1:4200/api"
-python docker\deploy.py
+```bash
+export PREFECT_API_URL="http://127.0.0.1:4200/api"   # PowerShell: $env:PREFECT_API_URL = "..."
+pangolin deploy
 ```
 
 > [!important]
-> Without `PREFECT_API_URL` pointing at the server from Terminal 1, `deploy.py` spins up its own **temporary, throwaway** Prefect server instead of using the persistent one — your deployments won't show up in the dashboard from Terminal 1.
+> Without `PREFECT_API_URL` pointing at the server from Terminal 1, `pangolin deploy` spins up its own **temporary, throwaway** Prefect server instead of using the persistent one — your deployments won't show up in the dashboard from Terminal 1.
 
-`deploy.py` auto-discovers every pipeline under `pipelines/` and registers a deployment for each — by default **Full Processing Pipeline** and **Generate Test Data** — then polls for scheduled/manual runs. Trigger them from the dashboard (**Deployments → Quick Run**) or via CLI:
+`pangolin deploy` auto-discovers every pipeline under `pipelines/` and registers a deployment for each — by default **Example Pipeline** (`pangolin-example-pipeline`) — then polls for scheduled/manual runs. Trigger it from the dashboard (**Deployments → Quick Run**) or via CLI:
 
-```powershell
-prefect deployment run "Full Processing Pipeline/pangolin-daily"
+```bash
+prefect deployment run "Example Pipeline/pangolin-example-pipeline"
 ```
 
 ### Output
@@ -343,7 +202,7 @@ Where `<RUN_ID>` is the run timestamp (e.g. `20260324_185705`).
 
 ---
 
-## 7. Check Reports
+## Check Reports
 
 If any file fails validation or transformation, a plain-text report is written under `data/reports/<RUN_ID>/<step_name>/`. Each report lists all messages and pass/fail status per validator.
 
@@ -356,10 +215,34 @@ If any file fails validation or transformation, a plain-text report is written u
 | `Invalid BACKEND_ENGINE`             | `.env` missing or `BACKEND_ENGINE` not set to `polars`        | Check `.env`                                           |
 | `NoInputFilesError`                  | No files in `data/input/` or previous step produced no output | Check input folder or registry patterns                |
 | `AllFilesFailedError`                | Every file failed a step                                      | Check reports in `data/reports/<RUN_ID>/`              |
-| `FileNotFoundError: product_mapping` | Missing static mapping file                                   | Place `product_mapping.csv` in `data/static/mappings/` |
+| `No pipelines/ package found`        | `pangolin run`/`list`/`step` run outside a project root       | `cd` into the project folder (the one with `pipelines/`) |
 
 > [!tip]
 > Need to test or debug a single step in isolation (e.g. from the debugger) instead of the whole pipeline? See **Debugging a Single Step** in [[Pipeline Configuration]].
+
+---
+
+## Working on the Pangolin Library Itself (this repo)
+
+The sections above are for using pangolin as a dependency in your own project. To contribute to the library (`src/pangolin/`) instead:
+
+```bash
+git clone https://github.com/lorygaFLO/pangolin.git
+cd pangolin
+python -m venv .venv
+.venv\Scripts\Activate.ps1   # Linux/macOS: source .venv/bin/activate
+pip install -e .
+```
+
+This installs pangolin in **editable** mode — changes to `src/pangolin/**.py` are picked up immediately by anything using it, no reinstall needed (reinstall only when `pyproject.toml` itself changes: new dependency, new `[project.scripts]` entry, new top-level package). There is no runnable project in this repo — to exercise the engine end-to-end while developing, scaffold a throwaway project alongside it:
+
+```bash
+pangolin init ../pangolin-sandbox
+cd ../pangolin-sandbox
+pangolin run
+```
+
+Edit library code in `pangolin/`, re-run `pangolin run` from the sandbox — no reinstall in between.
 
 ---
 
