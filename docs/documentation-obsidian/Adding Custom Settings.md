@@ -105,6 +105,44 @@ class SETTINGS(_BaseSettings):
 
 ---
 
+## Sensitive Settings (Passwords, API Keys, DB Connection Strings)
+
+Everything above works for a sensitive value too — `DATABASE_URL: str` in `custom/settings.py` behaves exactly like `TRAINING_EPOCHS`. What changes is **where the actual value lives**, and that depends on how you're running:
+
+### Local (no Docker)
+
+Put it in `.env`, same as anything else:
+
+```ini
+DATABASE_URL=postgresql://user:pass@localhost:5432/mydb
+```
+
+`.env` is git-ignored by the `.gitignore` `pangolin init` scaffolds — never committed. That's the whole story for local dev; nothing extra to configure.
+
+### Docker / cloud (`pangolin init --dockerization`)
+
+`.env` doesn't travel with the image, and you don't want a real password baked into a committed file anyway. Use a Prefect **secret Block** in `docker/prefect_manifest.yaml` instead — see [[Docker Deployment]] for the full mechanism, in short:
+
+```yaml
+blocks:
+  - name: pangolin-database-url
+    type: secret
+    value: "${DATABASE_URL}"        # resolved from docker/.env.docker at bootstrap
+    expose_as_env: DATABASE_URL     # pangolin deploy exports it to os.environ under this name
+```
+
+1. Put the real value in `docker/.env.docker` (git-ignored, never committed — `docker/.env.docker.example` is the committed template).
+2. `pangolin bootstrap` reads the manifest, resolves `${DATABASE_URL}`, and stores it **encrypted** in Prefect's own database.
+3. `pangolin deploy` exports it into `os.environ` before your pipeline imports anything — your `custom/settings.py`'s `DATABASE_URL` field picks it up exactly like it would from `.env`, no extra code.
+4. From then on you can also edit the value straight from the Prefect UI (Blocks) — it survives image rebuilds, and `docker/.env.docker` is only needed again if the Block is ever wiped (e.g. `make clean`).
+
+This is the same mechanism the scaffolded `docker/prefect_manifest.yaml` already uses for `AZURE_STORAGE_CONNECTION_STRING` — copy that block, rename it, point `expose_as_env` at your own field name.
+
+> [!warning]
+> Never put a real secret value directly in `docker/prefect_manifest.yaml` (that file is meant to be committed) — always `${ENV_VAR}` or `null`, resolved from `docker/.env.docker` (git-ignored) or filled in later via the UI.
+
+---
+
 ## Sharing a Custom Setting Across Projects
 
 If the same custom setting keeps showing up in every project you build, that's a sign it might belong in the library itself instead of being re-declared per project — open an issue or contribute it to `pangolin.config.settings.SETTINGS` (this repo, not your project).

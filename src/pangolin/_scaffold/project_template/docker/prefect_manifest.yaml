@@ -34,8 +34,10 @@ variables:
     value: parquet
 
 blocks:
-  # Main settings block. Every key is exported as an env var by deploy.py
-  # before the SETTINGS class is imported, so Pydantic-Settings picks it up.
+  # Main settings block. Every key is exported as an env var by
+  # `pangolin deploy` before the SETTINGS class is imported, so
+  # Pydantic-Settings (including any fields you added in custom/settings.py,
+  # see the "Adding Custom Settings" doc) picks it up.
   - name: pangolin-settings
     type: json
     value:
@@ -46,8 +48,15 @@ blocks:
       DISABLE_REPORTS: "False"
 
   # Example secret block, populated from container env via .env.docker.
-  # `expose_as_env` makes deploy.py export the secret value into os.environ
-  # under that name before the flow imports anything.
+  # `expose_as_env` makes `pangolin deploy` export the secret value into
+  # os.environ under that name before the flow imports anything — same
+  # pattern for any sensitive custom/settings.py field, e.g. a Postgres URL:
+  #   - name: pangolin-database-url
+  #     type: secret
+  #     value: "${DATABASE_URL}"
+  #     expose_as_env: DATABASE_URL
+  # (with `DATABASE_URL: str` declared in custom/settings.py, and the real
+  # value only ever in docker/.env.docker, never committed)
   - name: pangolin-azure-conn
     type: secret
     value: "${AZURE_STORAGE_CONNECTION_STRING}"

@@ -194,7 +194,7 @@ This file is **safe to commit to git** — it contains no plaintext secrets, onl
 
 ## Secrets and `docker/.env.docker`
 
-`docker/.env.docker` is the only file that contains real secret values. It must **not** be committed to git (add it to `.gitignore`). Use `docker/.env.docker.example` as the template.
+`docker/.env.docker` is the only file that contains real secret values. It must **not** be committed to git (add it to `.gitignore`). Use `docker/.env.docker.example` as the template. This is also how you get a sensitive project-specific setting (a DB connection string, an API key) into a `custom/settings.py` field — see [[Adding Custom Settings]] for that walkthrough.
 
 Lifecycle of a secret (e.g. `AZURE_STORAGE_CONNECTION_STRING`):
 
