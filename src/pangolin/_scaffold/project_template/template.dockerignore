@@ -7,12 +7,10 @@ __pycache__
 .pytest_cache
 .mypy_cache
 .ruff_cache
-pangolin.egg-info
 data/
-docs/doumentation-obsidian
 .env
 .env.*
-!.env.docker.example
+!docker/.env.docker.example
 *.log
 .vscode
 .idea

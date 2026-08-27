@@ -1,46 +1,39 @@
-"""
-Auto-discovers every pipeline in pipelines/ (see pipelines/__init__.py) and
-registers + serves a Prefect deployment for each.
+"""Implementation of the `pangolin deploy` command.
+
+Auto-discovers every pipeline in the current project's pipelines/ package
+(see pangolin.cli._discovery) and registers + serves a Prefect deployment
+for each. Ported from the old docker/deploy.py script so it stays in sync
+with the library instead of being copied into every scaffolded project.
 
 - Without a cron: the deployment is only triggered manually from the UI (Quick Run).
-- To add a daily schedule to the full_processing pipeline, set PANGOLIN_CRON, e.g.:
-    PANGOLIN_CRON="0 6 * * *"  ->  every day at 06:00 UTC
-  (each pipeline module may read its own env vars to build DEPLOYMENT_KWARGS).
-
-The full_processing flow parameters (restore_from, clear_input) are
-automatically exposed in the Prefect UI under "Custom Run" → "Parameters":
-  - restore_from: leave empty for normal run, or paste a backup run_id
-  - clear_input:  toggle on to empty input folder after backup
+- To add a daily schedule to a pipeline, have it read its own env var (e.g.
+  PANGOLIN_CRON) to build its module-level DEPLOYMENT_KWARGS.
 """
 
+from __future__ import annotations
+
+import importlib
 import logging
 import os
-import sys
 import time
 from pathlib import Path
 
-# Ensure the project root (parent of this file's directory) is on sys.path
-# so that `main`, `engine`, `config`, etc. are importable regardless of
-# where this script is invoked from.
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import typer
+
+from pangolin.cli._discovery import load_pipelines
 
 LOG = logging.getLogger("pangolin.deploy")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 
-# ---------------------------------------------------------------------------
-# Settings hydration (must run BEFORE `from pipelines import PIPELINES`,
-# because main.py does `from config.settings import *` at import time).
-# ---------------------------------------------------------------------------
-
-def _hydrate_from_prefect() -> None:
+def _hydrate_from_prefect(manifest_path: Path, settings_block: str) -> None:
     """Pull Prefect Blocks and export them to os.environ.
 
-    - JSON block named `pangolin-settings`: every key/value becomes an env var.
+    - JSON block named `settings_block`: every key/value becomes an env var.
     - Every Secret block whose manifest entry has `expose_as_env: <NAME>` is
       exported under that env var name.
     """
     import yaml
+
     try:
         from prefect.blocks.system import JSON, Secret
     except ImportError:
@@ -49,22 +42,16 @@ def _hydrate_from_prefect() -> None:
         except ImportError:
             from prefect.blocks.system import Secret
             from prefect.blocks.core import Block
+
             class JSON(Block):
                 _block_type_slug = "json"
                 value: dict = {}
-
-    manifest_path = Path(os.getenv("PANGOLIN_MANIFEST", "docker/prefect_manifest.yaml"))
-    if not manifest_path.exists():
-        alt = Path(__file__).resolve().parent / "prefect_manifest.yaml"
-        if alt.exists():
-            manifest_path = alt
-
-    settings_block = os.getenv("PANGOLIN_SETTINGS_BLOCK", "pangolin-settings")
 
     # Wait briefly for the API (worker may start the same second as the server)
     api_url = os.getenv("PREFECT_API_URL")
     if api_url:
         import httpx
+
         deadline = time.monotonic() + 60.0
         while time.monotonic() < deadline:
             try:
@@ -89,13 +76,8 @@ def _hydrate_from_prefect() -> None:
     except Exception as exc:
         LOG.warning("Could not load JSON block %r: %s", settings_block, exc)
 
-    # 2) Prefect Variables whose names match SETTINGS fields (UPPER_CASE names)
-    #    Only variables with ALL-CAPS names are treated as settings env vars.
-    try:
-        from prefect.variables import Variable
-        all_vars = Variable.get.__func__  # existence check only
-    except Exception:
-        pass
+    # 2) Prefect Variables whose names look like settings keys (UPPER_CASE)
+    manifest_for_vars: dict = {}
     if manifest_path.exists():
         try:
             with manifest_path.open("r", encoding="utf-8") as f:
@@ -104,11 +86,11 @@ def _hydrate_from_prefect() -> None:
             manifest_for_vars = {}
         for entry in manifest_for_vars.get("variables", []) or []:
             var_name = entry.get("name", "")
-            # Only export variables whose name looks like a settings key (UPPER_CASE)
             if not var_name.isupper():
                 continue
             try:
                 from prefect.variables import Variable
+
                 value = Variable.get(var_name)
                 if value not in (None, ""):
                     os.environ.setdefault(var_name, str(value))
@@ -116,7 +98,7 @@ def _hydrate_from_prefect() -> None:
             except Exception as exc:
                 LOG.warning("Could not load Variable %r: %s", var_name, exc)
 
-    # 4) Secret blocks listed in the manifest with expose_as_env
+    # 3) Secret blocks listed in the manifest with expose_as_env
     if manifest_path.exists():
         try:
             with manifest_path.open("r", encoding="utf-8") as f:
@@ -136,8 +118,7 @@ def _hydrate_from_prefect() -> None:
                 LOG.warning("Could not load Secret %r: %s", entry.get("name"), exc)
                 continue
             if secret_value in (None, ""):
-                LOG.info("Secret %r is empty; skipping export of %s",
-                         entry.get("name"), env_name)
+                LOG.info("Secret %r is empty; skipping export of %s", entry.get("name"), env_name)
                 continue
             os.environ.setdefault(env_name, str(secret_value))
             LOG.info("env <- secret[%s] -> %s", entry["name"], env_name)
@@ -145,31 +126,46 @@ def _hydrate_from_prefect() -> None:
         LOG.info("No manifest found at %s; skipping secret hydration.", manifest_path)
 
 
-# Make sure pangolin logs flow into Prefect
-os.environ.setdefault("PREFECT_LOGGING_EXTRA_LOGGERS", "pangolin")
+def deploy(
+    manifest: Path = typer.Option(
+        None,
+        "--manifest",
+        envvar="PANGOLIN_MANIFEST",
+        help="Prefect manifest YAML (default: docker/prefect_manifest.yaml).",
+    ),
+    settings_block: str = typer.Option(
+        "pangolin-settings",
+        "--settings-block",
+        envvar="PANGOLIN_SETTINGS_BLOCK",
+        help="Name of the Prefect JSON block holding settings overrides.",
+    ),
+) -> None:
+    """Serve a Prefect deployment for every pipeline in the current project.
 
-_MODE = os.getenv("PANGOLIN_MODE", "local").lower()
-LOG.info("PANGOLIN_MODE=%s", _MODE)
-LOG.info("Image build: GIT_BRANCH=%s GIT_SHA=%s",
-         os.getenv("GIT_BRANCH", "?"), os.getenv("GIT_SHA", "?"))
+    Meant to run inside the deployment worker (e.g. the container started by
+    the scaffolded docker-compose.yml, see `pangolin init --dockerization`).
+    """
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    os.environ.setdefault("PREFECT_LOGGING_EXTRA_LOGGERS", "pangolin")
 
-if _MODE in ("docker-local", "cloud"):
-    _hydrate_from_prefect()
+    manifest_path = manifest or Path("docker/prefect_manifest.yaml")
 
+    mode = os.getenv("PANGOLIN_MODE", "local").lower()
+    LOG.info("PANGOLIN_MODE=%s", mode)
+    LOG.info("Image build: GIT_BRANCH=%s GIT_SHA=%s", os.getenv("GIT_BRANCH", "?"), os.getenv("GIT_SHA", "?"))
 
-# Now it is safe to import the flows (which import SETTINGS).
-# Every file in pipelines/ is auto-discovered and deployed below — add a new
-# pipeline by dropping a new file there, no changes needed here.
-import importlib
-from pipelines import PIPELINES  # noqa: E402
+    if mode in ("docker-local", "cloud"):
+        _hydrate_from_prefect(manifest_path, settings_block)
 
-if __name__ == "__main__":
+    # Settings/env must be hydrated before pipelines (and pangolin.config.settings) import.
+    pipelines = load_pipelines()
+
     from prefect import serve as prefect_serve
 
     base_tags = [t for t in (os.getenv("GIT_BRANCH"), os.getenv("GIT_SHA")) if t]
 
     deployments = []
-    for pipeline_name, pipeline_flow in PIPELINES.items():
+    for pipeline_name, pipeline_flow in pipelines.items():
         module = importlib.import_module(f"pipelines.{pipeline_name}")
         deploy_kwargs = dict(getattr(module, "DEPLOYMENT_KWARGS", {}))
         extra_tags = deploy_kwargs.pop("extra_tags", [])
@@ -180,5 +176,4 @@ if __name__ == "__main__":
         kwargs.update(deploy_kwargs)
         deployments.append(pipeline_flow.to_deployment(**kwargs))
 
-    # Serve all discovered pipeline deployments in the same process
     prefect_serve(*deployments)

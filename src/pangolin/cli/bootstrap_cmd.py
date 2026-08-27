@@ -1,41 +1,36 @@
-"""
-Idempotent Prefect bootstrap utility.
+"""Implementation of the `pangolin bootstrap` command group.
+
+Idempotent Prefect bootstrap utility, ported from the old
+docker/bootstrap_prefect.py script so it stays in sync with the library
+instead of being copied into every scaffolded project.
 
 - Waits for the Prefect API to be healthy.
-- Reads a manifest YAML (path via env PANGOLIN_MANIFEST, default
-  ./prefect_manifest.yaml).
+- Reads a manifest YAML (path via --manifest / PANGOLIN_MANIFEST, default
+  docker/prefect_manifest.yaml in the current project).
 - Creates / updates Prefect Variables and Blocks (json / secret).
 - Resolves three value sources:
     * inline literal
-    * "${ENV_VAR}" placeholder -> from container env (missing => treated as empty)
+    * "${ENV_VAR}" placeholder -> from the container/host env (missing => empty)
     * null / "" -> created empty (or left untouched if a non-empty value
-      already exists on the server, so user-edits via UI are preserved).
-- Also exposes a `create-empty` CLI to bulk-create empty blocks/variables
-  and append them to the manifest.
-
-Usage:
-    python bootstrap_prefect.py                        # one-shot bootstrap
-    python bootstrap_prefect.py bootstrap              # same as above
-    python bootstrap_prefect.py create-empty --type secret --name foo --name bar
-    python bootstrap_prefect.py create-empty --type variable --from-file names.txt
+      already exists on the server, so user-edits via the UI are preserved).
+- `pangolin bootstrap create-empty` bulk-creates empty blocks/variables and
+  appends them to the manifest.
 """
 
 from __future__ import annotations
 
-import argparse
 import logging
 import os
 import re
-import sys
 import time
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, List, Optional
 
 import httpx
+import typer
 import yaml
 from prefect.variables import Variable
 
-# Prefect 3.x renamed/moved the JSON block across minor releases.
 try:
     from prefect.blocks.system import JSON, Secret
 except ImportError:
@@ -43,17 +38,22 @@ except ImportError:
         from prefect.blocks.core import JSON, Secret
     except ImportError:
         from prefect.blocks.system import Secret
-        # Last resort: build a thin wrapper around the generic Block API
         from prefect.blocks.core import Block
+
         class JSON(Block):
             _block_type_slug = "json"
             value: dict = {}
 
 LOG = logging.getLogger("pangolin.bootstrap")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-DEFAULT_MANIFEST = Path(os.getenv("PANGOLIN_MANIFEST", "docker/prefect_manifest.yaml"))
+DEFAULT_MANIFEST = Path("docker/prefect_manifest.yaml")
 ENV_REF_RE = re.compile(r"^\$\{([A-Z_][A-Z0-9_]*)\}$")
+
+bootstrap_app = typer.Typer(
+    name="bootstrap",
+    help="Apply the Prefect manifest (Variables/Blocks) to the current project's Prefect server.",
+    invoke_without_command=True,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +67,7 @@ def wait_for_api(timeout: float = 120.0, interval: float = 2.0) -> None:
         raise RuntimeError("PREFECT_API_URL is not set")
     health_url = api_url.rstrip("/") + "/health"
     deadline = time.monotonic() + timeout
-    last_err: Exception | None = None
+    last_err: Optional[Exception] = None
     LOG.info("Waiting for Prefect API at %s ...", health_url)
     while time.monotonic() < deadline:
         try:
@@ -111,7 +111,6 @@ def _is_empty(value: Any) -> bool:
 
 
 def _existing_block_value(block_type: str, name: str) -> Any:
-    """Return the current value of a block, or None if it does not exist."""
     try:
         if block_type == "json":
             return JSON.load(name).value
@@ -156,8 +155,7 @@ def save_manifest(path: Path, data: dict) -> None:
 
 def apply_variable(entry: dict) -> None:
     name = entry["name"]
-    raw = entry.get("value")
-    resolved = _resolve_value(raw)
+    resolved = _resolve_value(entry.get("value"))
 
     if _is_empty(resolved):
         existing = _existing_variable_value(name)
@@ -175,8 +173,7 @@ def apply_variable(entry: dict) -> None:
 def apply_block(entry: dict) -> None:
     name = entry["name"]
     btype = entry.get("type", "json").lower()
-    raw = entry.get("value")
-    resolved = _resolve_value(raw)
+    resolved = _resolve_value(entry.get("value"))
     expose_as = entry.get("expose_as_env")
 
     if btype not in ("json", "secret"):
@@ -203,11 +200,12 @@ def apply_block(entry: dict) -> None:
         LOG.info("Block %r (%s) set from manifest.", name, btype)
 
     if expose_as:
-        # informational only; deploy.py is what actually exports it at flow start
+        # informational only; `pangolin deploy` is what actually exports it at worker startup
         LOG.info("  (will be exposed as env var %s at worker startup)", expose_as)
 
 
-def cmd_bootstrap(manifest_path: Path) -> int:
+def _run_bootstrap(manifest_path: Path) -> None:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     wait_for_api()
     manifest = load_manifest(manifest_path)
 
@@ -226,105 +224,88 @@ def cmd_bootstrap(manifest_path: Path) -> int:
             apply_variable(entry)
         except Exception as exc:
             LOG.error("Failed to apply variable %r: %s", entry.get("name"), exc)
-            return 2
+            raise typer.Exit(code=2)
 
     for entry in manifest.get("blocks", []):
         try:
             apply_block(entry)
         except Exception as exc:
             LOG.error("Failed to apply block %r: %s", entry.get("name"), exc)
-            return 2
+            raise typer.Exit(code=2)
 
     LOG.info("Bootstrap completed successfully.")
-    return 0
 
 
-# ---------------------------------------------------------------------------
-# create-empty CLI
-# ---------------------------------------------------------------------------
+_MANIFEST_OPTION = typer.Option(
+    DEFAULT_MANIFEST,
+    "--manifest",
+    envvar="PANGOLIN_MANIFEST",
+    help="Manifest YAML path.",
+)
 
-def _read_names(args) -> list[str]:
-    names: list[str] = list(args.name or [])
-    if args.from_file:
-        with open(args.from_file, "r", encoding="utf-8") as f:
+
+@bootstrap_app.callback(invoke_without_command=True)
+def bootstrap(
+    ctx: typer.Context,
+    manifest: Path = _MANIFEST_OPTION,
+) -> None:
+    """Apply the manifest to Prefect (default when no subcommand is given)."""
+    if ctx.invoked_subcommand is not None:
+        return
+    _run_bootstrap(manifest)
+
+
+@bootstrap_app.command("create-empty")
+def create_empty(
+    type: str = typer.Option(..., "--type", help="secret | json | variable"),
+    name: Optional[List[str]] = typer.Option(
+        None, "--name", help="Name to create. Repeat the flag for multiple."
+    ),
+    from_file: Optional[Path] = typer.Option(
+        None, "--from-file", help="Text file with one name per line (# comments allowed)."
+    ),
+    manifest: Path = _MANIFEST_OPTION,
+) -> None:
+    """Bulk-create empty blocks/variables and append them to the manifest."""
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    if type not in ("secret", "json", "variable"):
+        typer.secho(f"Invalid --type {type!r}: must be secret, json or variable.", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+    wait_for_api()
+
+    names: List[str] = list(name or [])
+    if from_file:
+        with open(from_file, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if line and not line.startswith("#"):
                     names.append(line)
-    # de-dupe, preserve order
     seen = set()
-    out: list[str] = []
-    for n in names:
-        if n not in seen:
-            seen.add(n)
-            out.append(n)
-    return out
+    names = [n for n in names if not (n in seen or seen.add(n))]
 
-
-def cmd_create_empty(args, manifest_path: Path) -> int:
-    wait_for_api()
-    names = _read_names(args)
     if not names:
-        LOG.error("No names provided. Use --name or --from-file.")
-        return 1
+        typer.secho("No names provided. Use --name or --from-file.", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
 
-    manifest = load_manifest(manifest_path)
-    section = "variables" if args.type == "variable" else "blocks"
-    existing_names = {e["name"] for e in manifest.get(section, [])}
+    manifest_data = load_manifest(manifest)
+    section = "variables" if type == "variable" else "blocks"
+    existing_names = {e["name"] for e in manifest_data.get(section, [])}
 
-    for name in names:
-        # Append to manifest with null value if not already present
-        if name not in existing_names:
-            entry: dict[str, Any] = {"name": name, "value": None}
-            if args.type != "variable":
-                entry["type"] = args.type
-            manifest[section].append(entry)
-            existing_names.add(name)
-            LOG.info("Manifest: appended %s %r (empty).", args.type, name)
+    for n in names:
+        if n not in existing_names:
+            entry: dict = {"name": n, "value": None}
+            if type != "variable":
+                entry["type"] = type
+            manifest_data[section].append(entry)
+            existing_names.add(n)
+            LOG.info("Manifest: appended %s %r (empty).", type, n)
         else:
-            LOG.info("Manifest: %s %r already present, leaving as-is.", args.type, name)
+            LOG.info("Manifest: %s %r already present, leaving as-is.", type, n)
 
-        # Create / ensure-exists in Prefect (won't overwrite a non-empty value)
-        if args.type == "variable":
-            apply_variable({"name": name, "value": None})
+        if type == "variable":
+            apply_variable({"name": n, "value": None})
         else:
-            apply_block({"name": name, "type": args.type, "value": None})
+            apply_block({"name": n, "type": type, "value": None})
 
-    save_manifest(manifest_path, manifest)
-    return 0
-
-
-# ---------------------------------------------------------------------------
-# argparse
-# ---------------------------------------------------------------------------
-
-def _build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="bootstrap_prefect", description=__doc__)
-    p.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST,
-                   help=f"Manifest path (default: {DEFAULT_MANIFEST})")
-    sub = p.add_subparsers(dest="command")
-
-    sub.add_parser("bootstrap", help="Apply the manifest to Prefect (default).")
-
-    ce = sub.add_parser("create-empty", help="Bulk-create empty blocks/variables.")
-    ce.add_argument("--type", choices=["secret", "json", "variable"], required=True)
-    ce.add_argument("--name", action="append",
-                    help="Name to create. Repeat flag for multiple.")
-    ce.add_argument("--from-file", type=Path,
-                    help="Text file with one name per line (# comments allowed).")
-    return p
-
-
-def main(argv: list[str] | None = None) -> int:
-    args = _build_parser().parse_args(argv)
-    cmd = args.command or "bootstrap"
-    if cmd == "bootstrap":
-        return cmd_bootstrap(args.manifest)
-    if cmd == "create-empty":
-        return cmd_create_empty(args, args.manifest)
-    LOG.error("Unknown command: %s", cmd)
-    return 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+    save_manifest(manifest, manifest_data)

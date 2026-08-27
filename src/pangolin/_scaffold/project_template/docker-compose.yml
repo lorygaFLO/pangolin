@@ -6,8 +6,10 @@ name: pangolin
 # Services
 #   prefect-server : Prefect 3 server + UI, persistent SQLite on a volume
 #   bootstrap      : one-shot, idempotent — creates Blocks/Variables from
-#                    prefect_manifest.yaml; re-runs are safe
-#   worker         : runs `python docker/deploy.py` (flow.serve())
+#                    docker/prefect_manifest.yaml via `pangolin bootstrap`;
+#                    re-runs are safe
+#   worker         : runs `pangolin deploy` (flow.serve() for every pipeline
+#                    in this project's pipelines/ package)
 #   caddy          : reverse proxy so the UI is reachable on
 #                    http://localhost:${PROXY_PORT}
 #                    http://${PROJECT_NAME}.localhost:${PROXY_PORT}
@@ -59,7 +61,7 @@ services:
       GIT_SHA: ${GIT_SHA:-unknown}
     env_file:
       - docker/.env.docker
-    command: ["python", "docker/bootstrap_prefect.py"]
+    command: ["pangolin", "bootstrap"]
     restart: "no"
 
   worker:
@@ -82,7 +84,7 @@ services:
     volumes:
       # Bind-mount the host data folder so input/output is visible from outside
       - ./data:/app/data
-    command: ["python", "docker/deploy.py"]
+    command: ["pangolin", "deploy"]
     restart: unless-stopped
 
   caddy:

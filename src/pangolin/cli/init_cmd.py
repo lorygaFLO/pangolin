@@ -23,6 +23,8 @@ TEMPLATE_DIR_NAME = "project_template"
 RENAMED_FILES = {
     "template.env": ".env",
     "template.gitignore": ".gitignore",
+    "template.dockerignore": ".dockerignore",
+    "template.env.docker.example": ".env.docker.example",
 }
 
 SKIPPED_DIRS = {"__pycache__", "data"}
@@ -31,17 +33,23 @@ SKIPPED_DIRS = {"__pycache__", "data"}
 # so the example pipeline is runnable right after init.
 EXAMPLE_INPUT_DIR = "example_input"
 
+# Top-level template entries only copied with --dockerization (checked
+# against the on-disk template name, before RENAMED_FILES is applied).
+DOCKER_ENTRIES = {"docker", "docker-compose.yml", "Makefile", "template.dockerignore"}
+
 
 def _template_root() -> Path:
     return Path(str(resources.files(TEMPLATE_PACKAGE))) / TEMPLATE_DIR_NAME
 
 
-def _iter_template_files(root: Path):
+def _iter_template_files(root: Path, dockerization: bool = False):
     for path in sorted(root.rglob("*")):
         if not path.is_file():
             continue
         rel = path.relative_to(root)
         if any(part in SKIPPED_DIRS for part in rel.parts):
+            continue
+        if not dockerization and rel.parts[0] in DOCKER_ENTRIES:
             continue
         yield path, rel
 
@@ -64,6 +72,12 @@ def init(
         "-f",
         help="Overwrite files that already exist in the target directory.",
     ),
+    dockerization: bool = typer.Option(
+        False,
+        "--dockerization",
+        "-d",
+        help="Also scaffold the Docker deployment stack (docker/, docker-compose.yml, Makefile).",
+    ),
 ) -> None:
     """Scaffold a new pangolin project (config, pipelines, custom code, data folders)."""
     target = path.resolve()
@@ -80,7 +94,7 @@ def init(
 
     copied: list[Path] = []
     skipped: list[Path] = []
-    for src, rel in _iter_template_files(template_root):
+    for src, rel in _iter_template_files(template_root, dockerization=dockerization):
         if rel.parts[0] == EXAMPLE_INPUT_DIR:
             rel = Path("data", "input", *rel.parts[1:])
         else:
@@ -113,3 +127,10 @@ def init(
     typer.echo("  2. Describe your project layout in config/data_structure.yaml.")
     typer.echo("  3. Fill the step registries in config/registries/.")
     typer.echo("  4. Add custom processors in custom/processors/ and pipelines in pipelines/.")
+    if dockerization:
+        typer.echo("  5. Copy docker/.env.docker.example to docker/.env.docker and fill it in.")
+        typer.echo("  6. make build && make up   (see docker-compose.yml)")
+    else:
+        typer.echo(
+            "  (Re-run with --dockerization / -d to also scaffold the Docker deployment stack.)"
+        )

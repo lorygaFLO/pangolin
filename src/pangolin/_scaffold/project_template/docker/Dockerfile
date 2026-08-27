@@ -5,38 +5,42 @@ FROM python:3.11-slim AS base
 ARG GIT_BRANCH=unknown
 ARG GIT_SHA=unknown
 
+# pangolin isn't on PyPI yet, so by default we install straight from git.
+# Once it's published (PyPI or a private index), swap PANGOLIN_INSTALL_SPEC
+# for a plain version pin, e.g. --build-arg PANGOLIN_INSTALL_SPEC=pangolin==0.1.0
+ARG PANGOLIN_REF=main
+ARG PANGOLIN_INSTALL_SPEC=git+https://github.com/lorygaFLO/pangolin.git@${PANGOLIN_REF}
+
 # Surface them at runtime so they show up in worker logs and Prefect Variables
 ENV GIT_BRANCH=${GIT_BRANCH} \
     GIT_SHA=${GIT_SHA} \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PYTHONPATH=/app
+    PIP_NO_CACHE_DIR=1
 
 # OS deps (curl is used by compose healthchecks; build-essential covers wheels
 # that don't ship a manylinux build for python:3.11-slim)
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && apt-get install -y --no-install-recommends curl ca-certificates git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install Python deps first to leverage layer cache
-COPY docker/requirements-docker.txt /app/docker/requirements-docker.txt
+# Install the pangolin library + CLI first to leverage layer cache
 RUN pip install --upgrade pip \
-    && pip install -r /app/docker/requirements-docker.txt
+    && pip install "pangolin @ ${PANGOLIN_INSTALL_SPEC}"
 
-# Project source
+# Project source: config/, pipelines/, custom/ (this repo, NOT the pangolin
+# library — that came from PANGOLIN_INSTALL_SPEC above)
 COPY . /app
 
 # Default workdir contents
 RUN mkdir -p /app/data
 
-LABEL org.opencontainers.image.title="pangolin" \
-      org.opencontainers.image.source="https://github.com/lorygaFLO/pangolin" \
+LABEL org.opencontainers.image.title="pangolin-project" \
       pangolin.git.branch="${GIT_BRANCH}" \
       pangolin.git.sha="${GIT_SHA}"
 
 # Default command is overridden per-service in docker-compose.yml
-CMD ["python", "docker/deploy.py"]
+CMD ["pangolin", "deploy"]
