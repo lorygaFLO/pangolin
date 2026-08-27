@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 import typer
 
 import pangolin
@@ -12,6 +14,13 @@ from pangolin.cli.list_cmd import list_pipelines
 from pangolin.cli.restore_cmd import restore
 from pangolin.cli.run_cmd import run
 from pangolin.cli.step_cmd import step
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(pangolin.__version__)
+        raise typer.Exit()
+
 
 app = typer.Typer(
     name="pangolin",
@@ -28,10 +37,17 @@ app.command("deploy")(deploy)
 app.add_typer(bootstrap_app, name="bootstrap")
 
 
-@app.command("version")
-def version() -> None:
-    """Show the installed pangolin version."""
-    typer.echo(pangolin.__version__)
+@app.callback()
+def _main(
+    version: Optional[bool] = typer.Option(
+        None,
+        "--version",
+        callback=_version_callback,
+        is_eager=True,
+        help="Show the installed pangolin version and exit.",
+    ),
+) -> None:
+    return
 
 
 def main() -> None:

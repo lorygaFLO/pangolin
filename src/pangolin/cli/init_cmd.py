@@ -15,6 +15,8 @@ from pathlib import Path
 import typer
 import yaml
 
+from pangolin.cli._docgen import render_readme
+
 TEMPLATE_PACKAGE = "pangolin._scaffold"
 TEMPLATE_DIR_NAME = "project_template"
 
@@ -113,6 +115,15 @@ def init(
         template_root / "config" / "data_structure.yaml"
     ):
         (data_root / folder).mkdir(parents=True, exist_ok=True)
+
+    # User-facing README: mandatory setup steps + a settings reference
+    # generated from this project's own data_structure.yaml (see _docgen.py).
+    readme_dest = target / "README.md"
+    if readme_dest.exists() and not force:
+        skipped.append(Path("README.md"))
+    else:
+        readme_dest.write_text(render_readme(target, dockerization=dockerization), encoding="utf-8")
+        copied.append(Path("README.md"))
 
     for rel in copied:
         typer.secho(f"  created  {rel}", fg=typer.colors.GREEN)

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 import yaml
-from pydantic import computed_field, field_validator, model_validator
+from pydantic import Field, computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -31,33 +31,55 @@ class SETTINGS(BaseSettings):
     )
 
     # Project identity (used as UI subdomain in docker-local mode and for tagging)
-    PROJECT_NAME: str = "pangolin"
+    PROJECT_NAME: str = Field(
+        "pangolin",
+        description="Project identity. Used as the Prefect UI subdomain in docker-local mode and for run tagging.",
+    )
 
     # Backend
-    BACKEND_ENGINE: str = "polars"
-    DUCKDB_CHUNK_SIZE: int = 100000
+    BACKEND_ENGINE: str = Field(
+        "polars", description="Dataframe engine. Only 'polars' is supported in this release."
+    )
+    DUCKDB_CHUNK_SIZE: int = Field(
+        100000, description="Reserved for a future DuckDB backend; unused today."
+    )
 
     # Base paths — stored as str to support both local and cloud protocols
-    BASEPATH: str = "."
-    DATAPATH: Optional[str] = None
+    BASEPATH: str = Field(
+        ".",
+        description="Project root. Resolved to an absolute path at startup; also the base DATAPATH is resolved against when DATAPATH is relative.",
+    )
+    DATAPATH: Optional[str] = Field(
+        None,
+        description="Where data/ lives. Defaults to '<BASEPATH>/data' when FS_PROTOCOL='file'. REQUIRED (container/bucket name or prefix) for cloud protocols.",
+    )
 
     # NOTE: folder-name fields (e.g. INPUT_FOLDER_NAME, STAGING_FOLDER_NAME, ...) are
     # not declared here. They are added dynamically in `_resolve_paths` for every node
-    # in data_structure.yaml that declares a `_settings_key`.
+    # in data_structure.yaml that declares a `_settings_key` — one project's set of
+    # folder settings can differ from another's, so there is nothing fixed to declare.
 
     # IO options
-    DISABLE_REPORTS: bool = False
-    CSV_DELIMITER: str = ";"
-    OUTPUT_FORMAT: str = "parquet"
+    DISABLE_REPORTS: bool = Field(False, description="Skip HTML validation report generation.")
+    CSV_DELIMITER: str = Field(";", description="Delimiter used when reading/writing CSV files.")
+    OUTPUT_FORMAT: str = Field("parquet", description="Staging/output file format: 'csv' or 'parquet'.")
 
     # Debug mode: pin RUN_ID to a fixed value so staging folders from a
     # previous debug run stay reachable when re-running a single step.
-    DEBUG: bool = False
-    DEBUG_RUN_ID: str = "debug_run"
+    DEBUG: bool = Field(
+        False,
+        description="When True, pins RUN_ID to DEBUG_RUN_ID so `pangolin step` can find staging left by a previous run.",
+    )
+    DEBUG_RUN_ID: str = Field("debug_run", description="RUN_ID used when DEBUG=True.")
 
     # Filesystem
-    FS_PROTOCOL: str = "file"
-    FS_OPTIONS: dict = {}
+    FS_PROTOCOL: str = Field(
+        "file", description="fsspec protocol: 'file' for local disk, or 'az' / 's3' / 'gcs' for cloud storage."
+    )
+    FS_OPTIONS: dict = Field(
+        default_factory=dict,
+        description="Extra fsspec storage options (credentials, endpoint, etc.) for a non-local FS_PROTOCOL, as a JSON object.",
+    )
 
     @field_validator("BACKEND_ENGINE")
     @classmethod
