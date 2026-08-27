@@ -81,5 +81,9 @@ Two directions, increasing in scope:
 - **Subclassable `DataFacility`** via a scaffolded `custom/data_facility.py`, auto-detected by `get_project_data()` the same way `get_settings()` already auto-detects `custom/settings.py` (see [[Adding Custom Settings]] for the pattern this would mirror). Lets a project override `_resolve_path`/`read`/`write` for its own needs.
 - **(Further out)** A hook registry keyed by custom `_`-attributes (`@register_write_hook("compress")` triggered by `_compress: gzip` on a node) — the most direct answer to "make behavior-inducing attributes pluggable," but needs the lifecycle hook points (path resolution, pre/post read, pre/post write) designed properly first. Would likely fall out naturally once a project can subclass `DataFacility` and start writing its own hook dispatch for its own needs.
 
+---
 
+## 11. Configuration UI
+
+A graphical interface for managing project configuration — including registries — instead of editing files directly. Deferred for now: file-based configuration is easier to version, review, and iterate on while the project is still under active development, and there's no established user base yet that would benefit from a GUI. Worth revisiting once the configuration surface stabilizes and a real need emerges.
 
