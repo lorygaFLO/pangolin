@@ -21,4 +21,4 @@ pangolin_test/
 .obsidian/graph.json
 .obsidian/app.json
 
-.github/
+build/
