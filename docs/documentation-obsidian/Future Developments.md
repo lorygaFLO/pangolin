@@ -69,5 +69,17 @@ Pangolin is hard-wired to Polars. Explore adopting [Narwhals](https://narwhals-d
 
 Evaluate using the [Data Contract](https://datacontract.com/) standard to drive validation, instead of (or alongside) the current registry-based validators.
 
+---
+
+## 10. Extensible DataFacility Behaviors
+
+Every `_`-prefixed key's **value** in `data_structure.yaml` is already fully user-editable (it's the project's own file), and any key not in the reserved list is already exposed generically as `node.<key>` for custom code to read. What's *not* extensible today is the **automatic behavior** those reserved keys trigger (`_versioned`, `_timestamped`, `_required`, and file-format inference/read/write) — it's hard-coded in `DataNode`/`DataFacility` (`src/pangolin/engine/DataFacility.py`), so a project can't add a new self-acting key (e.g. `_compress: gzip` to transparently gzip on write) without forking the library. Same class of gap `custom/settings.py` closed for `SETTINGS` — DataFacility has no equivalent extension point yet.
+
+Two directions, increasing in scope:
+
+- **Custom format registry** — a `@register_format(name, reader=..., writer=...)` decorator (same pattern as `@register_validator`/`@register_transformer`), consulted by `_infer_format`/`read()`/`write()` before falling back to the built-in csv/parquet/excel/json/yaml map. Solves "pangolin doesn't know this file format" without touching the library.
+- **Subclassable `DataFacility`** via a scaffolded `custom/data_facility.py`, auto-detected by `get_project_data()` the same way `get_settings()` already auto-detects `custom/settings.py` (see [[Adding Custom Settings]] for the pattern this would mirror). Lets a project override `_resolve_path`/`read`/`write` for its own needs.
+- **(Further out)** A hook registry keyed by custom `_`-attributes (`@register_write_hook("compress")` triggered by `_compress: gzip` on a node) — the most direct answer to "make behavior-inducing attributes pluggable," but needs the lifecycle hook points (path resolution, pre/post read, pre/post write) designed properly first. Would likely fall out naturally once a project can subclass `DataFacility` and start writing its own hook dispatch for its own needs.
+
 
 
