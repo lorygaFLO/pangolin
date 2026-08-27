@@ -107,17 +107,24 @@ class SETTINGS(_BaseSettings):
 
 ## Sensitive Settings (Passwords, API Keys, DB Connection Strings)
 
-Everything above works for a sensitive value too — `DATABASE_URL: str` in `custom/settings.py` behaves exactly like `TRAINING_EPOCHS`. What changes is **where the actual value lives**, and that depends on how you're running:
+Everything above works for a sensitive value too — `DATABASE_URL: str` in `custom/settings.py` behaves exactly like `TRAINING_EPOCHS`. What changes is **where the actual value lives**, and that depends on how you're running.
+
+> [!important]
+> The field must exist on the `SETTINGS` class first, in both cases below. `SETTINGS` has `extra="ignore"` — an env var with no matching field is silently dropped, not picked up. Setting `DATABASE_URL` in `.env` without declaring `DATABASE_URL: str` in `custom/settings.py` does nothing; `S.DATABASE_URL` would raise `AttributeError`.
 
 ### Local (no Docker)
 
-Put it in `.env`, same as anything else:
+1. Declare the field once in `custom/settings.py`:
+   ```python
+   class SETTINGS(_BaseSettings):
+       DATABASE_URL: str
+   ```
+2. Put the real value in `.env`, same as anything else:
+   ```ini
+   DATABASE_URL=postgresql://user:pass@localhost:5432/mydb
+   ```
 
-```ini
-DATABASE_URL=postgresql://user:pass@localhost:5432/mydb
-```
-
-`.env` is git-ignored by the `.gitignore` `pangolin init` scaffolds — never committed. That's the whole story for local dev; nothing extra to configure.
+`.env` is git-ignored by the `.gitignore` `pangolin init` scaffolds — never committed. That's the whole story for local dev.
 
 ### Docker / cloud (`pangolin init --dockerization`)
 
