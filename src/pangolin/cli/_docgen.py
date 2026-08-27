@@ -100,6 +100,10 @@ freely.
    need to be duplicated here.
 5. **`pipelines/`** — one file per pipeline; each must expose a module-level
    `PIPELINE = <flow>`. See `pipelines/example_pipeline.py`.
+6. *(optional)* **`custom/settings.py`** — need a setting of your own (e.g.
+   `S.TRAINING_EPOCHS`)? Add a field to the `SETTINGS` class there. It's
+   auto-detected by `get_settings()` — no library changes needed. See
+   "Adding your own settings" below.
 
 ## Running it
 
@@ -127,5 +131,22 @@ top-level node in `config/data_structure.yaml` a `_settings_key`. This
 project currently declares:
 
 {_folder_settings_table(structure_path)}
+
+## Adding your own settings
+
+`S.TRAINING_EPOCHS`, `S.MY_API_KEY`, or anything else your own code needs
+that isn't a folder and isn't one of pangolin's built-in fields above: add
+it to the `SETTINGS` class in **`custom/settings.py`** (already scaffolded,
+starts empty):
+
+```python
+class SETTINGS(_BaseSettings):
+    TRAINING_EPOCHS: int = 10
+```
+
+`get_settings()` picks it up automatically — `S.TRAINING_EPOCHS` then works
+anywhere in the project, read from `.env`/the environment exactly like the
+built-in fields, with the same Pydantic validation. No changes to the
+pangolin library needed. Delete `custom/settings.py` if you never need this.
 
 {docker_section}"""

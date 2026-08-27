@@ -60,7 +60,8 @@ my-project/
 ├── custom/
 │   ├── validators.py               # project-specific validators
 │   ├── transformers.py             # project-specific transformers
-│   └── processors/                 # project-specific processor classes
+│   ├── processors/                 # project-specific processor classes
+│   └── settings.py                 # project-specific SETTINGS fields (e.g. S.TRAINING_EPOCHS)
 ├── pipelines/
 │   ├── __init__.py                 # auto-discovery: scans this folder, builds PIPELINES dict
 │   └── example_pipeline.py         # backup → validate → transform → audit → dispatch

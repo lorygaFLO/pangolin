@@ -157,5 +157,19 @@ class SETTINGS(BaseSettings):
 
 
 def get_settings() -> SETTINGS:
-    """Return a fresh SETTINGS instance loaded from .env and environment."""
-    return SETTINGS()
+    """Return a fresh SETTINGS instance loaded from .env and environment.
+
+    If the current project defines `custom/settings.py` with a `SETTINGS`
+    class subclassing this one (see the scaffolded template), that subclass
+    is instantiated instead — so project-specific fields declared there
+    (e.g. `TRAINING_EPOCHS: int = 10`) show up as `S.TRAINING_EPOCHS`
+    everywhere `get_settings()` is called, not just in your own code.
+    Falls back to the base SETTINGS when the project has no custom/settings.py.
+    """
+    try:
+        from custom.settings import SETTINGS as _ProjectSettings
+    except ModuleNotFoundError as exc:
+        if exc.name not in ("custom", "custom.settings"):
+            raise
+        _ProjectSettings = SETTINGS
+    return _ProjectSettings()

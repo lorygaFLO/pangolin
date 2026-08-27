@@ -110,7 +110,56 @@ FS_OPTIONS={"key": "AKIAIOSFODNN7EXAMPLE", "secret": "wJalrXUtnFEMI/K7MDENG/bPxR
 - **Core fields** — `BASEPATH`, `DATAPATH`, `BACKEND_ENGINE`, `CSV_DELIMITER`, `OUTPUT_FORMAT`, `DEBUG`, `FS_PROTOCOL`, `FS_OPTIONS`, etc. Fixed, declared once in the library, the same across every project. Your project's generated `README.md` has the full table.
 - **Folder fields** — `INPUT_FOLDER_NAME`, `STAGING_FOLDER_NAME`, and whatever else you declare. **Not fixed.** They're added dynamically at runtime, one per top-level node in *your* `config/data_structure.yaml` that has a `_settings_key`. Two projects can have entirely different folder settings.
 
-You do **not** edit `settings.py` for normal usage — it lives inside the installed `pangolin` package now, not in your project. To add a new *folder*, add a `_settings_key` to `data_structure.yaml` (see [[Data Structure & DataFacility]]). To read a setting that isn't a folder and isn't one of pangolin's core fields — a project-specific option your own code needs — read it directly with `os.getenv(...)` (or your own small `pydantic-settings` class) from `custom/`, rather than extending the library's `SETTINGS`. If you find yourself wanting the same core setting across many projects, that's a case for contributing it to the library itself (see the last section of this guide).
+You do **not** edit `pangolin.config.settings` for normal usage — it lives inside the installed `pangolin` package now, not in your project. There are two ways to add a setting of your own, depending on what it is:
+
+- **A folder** — add a `_settings_key` to a top-level node in `config/data_structure.yaml` (see [[Data Structure & DataFacility]]). This is how `INPUT_FOLDER_NAME` and friends work; it's resolved dynamically, nothing to declare in Python.
+- **Anything else** (a project-specific option your own code needs — `TRAINING_EPOCHS`, an API key, a feature flag) — add a field to the `SETTINGS` class in **`custom/settings.py`**, scaffolded empty by `pangolin init`:
+
+  ```python
+  # custom/settings.py
+  from pangolin.config.settings import SETTINGS as _BaseSettings
+
+  class SETTINGS(_BaseSettings):
+      TRAINING_EPOCHS: int = 10
+  ```
+
+  `pangolin.config.settings.get_settings()` auto-detects this file (it tries `from custom.settings import SETTINGS` first, falls back to the base class if the file doesn't exist) — so `S.TRAINING_EPOCHS` works everywhere `get_settings()` is called, not just in your own code, with the same `.env`-loading and Pydantic validation as every built-in field. No library changes needed, and if you delete `custom/settings.py` pangolin falls back to the base `SETTINGS` transparently.
+
+If you find yourself wanting the same custom setting across many projects, that's a case for contributing it to the library itself instead (see the last section of this guide).
+
+### Adding Validation or a Computed Field to `custom/settings.py`
+
+Since it's a real Pydantic model, the usual tools work — add a `@field_validator` to enforce constraints on your own field:
+
+```python
+from pydantic import field_validator
+from pangolin.config.settings import SETTINGS as _BaseSettings
+
+class SETTINGS(_BaseSettings):
+    TRAINING_EPOCHS: int = 10
+
+    @field_validator("TRAINING_EPOCHS")
+    @classmethod
+    def _validate_epochs(cls, v: int) -> int:
+        if v < 1:
+            raise ValueError(f"TRAINING_EPOCHS must be >= 1, got {v}")
+        return v
+```
+
+Or a `@computed_field` for a value derived from other settings (recalculated on every access, not stored):
+
+```python
+from pydantic import computed_field
+from pangolin.config.settings import SETTINGS as _BaseSettings
+
+class SETTINGS(_BaseSettings):
+    MODEL_NAME: str = "baseline"
+
+    @computed_field
+    @property
+    def PATH_MODEL_OUTPUT(self) -> str:
+        return f"{self.DATAPATH}/models/{self.MODEL_NAME}"
+```
 
 Access settings anywhere in your code:
 
