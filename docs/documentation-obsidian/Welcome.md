@@ -20,6 +20,7 @@ Use the sidebar or the links below to explore each topic:
 | [[Writing Validators]]            | How to create and register a new validator function                                                      |
 | [[Writing Transformers]]          | How to create and register a new transformer function                                                    |
 | [[Creating a New Processor]]      | How to extend the engine with a custom processor type                                                    |
+| [[Adding Custom Settings]]        | How to add your own project-specific settings (e.g. `S.TRAINING_EPOCHS`) via `custom/settings.py`         |
 | [[Future Developments]]           | Planned improvements: testing strategy, cloud/Docker support, aggregation example, deeper Prefect usage  |
 
 ---

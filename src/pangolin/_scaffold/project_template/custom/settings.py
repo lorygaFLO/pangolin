@@ -35,7 +35,6 @@ class SETTINGS(_BaseSettings):
     #   MY_API_KEY: str | None = None
     #   ENABLE_FEATURE_X: bool = False
     #
-    # See pydantic-settings docs for supported types, or "Adding Validation
-    # or a Computed Field to custom/settings.py" in the Getting Started
-    # guide for validators / computed fields.
+    # See pydantic-settings docs for supported types, or the "Adding Custom
+    # Settings" page in the docs for validators / computed fields.
     pass

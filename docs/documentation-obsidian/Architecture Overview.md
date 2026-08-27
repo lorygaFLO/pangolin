@@ -114,6 +114,8 @@ graph TD
 ### 1. Settings (`src/pangolin/config/settings.py`)
 A `pydantic-settings` `BaseSettings` class that provides paths, backend engine, CSV delimiter, output format, and run ID. Every module accesses it via `get_settings()`, which returns a fresh `SETTINGS` instance. Fields are type-checked and validated automatically by Pydantic.
 
+`get_settings()` auto-detects a project's `custom/settings.py` (a `SETTINGS` subclass) and returns that instead when present, so a project can add its own fields without touching the library — see [[Adding Custom Settings]].
+
 In **local** mode it reads `.env` directly. In **docker-local / cloud** mode, `pangolin deploy` (which replaced the old `docker/deploy.py` script) writes values from Prefect Variables and Blocks into `os.environ` *before* the settings class is ever instantiated, so `SETTINGS` receives them transparently — no code change needed. See [[Docker Deployment]].
 
 ### 2. DataFacility (`src/pangolin/engine/DataFacility.py`)
