@@ -8,7 +8,7 @@ This page explains the `BaseProcessor` API and how to create your own custom pro
 
 ## BaseProcessor Overview
 
-`BaseProcessor` (in `engine/processors/BaseProcessor.py`) provides:
+`BaseProcessor` (in `src/pangolin/engine/processors/BaseProcessor.py`) provides:
 
 | Feature | Method / Attribute |
 |---------|--------------------|
@@ -65,7 +65,7 @@ Let's create a **DataAggregator** that groups data by specified columns and save
 
 ### 1. Create the Processor Class
 
-Create `engine/processors/DataAggregator.py`:
+Create `custom/processors/DataAggregator.py` in your project (custom processors live in the project's `custom/processors/` package; processors meant to ship with the library go in `src/pangolin/engine/processors/`):
 
 ```python
 """
@@ -73,11 +73,11 @@ DataAggregator: Groups data by specified columns and aggregates.
 """
 
 import polars as pl
-from engine.processors.BaseProcessor import BaseProcessor
-from engine.reporter import Reporter
-from engine.common.exceptions import NoInputFilesError, AllFilesFailedError
-from config.settings import get_settings
-from config.run_context import RunContext
+from pangolin.engine.processors.BaseProcessor import BaseProcessor
+from pangolin.engine.reporter import Reporter
+from pangolin.engine.common.exceptions import NoInputFilesError, AllFilesFailedError
+from pangolin.config.settings import get_settings
+from pangolin.config.run_context import RunContext
 
 
 class DataAggregator(BaseProcessor):
@@ -145,7 +145,7 @@ class DataAggregator(BaseProcessor):
 
 ### 2. Create the Registry YAML
 
-Create `config/registries/2b_aggregation.yaml`:
+Create `config/registries/1b_aggregation.yaml`:
 
 ```yaml
 "*_sales_*":
@@ -165,25 +165,25 @@ Create `config/registries/2b_aggregation.yaml`:
 ```yaml
 staging:
   # ... existing entries ...
-  2b_aggregation:
+  1b_aggregation:
     _pattern_matching: true
-    _registry: "config/registries/2b_aggregation.yaml"
+    _registry: "config/registries/1b_aggregation.yaml"
 ```
 
-### 4. Create the Subflow in `pipelines/full_processing.py`
+### 4. Create the Subflow in `pipelines/example_pipeline.py` (or your own pipeline file)
 
 ```python
-from engine.processors.DataAggregator import DataAggregator
+from custom.processors.DataAggregator import DataAggregator
 
-@flow(name="2b - Data Aggregation")
+@flow(name="1b - Data Aggregation")
 def aggregation_flow(CTX):     # ← receives RunContext
     S = get_settings()
     aggregator = DataAggregator(
         CTX,
-        name="2b_aggregation",   # registry resolved from data_structure.yaml (_registry)
+        name="1b_aggregation",   # registry resolved from data_structure.yaml (_registry)
         report_folder=S.REPORTS_FOLDER_NAME,
-        input_folder="staging.2_transform",
-        output_folder="staging.2b_aggregation"
+        input_folder="staging.1_transform",
+        output_folder="staging.1b_aggregation"
     )
     aggregator.execute()
 ```
@@ -191,9 +191,9 @@ def aggregation_flow(CTX):     # ← receives RunContext
 ### 5. Wire It Into the Pipeline
 
 ```python
-    s2 = transform_flow(CTX, return_state=True, wait_for=[s1])
-    s2b = aggregation_flow(CTX, return_state=True, wait_for=[s2])
-    s3 = validation_flow(CTX, return_state=True, wait_for=[s2b])
+    s1 = transform_flow(CTX, return_state=True, wait_for=[s0])
+    s1b = aggregation_flow(CTX, return_state=True, wait_for=[s1])
+    s2 = audit_flow(CTX, return_state=True, wait_for=[s1b])
 ```
 
 ---
@@ -207,7 +207,7 @@ def aggregation_flow(CTX):     # ← receives RunContext
 - File is saved to output **only if all validators pass**
 - Reports are written for failed files
 
-### DataTransformer (`DataTranformer.py`)
+### DataTransformer (`DataTransformer.py`)
 
 - Reads `transforms` list from the registry
 - Sorts by `order` and executes sequentially

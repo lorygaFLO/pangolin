@@ -8,7 +8,7 @@ Planned improvements. No committed timeline.
 
 Add a `tests/` folder covering three layers:
 
-- **Unit** — pure functions in `utils/validators.py` and `utils/transformers.py`, parametrized with in-memory `pl.DataFrame` fixtures. No filesystem, no Prefect.
+- **Unit** — pure functions in `pangolin/utils/validators.py` and `pangolin/utils/transformers.py`, parametrized with in-memory `pl.DataFrame` fixtures. No filesystem, no Prefect.
 - **Integration** — each `Processor` subclass run via `processor.execute()` against a `tmp_path` directory and a minimal registry YAML.
 - **End-to-end** — full Prefect flow against the existing `data/input/case*` files, gated behind a `@pytest.mark.e2e` marker.
 
@@ -29,7 +29,7 @@ Areas that likely need attention:
 
 ## 3. Enhanced Example — Unified Dataset Pipeline
 
-The clearest way to demonstrate that Pangolin is a battle-ready template is a richer end-to-end example. Add a second pipeline shape that consolidates multiple input files into one unified dataset and then builds something meaningful on top: demand forecasting, a BI-ready star schema, an anomaly detection report. The goal is to give anyone who forks the repo a concrete, production-shaped starting point they can adapt rather than build from scratch. 
+The clearest way to demonstrate that Pangolin is a battle-ready foundation is a richer end-to-end example. Add a second pipeline shape (as an alternative or addition to the `pangolin init` scaffold's `example_pipeline.py`) that consolidates multiple input files into one unified dataset and then builds something meaningful on top: demand forecasting, a BI-ready star schema, an anomaly detection report. The goal is to give anyone running `pangolin init` a concrete, production-shaped starting point they can adapt rather than build from scratch.
 
 ---
 
@@ -55,7 +55,7 @@ Pangolin is currently exercised mostly against small-to-medium files that fit co
 
 ## 7. More Built-in Processors, Validators & Transformers
 
-Grow the built-in library in `engine/processors`, `utils/validators.py`, and `utils/transformers.py` so more pipelines can be assembled from registry configuration alone, without writing custom code. Fewer gaps to fill means a smoother experience for anyone adapting Pangolin to a new use case.
+Grow the built-in library in `pangolin/engine/processors`, `pangolin/utils/validators.py`, and `pangolin/utils/transformers.py` so more pipelines can be assembled from registry configuration alone, without writing custom code. Fewer gaps to fill means a smoother experience for anyone adapting Pangolin to a new use case.
 
 ---
 
@@ -69,5 +69,21 @@ Pangolin is hard-wired to Polars. Explore adopting [Narwhals](https://narwhals-d
 
 Evaluate using the [Data Contract](https://datacontract.com/) standard to drive validation, instead of (or alongside) the current registry-based validators.
 
+---
 
+## 10. Extensible DataFacility Behaviors
+
+Every `_`-prefixed key's **value** in `data_structure.yaml` is already fully user-editable (it's the project's own file), and any key not in the reserved list is already exposed generically as `node.<key>` for custom code to read. What's *not* extensible today is the **automatic behavior** those reserved keys trigger (`_versioned`, `_timestamped`, `_required`, and file-format inference/read/write) — it's hard-coded in `DataNode`/`DataFacility` (`src/pangolin/engine/DataFacility.py`), so a project can't add a new self-acting key (e.g. `_compress: gzip` to transparently gzip on write) without forking the library. Same class of gap `custom/settings.py` closed for `SETTINGS` — DataFacility has no equivalent extension point yet.
+
+Two directions, increasing in scope:
+
+- **Custom format registry** — a `@register_format(name, reader=..., writer=...)` decorator (same pattern as `@register_validator`/`@register_transformer`), consulted by `_infer_format`/`read()`/`write()` before falling back to the built-in csv/parquet/excel/json/yaml map. Solves "pangolin doesn't know this file format" without touching the library.
+- **Subclassable `DataFacility`** via a scaffolded `custom/data_facility.py`, auto-detected by `get_project_data()` the same way `get_settings()` already auto-detects `custom/settings.py` (see [[Adding Custom Settings]] for the pattern this would mirror). Lets a project override `_resolve_path`/`read`/`write` for its own needs.
+- **(Further out)** A hook registry keyed by custom `_`-attributes (`@register_write_hook("compress")` triggered by `_compress: gzip` on a node) — the most direct answer to "make behavior-inducing attributes pluggable," but needs the lifecycle hook points (path resolution, pre/post read, pre/post write) designed properly first. Would likely fall out naturally once a project can subclass `DataFacility` and start writing its own hook dispatch for its own needs.
+
+---
+
+## 11. Configuration UI
+
+A graphical interface for managing project configuration — including registries — instead of editing files directly. Deferred for now: file-based configuration is easier to version, review, and iterate on while the project is still under active development, and there's no established user base yet that would benefit from a GUI. Worth revisiting once the configuration surface stabilizes and a real need emerges.
 

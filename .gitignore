@@ -4,16 +4,18 @@
 
 # Python
 **/__pycache__/
+.venv/
+venv/
+pangolinEnv/
+pangolin_test/
+*.egg-info/
+.eggs/
+.pytest_cache/
 
 data/
 
-pangolinEnv/
-pangolin_test/
 .env
 .env.*
-!docker/.env.docker.example
-*.egg-info/
-.eggs/
 
 # Obsidian (user-specific workspace files)
 .obsidian/workspace.json
@@ -21,4 +23,4 @@ pangolin_test/
 .obsidian/graph.json
 .obsidian/app.json
 
-.github/
+build/
