@@ -4,19 +4,15 @@ version = "0.1.0"
 description = "Data processing pipeline using Prefect"
 requires-python = ">=3.10"
 dependencies = [
-    "altgraph==0.17.4",
     "cramjam==2.10.0",
     "fastparquet==2024.11.0",
     "fsspec==2025.3.2",
     "numpy==2.2.3",
     "packaging==24.2",
     "pandas==2.2.3",
-    "pefile==2023.2.7",
     "polars==1.23.0",
-    "pyinstaller-hooks-contrib==2025.1",
     "python-dateutil==2.9.0.post0",
     "pytz==2025.1",
-    "pywin32-ctypes==0.2.3",
     "PyYAML==6.0.2",
     "setuptools==76.0.0",
     "six==1.17.0",
@@ -27,10 +23,18 @@ dependencies = [
     "pydantic==2.13.4",
     "pydantic-settings==2.14.2",
     "httpx==0.28.1",
+    "typer==0.21.2",
 ]
 
+[project.scripts]
+pangolin = "pangolin.cli:app"
+
 [tool.setuptools.packages.find]
-exclude = ["data", "tests*"]
+where = ["src"]
+include = ["pangolin*"]
+
+[tool.setuptools.package-data]
+"pangolin._scaffold" = ["project_template/**/*"]
 
 [build-system]
 requires = ["setuptools", "wheel"]

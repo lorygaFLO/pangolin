@@ -33,7 +33,7 @@ When a processor reads a file, it matches the file's **relative path** (includin
 
 ## Validation Registry Format
 
-Used by the `Validator` processor (e.g. steps 0, 3, 4 in the default configuration).
+Used by the `Validator` processor (step 0 in the example project).
 
 ```yaml
 "<pattern>":
@@ -42,7 +42,7 @@ Used by the `Validator` processor (e.g. steps 0, 3, 4 in the default configurati
     <validator_function_name>: <params_or_null>
 ```
 
-### Example: `0_raw_validation.yaml`
+### Example: `0_raw_validation.yaml` (as scaffolded by `pangolin init`)
 
 ```yaml
 "*sales*":
@@ -50,17 +50,12 @@ Used by the `Validator` processor (e.g. steps 0, 3, 4 in the default configurati
     is_empty_dataframe:           # no params → null
     required_columns:             # params = list of column names
       - product_id
+      - product_name
       - price
-      - store_id
       - quantity
-    additional_columns:
-      - product_id
-      - price
-      - store_id
-      - quantity
-    validate_product_ids:         # params = dict
-      product_id_column: product_id
-      product_id_master_column: product_id
+      - date
+    quantity_not_negative:        # custom validator, defined in custom/validators.py
+      quantity_column: quantity
 ```
 
 ### Parameter Passing
@@ -74,7 +69,7 @@ The YAML value after the function name becomes the `params` argument:
 | `validate_product_ids:\n  product_id_column: product_id` | `{"product_id_column": "product_id"}` |
 | `value_range:\n  price:\n    min: 0\n    max: 1000` | `{"price": {"min": 0, "max": 1000}}` |
 
-### Example: `4_cross_validation.yaml`
+### More Built-in Validators (usable in any validation registry)
 
 ```yaml
 "*sales*":
@@ -94,9 +89,9 @@ The YAML value after the function name becomes the `params` argument:
       price:
         min: 0
         max: 1000
-      sellout_price:
-        min: 0
 ```
+
+Nothing stops you from adding a second validation step later in the pipeline (e.g. `1b_post_transform_validation.yaml`) if you need to validate again after transforming — see [[Pipeline Configuration]] for wiring in a new step.
 
 See [[Writing Validators]] for the list of built-in validators and how to create your own.
 
@@ -104,7 +99,7 @@ See [[Writing Validators]] for the list of built-in validators and how to create
 
 ## Transformation Registry Format
 
-Used by the `DataTransformer` processor (e.g. step 2 in the default configuration).
+Used by the `DataTransformer` processor (step 1 in the example project).
 
 ```yaml
 "<pattern>":
@@ -118,7 +113,29 @@ Used by the `DataTransformer` processor (e.g. step 2 in the default configuratio
 
 Transforms are executed **in `order`** (ascending). All must succeed for the file to be saved.
 
-### Example: `2_transform_registry.yaml`
+### Example: `1_transform.yaml` (as scaffolded by `pangolin init`)
+
+```yaml
+"*sales*":
+  transforms:
+    - name: "total_amount_calculation"
+      function: "multiply_columns"
+      params:
+        columns_to_multiply:
+          - price
+          - quantity
+        output_column: total_amount
+      order: 1
+
+    # Custom transformer, defined in custom/transformers.py
+    - name: "ingestion_timestamp"
+      function: "add_ingestion_timestamp"
+      params:
+        column_name: ingested_at
+      order: 2
+```
+
+A richer example, showing a mapping-file enrichment and string cleanup chained before the calculation:
 
 ```yaml
 "*_sales_*":
@@ -133,33 +150,24 @@ Transforms are executed **in `order`** (ascending). All must succeed for the fil
           - "product_id"
         columns_to_add:
           - "product_name"
-          - "product_version"
           - "brand"
       order: 1
 
     - name: "strings_strip_whitespace"
       function: "strings_strip_whitespace"
       params:
-        columns: ["product_name", "product_version"]
+        columns: ["product_name"]
         strip_whitespace: true
       order: 2
-
-    - name: "case_transform"
-      function: "case_transform"
-      params:
-        columns: ["product_version", "product_name", "brand"]
-        to_lowercase: false
-        to_uppercase: true
-      order: 3
 
     - name: "total_sales_calculation"
       function: "multiply_columns"
       params:
         columns_to_multiply:
-          - "sellout_price"
+          - "price"
           - "quantity"
         output_column: "total_sales"
-      order: 4
+      order: 3
 ```
 
 ### Important Notes
@@ -174,7 +182,7 @@ See [[Writing Transformers]] for the list of built-in transformers and how to cr
 
 ## Dispatch Registry Format
 
-Used by the `FileDispatcher` processor (e.g. steps 1, 5 in the default configuration).
+Used by the `FileDispatcher` processor (step 3 in the example project).
 
 ```yaml
 "<pattern>": "<target_subfolder>"
@@ -182,24 +190,33 @@ Used by the `FileDispatcher` processor (e.g. steps 1, 5 in the default configura
 
 This is the simplest format: pattern → destination folder name.
 
-### Example: `1_dispatcher.yaml`
+### Example: `3_dispatcher.yaml` (as scaffolded by `pangolin init`)
+
+```yaml
+"*sales*": "SALES"
+```
+
+Files matching `*sales*` are copied/moved into a `SALES/` subfolder under the output folder. Add more patterns for more categories, e.g.:
 
 ```yaml
 "*sales*": "SALES"
 "*inventory*": "INVENTORY"
-"test_*.csv": "test_data"
-```
-
-Files matching `*sales*` are copied/moved into a `SALES/` subfolder under the output folder.
-
-### Example: `5_dispatcher.yaml`
-
-```yaml
 "*FR_*": "FR"
 "*US_*": "US"
 ```
 
-Files are dispatched by region into `FR/` and `US/` subfolders.
+---
+
+## Non-Standard Registry Formats (Custom Processors)
+
+The three formats above are conventions followed by pangolin's three built-in processors — nothing in the engine enforces them. A custom processor (see [[Creating a New Processor]]) can define its own registry shape entirely. The example project's audit step (`2_audit.yaml`, consumed by `custom/processors/example_processor.py`'s `AuditProcessor`) is one such case:
+
+```yaml
+"*sales*":
+  count_nulls: true
+```
+
+`AuditProcessor` reads `self.registry[pattern]` itself and interprets `count_nulls` however it wants — `BaseProcessor` only handles pattern matching and file I/O, not the shape of what's under each pattern.
 
 ---
 
@@ -208,7 +225,7 @@ Files are dispatched by region into `FR/` and `US/` subfolders.
 1. Create a YAML file in `config/registries/` following the naming convention `<N>_<name>.yaml`
 2. Choose the format based on the processor type you'll use
 3. Add the appropriate glob patterns as keys
-4. Reference the registry path when creating the processor in `main.py`
+4. Reference the registry path when creating the processor in your pipeline file (e.g. `pipelines/example_pipeline.py`)
 
 See [[Pipeline Configuration]] for how to wire a new step into the pipeline.
 

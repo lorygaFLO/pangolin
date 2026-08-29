@@ -1,6 +1,6 @@
 # Writing Validators
 
-Validators are Python functions that check a DataFrame against specific rules and return `True` (pass) or `False` (fail). They live in `utils/validators.py` and are automatically registered via a decorator.
+Validators are Python functions that check a DataFrame against specific rules and return `True` (pass) or `False` (fail). Built-in validators ship with the library in `pangolin/utils/validators.py`; project-specific ones live in your project's `custom/validators.py`. Both are registered automatically via the same decorator.
 
 ---
 
@@ -31,7 +31,7 @@ def my_validator(df, messages, params=None) -> bool:
 Decorate the function with `@register_validator`:
 
 ```python
-from utils.validators import register_validator
+from pangolin.utils.validators import register_validator
 
 @register_validator
 def my_validator(df, messages, params=None):
@@ -48,7 +48,7 @@ This adds the function to `VALIDATORS_DICT` under its `__name__`. The validator 
 
 ## Step-by-Step: Creating a New Validator
 
-### 1. Write the Function in `utils/validators.py`
+### 1. Write the Function in `custom/validators.py`
 
 ```python
 @register_validator
@@ -76,7 +76,7 @@ def no_duplicate_rows(df, messages, params=None):
 ### 2. Reference It in a Registry YAML
 
 ```yaml
-# config/registries/3_validation.yaml
+# config/registries/0_raw_validation.yaml
 "*sales*":
   validators:
     no_duplicate_rows:
@@ -174,7 +174,7 @@ Called as: `check_null_values(df, messages, {"columns": [...], "custom_null_valu
 - Validators run **in the order they appear** in the registry YAML. If `required_columns` raises `ValueError`, subsequent validators for that file are skipped.
 - You can access `DataFacility` from inside a validator — it is already imported at module level as `D`:
   ```python
-  from engine.DataFacility import DataFacility
+  from pangolin.engine.DataFacility import DataFacility
   D = DataFacility()
   ```
 

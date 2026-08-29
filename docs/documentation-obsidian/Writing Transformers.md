@@ -1,6 +1,6 @@
 # Writing Transformers
 
-Transformers are Python functions that take a Polars DataFrame, apply a modification, and return the modified DataFrame. They live in `utils/transformers.py` and are registered automatically via a decorator.
+Transformers are Python functions that take a Polars DataFrame, apply a modification, and return the modified DataFrame. Built-in transformers ship with the library in `pangolin/utils/transformers.py`; project-specific ones live in your project's `custom/transformers.py`. Both are registered automatically via the same decorator.
 
 ---
 
@@ -31,7 +31,7 @@ def my_transformer(df, messages=None, **kwargs) -> pl.DataFrame:
 Decorate the function with `@register_transformer`:
 
 ```python
-from utils.transformers import register_transformer
+from pangolin.utils.transformers import register_transformer
 
 @register_transformer
 def my_transformer(df, messages=None, **kwargs) -> pl.DataFrame:
@@ -48,7 +48,7 @@ This adds the function to `TRANSFORMERS_DICT` under its `__name__`.
 
 ## Step-by-Step: Creating a New Transformer
 
-### 1. Write the Function in `utils/transformers.py`
+### 1. Write the Function in `custom/transformers.py`
 
 ```python
 @register_transformer
@@ -79,7 +79,7 @@ def rename_columns(
 ### 2. Reference It in a Registry YAML
 
 ```yaml
-# config/registries/2_transform_registry.yaml
+# config/registries/1_transform.yaml
 "*_sales_*":
   transforms:
     - name: "rename_columns"
@@ -116,8 +116,15 @@ So each key in `params` must match a parameter name in your function signature.
 | `strings_strip_whitespace` | `columns`, `strip_whitespace` | Strips leading/trailing whitespace from string columns |
 | `case_transform` | `columns`, `to_uppercase`, `to_lowercase` | Converts string columns to upper or lower case |
 | `multiply_columns` | `columns_to_multiply`, `output_column` | Creates a new column as the product of multiple columns |
+| `sum_columns` | `columns_to_sum`, `output_column` | Creates a new column as the sum of multiple columns |
+| `subtract_columns` | `columns_to_subtract`, `output_column` | Creates a new column as the difference of multiple columns |
+| `divide_columns` | `columns_to_divide`, `output_column` | Creates a new column as the quotient of multiple columns |
+| `drop_columns` | `columns` | Drops the listed columns |
 | `save_inventory_snapshot` | `snapshot_file`, `product_id_column` | Appends distinct product IDs to a versioned snapshot file |
 | `blank` | (none) | No-op transformer. Returns the DataFrame unchanged. |
+
+> [!note]
+> Check the exact parameter names in `pangolin/utils/transformers.py` before using one — this table is a quick reference, not the source of truth.
 
 ---
 
@@ -133,7 +140,7 @@ params:
 Then resolve it in the transformer:
 
 ```python
-from engine.DataFacility import DataFacility
+from pangolin.engine.DataFacility import DataFacility
 D = DataFacility()
 
 @register_transformer

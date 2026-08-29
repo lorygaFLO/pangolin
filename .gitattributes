@@ -1,0 +1,14 @@
+# Normalize all text files to LF line endings in the repository,
+# regardless of what a given OS/editor writes on checkout.
+* text=auto eol=lf
+
+# Windows-native scripts: keep CRLF so they open naturally in
+# Notepad/PowerShell ISE and match Windows conventions.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+
+# Binary files: never touch, never diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary

@@ -6,7 +6,7 @@ Pangolin uses a single YAML file (`config/data_structure.yaml`) to declare every
 
 ## The YAML Schema
 
-`config/data_structure.yaml` describes the logical folder layout. Here is the default structure:
+`config/data_structure.yaml` describes the logical folder layout. Here is what `pangolin init` scaffolds by default:
 
 ```yaml
 input:
@@ -20,33 +20,44 @@ staging:
   0_validator:
     _pattern_matching: true
     _registry: "config/registries/0_raw_validation.yaml"
-  1_dispatcher:
+  1_transform:
     _pattern_matching: true
-    _registry: "config/registries/1_dispatcher.yaml"
-  2_transform:
+    _registry: "config/registries/1_transform.yaml"
+  2_audit:
     _pattern_matching: true
-    _registry: "config/registries/2_transform_registry.yaml"
-  3_validation:
+    _registry: "config/registries/2_audit.yaml"
+  3_dispatcher:
     _pattern_matching: true
-    _registry: "config/registries/3_validation.yaml"
-  4_cross_validation:
-    _pattern_matching: true
-    _registry: "config/registries/4_cross_validation.yaml"
-  5_dispatcher:
-    _pattern_matching: true
-    _registry: "config/registries/5_dispatcher.yaml"
+    _registry: "config/registries/3_dispatcher.yaml"
 
 delivery:
   _description: "Final output"
   _settings_key: "DELIVERY_FOLDER_NAME"
   _timestamped: true
-  sales_final:
-    _filename: "sales_final.csv"
+
+backup:
+  _description: "Backup folder"
+  _settings_key: "BACKUP_FOLDER_NAME"
+  _timestamped: true
 
 reports:
   _description: "Report files"
   _settings_key: "REPORTS_FOLDER_NAME"
   _timestamped: true
+
+# Custom folders (not driven by Settings)
+static:
+  _description: "Static support files"
+```
+
+`static` ships empty — it's there so you have a place for reference files (mappings, snapshots) without pangolin imposing a shape on them. Here's a fuller example showing every reserved key, including ones the default scaffold doesn't use:
+
+```yaml
+delivery:
+  _settings_key: "DELIVERY_FOLDER_NAME"
+  _timestamped: true
+  sales_final:
+    _filename: "sales_final.csv"
 
 static:
   _description: "Static support files"
@@ -130,7 +141,7 @@ data/staging/  →  data/staging/20260324_185705/
 ### Getting the Instance
 
 ```python
-from engine.DataFacility import get_project_data
+from pangolin.engine.DataFacility import get_project_data
 
 D = get_project_data()
 ```
