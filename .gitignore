@@ -1,7 +1,7 @@
 # VS Code
 .vscode/
 .github/
-
+pangolin.code-workspace
 # Python
 **/__pycache__/
 .venv/
