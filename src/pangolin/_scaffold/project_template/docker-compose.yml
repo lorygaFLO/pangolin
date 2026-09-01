@@ -1,4 +1,4 @@
-name: pangolin
+name: ${PROJECT_NAME:-pangolin}
 
 # =====================================================================
 # Pangolin Docker stack
