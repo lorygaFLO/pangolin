@@ -15,7 +15,7 @@ pangolin/                          # this repo — the library, nothing else
 │   ├── _scaffold/
 │   │   └── project_template/      # Project skeleton copied by `pangolin init`
 │   │       ├── config/            # data_structure.yaml + registries/ (example)
-│   │       ├── custom/            # example validators/transformers/processor
+│   │       ├── custom/            # example validators/transformers/processor/run_context
 │   │       ├── pipelines/         # example_pipeline.py
 │   │       ├── example_input/     # sample CSV, copied into data/input/
 │   │       ├── template.env, template.gitignore   # renamed to .env / .gitignore on copy
@@ -61,7 +61,8 @@ my-project/
 │   ├── validators.py               # project-specific validators
 │   ├── transformers.py             # project-specific transformers
 │   ├── processors/                 # project-specific processor classes
-│   └── settings.py                 # project-specific SETTINGS fields (e.g. S.TRAINING_EPOCHS)
+│   ├── settings.py                 # project-specific SETTINGS fields (e.g. S.TRAINING_EPOCHS)
+│   └── run_context.py              # project-specific RunContext fields (e.g. CTX.TRIGGERED_BY)
 ├── pipelines/
 │   ├── __init__.py                 # auto-discovery: scans this folder, builds PIPELINES dict
 │   └── example_pipeline.py         # backup → validate → transform → audit → dispatch

@@ -31,7 +31,7 @@ The example pipeline is defined in `pipelines/example_pipeline.py` using **Prefe
 @flow(name="Example Pipeline")
 def example_pipeline():
     logger = get_run_logger()
-    CTX = RunContext()
+    CTX = get_run_context()
 
     s_init = backup_flow(CTX, return_state=True)
     s0 = raw_validation_flow(CTX, return_state=True, wait_for=[s_init])
@@ -70,12 +70,45 @@ def transform_flow(CTX):           # ← receives RunContext from the parent flo
 
 | Parameter | Description |
 |-----------|-------------|
-| `CTX` | `RunContext` instance — carries the `RUN_ID` shared across all steps of a run |
+| `CTX` | `RunContext` instance — carries the `RUN_ID`, `GIT_BRANCH`, `GIT_SHA` (and any project-specific fields from `custom/run_context.py`) shared across all steps of a run |
 | `name` | Unique step identifier, appears in logs and report subfolder names. The registry YAML is resolved from the `_registry` key on the `data_structure.yaml` node with this name (which must also declare `_pattern_matching: true`). |
 | `report_folder` | Dot-notation path to the reports folder in `data_structure.yaml` |
 | `input_folder` | Dot-notation path to the input folder — reads files from here |
 | `output_folder` | Dot-notation path to the output folder — writes results here |
 | `registry` | *(optional)* Custom registry — a `dict` (in-memory) or a `str` path to a YAML file. Takes priority over `_registry` in `data_structure.yaml`. If neither is available, the processor raises a `ValueError`. |
+
+### Custom Run Context Fields
+
+`RunContext` ships `RUN_ID`, `GIT_BRANCH`, and `GIT_SHA` by default (`GIT_BRANCH`/`GIT_SHA` resolve from the `GIT_BRANCH`/`GIT_SHA` env vars if set — e.g. baked into a Docker image, see [[Docker Deployment]] — otherwise from the local git working tree; a `-dirty` suffix is appended to the SHA when the tree has uncommitted changes). Log it at the start of a pipeline with `CTX.summary()`:
+
+```python
+logger.info(f"Example pipeline started - {CTX.summary()}")
+# → "RUN_ID: 20260324_185705 | branch: develop | commit: 4f38b25"
+```
+
+To add your own per-run field (a trigger source, an operator name, a correlation id), subclass `RunContext` in **`custom/run_context.py`**, scaffolded empty by `pangolin init` — same pattern as `custom/settings.py` (see [[Adding Custom Settings]]):
+
+```python
+# custom/run_context.py
+import os
+from dataclasses import dataclass, field
+from pangolin.config.run_context import RunContext as _BaseRunContext
+
+@dataclass
+class RunContext(_BaseRunContext):
+    TRIGGERED_BY: str = field(default_factory=lambda: os.getenv("TRIGGERED_BY", "manual"))
+```
+
+Get an instance with `get_run_context()` (not `RunContext()` directly) — it auto-detects your subclass, exactly like `get_settings()` does for `SETTINGS`:
+
+```python
+from pangolin.config.run_context import get_run_context
+
+CTX = get_run_context()
+print(CTX.TRIGGERED_BY)  # your field, alongside RUN_ID/GIT_BRANCH/GIT_SHA
+```
+
+`pangolin step`/`pangolin restore` also go through `get_run_context()`, so a custom subclass is honored there too.
 
 ### Passing a Custom Registry
 

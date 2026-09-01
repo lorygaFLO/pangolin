@@ -20,7 +20,7 @@ import custom.transformers  # noqa: F401
 import custom.validators  # noqa: F401
 
 from custom.processors.example_processor import AuditProcessor
-from pangolin.config.run_context import RunContext
+from pangolin.config.run_context import RunContext, get_run_context
 from pangolin.config.settings import get_settings
 from pangolin.engine.processors.BackupRestore import BackupRestore
 from pangolin.engine.processors.DataTransformer import DataTransformer
@@ -96,8 +96,8 @@ def delivery_flow(CTX: RunContext):
 @flow(name="Example Pipeline", description="Validate, transform, audit and deliver sales files")
 def example_pipeline():
     logger = get_run_logger()
-    CTX = RunContext()
-    logger.info(f"Example pipeline started - PANGOLIN_RUN_ID: {CTX.RUN_ID}")
+    CTX = get_run_context()
+    logger.info(f"Example pipeline started - {CTX.summary()}")
 
     s_init = backup_flow(CTX, return_state=True)
     s0 = raw_validation_flow(CTX, return_state=True, wait_for=[s_init])
