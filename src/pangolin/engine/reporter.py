@@ -32,26 +32,19 @@ class Reporter:
         self.log = ProcessorLogger(step_name or 'reporter')
         
         # Navigate to report node using DataFacility
-        self.report_node = self._get_node_by_path(self.report_folder)
-        
+        try:
+            self.report_node = self.D.get_node(self.report_folder)
+        except AttributeError as e:
+            raise ValueError(f"Report folder '{self.report_folder}' not found in data structure: {e}") from e
+
         # If step_name is provided, create a subfolder for it
         if self.step_name:
             self.report_path = self.fs.join(str(self.report_node.path), self.step_name)
         else:
             self.report_path = str(self.report_node.path)
-        
+
         # Ensure the report path exists
         self.fs.makedirs(self.report_path, exist_ok=True)
-
-    def _get_node_by_path(self, path_str: str):
-        """Navigate to a node in DataFacility using dot notation."""
-        parts = path_str.split('.')
-        node = self.D
-        for part in parts:
-            if not hasattr(node, part):
-                raise ValueError(f"Report folder '{path_str}' not found in data structure")
-            node = getattr(node, part)
-        return node
 
     def _create_report_filename(self, input_file_path: str) -> str:
         """Create report filename based on input file."""
