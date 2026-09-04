@@ -28,7 +28,7 @@ The project supports multiple deployment modes: you can run it **locally**, depl
 Pangolin is a library + CLI, not a repo you fork. Install it, then scaffold a project anywhere else:
 
 ```bash
-pip install pangolin           # or, until published: pip install git+https://github.com/lorygaFLO/pangolin.git
+pip install git+https://github.com/lorygaFLO/pangolin.git
 pangolin init my-project        # scaffold config/, pipelines/, custom/, .env, README.md
 pangolin init my-project -d     # also scaffold the Docker deployment stack (docker/, docker-compose.yml, Makefile, make.ps1)
 cd my-project

@@ -9,7 +9,7 @@ This guide walks you through installing Pangolin, scaffolding a project, and run
 Pangolin is an installable package with a CLI. To start a brand-new project you don't need to clone this repo — a project lives in its **own** folder/repo, separate from the pangolin library:
 
 ```bash
-pip install pangolin           # or, until published: pip install git+https://github.com/lorygaFLO/pangolin.git
+pip install git+https://github.com/lorygaFLO/pangolin.git
 mkdir my-project && cd my-project
 pangolin init                     # scaffolds config/, custom/, pipelines/, data/, README.md
 pangolin run                      # runs the bundled, fully working example pipeline

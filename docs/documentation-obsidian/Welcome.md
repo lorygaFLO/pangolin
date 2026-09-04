@@ -1,6 +1,6 @@
 # Welcome to Pangolin
 
-**Pangolin** is an installable library + CLI for building data pipelines, built on [Prefect](https://www.prefect.io/) and powered by [Polars](https://pola.rs/). The intent is not just to provide a working example, but a solid, opinionated foundation for a real production project — without having to design the scaffolding yourself. `pip install pangolin`, run `pangolin init` in an empty folder, and you get a sensible folder layout, a config-driven engine, and a clear extension model, so your first commit can focus on business logic rather than plumbing. See [[Getting Started]].
+**Pangolin** is an installable library + CLI for building data pipelines, built on [Prefect](https://www.prefect.io/) and powered by [Polars](https://pola.rs/). The intent is not just to provide a working example, but a solid, opinionated foundation for a real production project — without having to design the scaffolding yourself. `pip install git+https://github.com/lorygaFLO/pangolin.git`, run `pangolin init` in an empty folder, and you get a sensible folder layout, a config-driven engine, and a clear extension model, so your first commit can focus on business logic rather than plumbing. See [[Getting Started]].
 
 This documentation is structured as an [Obsidian](https://obsidian.md/) vault. For the best experience — including linked pages, graph view, and sidebar navigation — open the `docs/documentation-obsidian/` folder as a vault in Obsidian.
 ---

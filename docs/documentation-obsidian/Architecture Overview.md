@@ -151,7 +151,7 @@ Everything needed to run a project as a containerised stack is scaffolded into `
 | `worker` | project image | Runs `pangolin deploy` — registers every pipeline in `pipelines/` and serves runs |
 | `caddy` | `caddy:2` | Reverse proxy — exposes UI on `localhost` and `<project>.localhost` |
 
-The project's `docker/Dockerfile` installs the `pangolin` library itself (`pip install pangolin`, currently via git since it isn't published yet — see the generated `docker/README.md`) and copies the project on top. Runtime config is declared in `docker/prefect_manifest.yaml` (committable) and secrets live in `docker/.env.docker` (gitignored). See [[Docker Deployment]].
+The project's `docker/Dockerfile` installs the `pangolin` library itself (`pip install git+https://github.com/lorygaFLO/pangolin.git` — not published to a package index — see the generated `docker/README.md`) and copies the project on top. Runtime config is declared in `docker/prefect_manifest.yaml` (committable) and secrets live in `docker/.env.docker` (gitignored). See [[Docker Deployment]].
 
 ---
 
