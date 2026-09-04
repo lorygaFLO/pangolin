@@ -316,6 +316,22 @@ DEBUG_RUN_ID=debug_run
 
 Run the pipeline (or just the steps you need) once with `DEBUG=True` to populate `data/staging/debug_run/...`, then re-run individual steps against that same folder as many times as you like. Remember to set `DEBUG=False` before running for real — every run in debug mode overwrites the same `debug_run` folder.
 
+### Restoring, Then Reprocessing
+
+`pangolin restore <run_id>` (shortcut for `pangolin step <pipeline> restore_flow <run_id>`) writes the restored files into a **fresh** RUN_ID's input folder — same as any other run. If your next move is to reprocess that data with `pangolin step <pipeline> <next_step>`, that's a *second*, separate CLI invocation, which would normally get its own fresh RUN_ID too — so it wouldn't find what `restore` just wrote.
+
+Set `DEBUG=True` in `.env` *before* running `restore` (not just before the step after it) so both calls are pinned to the same `DEBUG_RUN_ID` and agree on which run folder to use:
+
+```env
+DEBUG=True
+DEBUG_RUN_ID=debug_run
+```
+
+```bash
+pangolin restore 20260324_185705 --pipeline example_pipeline
+pangolin step example_pipeline transform_flow
+```
+
 ### Configuring the VS Code Debugger
 
 `pangolin init` doesn't scaffold a `.vscode/launch.json` (editor config is a personal/project choice, not something the library should impose). Add one yourself with a config like this:

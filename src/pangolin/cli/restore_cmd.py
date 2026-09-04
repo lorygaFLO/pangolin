@@ -25,7 +25,16 @@ def restore(
         help="Pipeline exposing the restore step.",
     ),
 ) -> None:
-    """Restore input data from a backup run (shortcut for `pangolin step <pipeline> restore_flow <run_id>`)."""
+    """Restore input data from a backup run (shortcut for `pangolin step <pipeline> restore_flow <run_id>`).
+
+    Restoring always writes into a fresh RUN_ID's input folder, same as any
+    other run. To then reprocess that exact data with `pangolin step
+    <pipeline> <next_step>`, set DEBUG=True in .env *before* running this
+    command too — that pins RUN_ID to DEBUG_RUN_ID, so the restore and the
+    step call after it agree on which run folder to use (see "Staging Data
+    with DEBUG=True" in the docs). Without it, each command gets its own
+    fresh timestamp and the step won't find what was just restored.
+    """
     pipelines = load_pipelines()
     resolve_pipeline(pipeline, pipelines)
 
