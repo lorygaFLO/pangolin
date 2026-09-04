@@ -112,6 +112,7 @@ pangolin list                      # discovered pipelines + their debuggable ste
 pangolin run                       # run the default pipeline
 pangolin step <pipeline> <step>    # run one step in isolation (needs DEBUG=True in .env)
 pangolin restore <run_id>          # restore input from a previous backup
+pangolin prefect-server            # persistent local Prefect server, isolated per project
 pangolin deploy                    # serve every pipeline as a Prefect deployment
 pangolin bootstrap                 # apply docker/prefect_manifest.yaml to a Prefect server
 ```
