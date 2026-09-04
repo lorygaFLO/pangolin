@@ -24,30 +24,50 @@ import os
 import re
 import time
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, List, Optional
 
 import httpx
 import typer
 import yaml
-from prefect.variables import Variable
 
-try:
-    from prefect.blocks.system import JSON, Secret
-except ImportError:
-    try:
-        from prefect.blocks.core import JSON, Secret
-    except ImportError:
-        from prefect.blocks.system import Secret
-        from prefect.blocks.core import Block
-
-        class JSON(Block):
-            _block_type_slug = "json"
-            value: dict = {}
+from pangolin.cli._prefect_env import bootstrap_prefect_home
 
 LOG = logging.getLogger("pangolin.bootstrap")
 
 DEFAULT_MANIFEST = Path("docker/prefect_manifest.yaml")
 ENV_REF_RE = re.compile(r"^\$\{([A-Z_][A-Z0-9_]*)\}$")
+
+_prefect_symbols: Optional[SimpleNamespace] = None
+
+
+def _prefect() -> SimpleNamespace:
+    """Lazily import Prefect's Variable/JSON/Secret.
+
+    Deferred (rather than a module-level import) so PREFECT_HOME can be set
+    by `bootstrap_prefect_home()` first — this module is imported eagerly by
+    `pangolin.cli` for every CLI invocation, well before any command-specific
+    code (and PREFECT_HOME derivation) would otherwise get a chance to run.
+    """
+    global _prefect_symbols
+    if _prefect_symbols is None:
+        from prefect.variables import Variable
+
+        try:
+            from prefect.blocks.system import JSON, Secret
+        except ImportError:
+            try:
+                from prefect.blocks.core import JSON, Secret
+            except ImportError:
+                from prefect.blocks.system import Secret
+                from prefect.blocks.core import Block
+
+                class JSON(Block):
+                    _block_type_slug = "json"
+                    value: dict = {}
+
+        _prefect_symbols = SimpleNamespace(Variable=Variable, JSON=JSON, Secret=Secret)
+    return _prefect_symbols
 
 bootstrap_app = typer.Typer(
     name="bootstrap",
@@ -113,9 +133,9 @@ def _is_empty(value: Any) -> bool:
 def _existing_block_value(block_type: str, name: str) -> Any:
     try:
         if block_type == "json":
-            return JSON.load(name).value
+            return _prefect().JSON.load(name).value
         if block_type == "secret":
-            return Secret.load(name).get()
+            return _prefect().Secret.load(name).get()
     except Exception:
         return None
     return None
@@ -123,7 +143,7 @@ def _existing_block_value(block_type: str, name: str) -> Any:
 
 def _existing_variable_value(name: str) -> Any:
     try:
-        return Variable.get(name)
+        return _prefect().Variable.get(name)
     except Exception:
         return None
 
@@ -162,11 +182,11 @@ def apply_variable(entry: dict) -> None:
         if not _is_empty(existing):
             LOG.info("Variable %r kept (manifest empty, server has value).", name)
             return
-        Variable.set(name, "", overwrite=True)
+        _prefect().Variable.set(name, "", overwrite=True)
         LOG.info("Variable %r created empty.", name)
         return
 
-    Variable.set(name, resolved, overwrite=True)
+    _prefect().Variable.set(name, resolved, overwrite=True)
     LOG.info("Variable %r set from manifest.", name)
 
 
@@ -178,6 +198,8 @@ def apply_block(entry: dict) -> None:
 
     if btype not in ("json", "secret"):
         raise ValueError(f"Unsupported block type {btype!r} for {name!r}")
+
+    JSON, Secret = _prefect().JSON, _prefect().Secret
 
     if _is_empty(resolved):
         existing = _existing_block_value(btype, name)
@@ -206,6 +228,7 @@ def apply_block(entry: dict) -> None:
 
 def _run_bootstrap(manifest_path: Path) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    bootstrap_prefect_home()
     wait_for_api()
     manifest = load_manifest(manifest_path)
 
@@ -213,10 +236,10 @@ def _run_bootstrap(manifest_path: Path) -> None:
     branch = os.getenv("GIT_BRANCH")
     sha = os.getenv("GIT_SHA")
     if branch:
-        Variable.set("pangolin_git_branch", branch, overwrite=True)
+        _prefect().Variable.set("pangolin_git_branch", branch, overwrite=True)
         LOG.info("Variable 'pangolin_git_branch' = %s", branch)
     if sha:
-        Variable.set("pangolin_git_sha", sha, overwrite=True)
+        _prefect().Variable.set("pangolin_git_sha", sha, overwrite=True)
         LOG.info("Variable 'pangolin_git_sha' = %s", sha)
 
     for entry in manifest.get("variables", []):
@@ -272,6 +295,7 @@ def create_empty(
         typer.secho(f"Invalid --type {type!r}: must be secret, json or variable.", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
+    bootstrap_prefect_home()
     wait_for_api()
 
     names: List[str] = list(name or [])

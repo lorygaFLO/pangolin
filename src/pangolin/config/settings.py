@@ -30,10 +30,15 @@ class SETTINGS(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    # Project identity (used as UI subdomain in docker-local mode and for tagging)
+    # Project identity (used as UI subdomain in docker-local mode, to derive
+    # PREFECT_HOME in local mode, and for run tagging)
     PROJECT_NAME: str = Field(
         "pangolin",
-        description="Project identity. Used as the Prefect UI subdomain in docker-local mode and for run tagging.",
+        description=(
+            "Project identity. Used as the Prefect UI subdomain in docker-local mode, "
+            "to isolate this project's local Prefect state directory (see PREFECT_HOME "
+            "in .env) from other pangolin projects on the same machine, and for run tagging."
+        ),
     )
 
     # Backend

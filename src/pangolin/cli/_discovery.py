@@ -13,6 +13,8 @@ from pathlib import Path
 
 import typer
 
+from pangolin.cli._prefect_env import bootstrap_prefect_home
+
 DEFAULT_PIPELINE = "full_processing"
 
 
@@ -33,6 +35,7 @@ def _project_root() -> Path:
 
 def load_pipelines() -> dict:
     """Import the project's pipelines package and return its PIPELINES dict."""
+    bootstrap_prefect_home()
     root = _project_root()
     os.environ.setdefault("PREFECT_LOGGING_EXTRA_LOGGERS", "pangolin")
     if str(root) not in sys.path:
