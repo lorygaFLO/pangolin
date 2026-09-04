@@ -11,6 +11,7 @@ from pangolin.cli.bootstrap_cmd import bootstrap_app
 from pangolin.cli.deploy_cmd import deploy
 from pangolin.cli.init_cmd import init
 from pangolin.cli.list_cmd import list_pipelines
+from pangolin.cli.prefect_server_cmd import prefect_server
 from pangolin.cli.restore_cmd import restore
 from pangolin.cli.run_cmd import run
 from pangolin.cli.step_cmd import step
@@ -35,6 +36,10 @@ app.command("step")(step)
 app.command("restore")(restore)
 app.command("deploy")(deploy)
 app.add_typer(bootstrap_app, name="bootstrap")
+app.command(
+    "prefect-server",
+    context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
+)(prefect_server)
 
 
 @app.callback()

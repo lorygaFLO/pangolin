@@ -177,16 +177,18 @@ This launches the Prefect flow for the example pipeline:
 > [!warning] Isolate each project's Prefect state
 > Prefect defaults to one global state directory (`~/.prefect`, one shared SQLite DB) for every project on your machine. If two pangolin projects both use that default, they land in the **same** database — their deployments, runs and logs all show up mixed together in the same dashboard.
 >
-> `pangolin run` / `pangolin deploy` / `pangolin bootstrap` already avoid this automatically: they derive `PREFECT_HOME` from `PROJECT_NAME` in `.env` (see [[Getting Started#Configuring .env|Configuring .env]]) before touching Prefect. But `prefect server start` below is a **bare Prefect command**, not a pangolin one — export the same `PREFECT_HOME` yourself before running it, once per project.
+> `pangolin run` / `pangolin deploy` / `pangolin bootstrap` already avoid this automatically: they derive `PREFECT_HOME` from `PROJECT_NAME` in `.env` (see [[Getting Started#Configuring .env|Configuring .env]]) before touching Prefect. Use `pangolin prefect-server` below (not the bare `prefect server start`) so Terminal 1 gets the same guarantee — pangolin can't inject env vars into a process it doesn't launch.
 
 **Terminal 1 — start the Prefect server**
 
 ```bash
-export PREFECT_HOME="$(pwd)/.prefect/my-project"   # match PROJECT_NAME from .env; PowerShell: $env:PREFECT_HOME = "..."
-prefect server start
+pangolin prefect-server
 ```
 
-Leave this running. The dashboard is now available at `http://127.0.0.1:4200`.
+A thin wrapper around `prefect server start` — same flags work (e.g. `pangolin prefect-server --host 0.0.0.0 --port 4201`) — that first derives `PREFECT_HOME` exactly like `pangolin run`/`deploy` do. Prints the `PREFECT_HOME` it's using on startup. Leave this running. The dashboard is now available at `http://127.0.0.1:4200`.
+
+> [!tip]
+> Still want the bare Prefect command? `export PREFECT_HOME="$(pwd)/.prefect/my-project"` (match `PROJECT_NAME` from `.env`; PowerShell: `$env:PREFECT_HOME = "..."`) before `prefect server start` gets you the same isolation by hand.
 
 **Terminal 2 — serve the deployments**
 
