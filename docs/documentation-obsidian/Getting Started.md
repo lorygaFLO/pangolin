@@ -52,6 +52,15 @@ The rest of this guide covers the concepts in more depth. The last section cover
 `pangolin init` writes a starter `.env`. Open it and set the values for your machine:
 
 ```ini
+# Project identity. Change per project — namespaces this project's local
+# Prefect state (PREFECT_HOME) away from every other pangolin project on
+# this machine. See "Running via the Prefect UI" below.
+PROJECT_NAME=my-project
+
+# Local Prefect state directory (server DB + profile), derived from
+# PROJECT_NAME above so it stays unique per project.
+PREFECT_HOME=.prefect/${PROJECT_NAME}
+
 # Backend engine (only "polars" is supported)
 BACKEND_ENGINE=polars
 
@@ -169,9 +178,15 @@ This launches the Prefect flow for the example pipeline:
 
 `pangolin run` executes the flow once, directly, in the foreground. If you instead want to trigger runs from the **Prefect dashboard** (Quick Run, schedules, run history), you need a persistent Prefect server plus the deployments served — two terminals:
 
+> [!warning] Isolate each project's Prefect state
+> Prefect defaults to one global state directory (`~/.prefect`, one shared SQLite DB) for every project on your machine. If two pangolin projects both use that default, they land in the **same** database — their deployments, runs and logs all show up mixed together in the same dashboard.
+>
+> `pangolin run` / `pangolin deploy` / `pangolin bootstrap` already avoid this automatically: they derive `PREFECT_HOME` from `PROJECT_NAME` in `.env` (see [[Getting Started#Configuring .env|Configuring .env]]) before touching Prefect. But `prefect server start` below is a **bare Prefect command**, not a pangolin one — export the same `PREFECT_HOME` yourself before running it, once per project.
+
 **Terminal 1 — start the Prefect server**
 
 ```bash
+export PREFECT_HOME="$(pwd)/.prefect/my-project"   # match PROJECT_NAME from .env; PowerShell: $env:PREFECT_HOME = "..."
 prefect server start
 ```
 

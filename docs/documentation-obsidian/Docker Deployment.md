@@ -188,6 +188,8 @@ So you can freely rebuild the image (including after switching git branches, e.g
 
 **Isolation between projects:** the Compose project name (which namespaces containers, networks, and volume names as `<project>_<volume>`) is derived from `PROJECT_NAME` in `docker/.env.docker` (defaults to `pangolin`). Two different pangolin projects scaffolded on the same machine must use **different `PROJECT_NAME` values** in their respective `docker/.env.docker`, or they will collide on the same volume names (`pangolin_prefect-data`, etc.) and appear to "reset" or mix run history when you spin up the other project's stack.
 
+> Running without Docker? The same `PROJECT_NAME` (this time in the project's own `.env`) drives `PREFECT_HOME` for local-mode isolation too — see [[Getting Started#Running via the Prefect UI (persistent server)|Getting Started]].
+
 ---
 
 ## Configuration: `docker/prefect_manifest.yaml`
