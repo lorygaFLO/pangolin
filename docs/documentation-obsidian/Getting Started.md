@@ -9,7 +9,7 @@ This guide walks you through installing Pangolin, scaffolding a project, and run
 Pangolin is an installable package with a CLI. To start a brand-new project you don't need to clone this repo — a project lives in its **own** folder/repo, separate from the pangolin library:
 
 ```bash
-pip install pangolin           # or, until published: pip install git+https://github.com/lorygaFLO/pangolin.git
+pip install git+https://github.com/lorygaFLO/pangolin.git
 mkdir my-project && cd my-project
 pangolin init                     # scaffolds config/, custom/, pipelines/, data/, README.md
 pangolin run                      # runs the bundled, fully working example pipeline
@@ -121,11 +121,16 @@ print(S.BASEPATH, S.INPUT_FOLDER_NAME)
 ```
 
 > [!note]
-> `get_settings()` returns a **fresh instance** each time — it holds static config from `.env`. The `RUN_ID` is **not** part of `SETTINGS`; it belongs to `RunContext`, instantiated once per run in the main flow and passed down to every subflow and processor. This keeps per-run state separate from environment configuration.
+> `get_settings()` returns a **fresh instance** each time — it holds static config from `.env`. The `RUN_ID` is **not** part of `SETTINGS`; it belongs to `RunContext`, instantiated once per run (via `get_run_context()`) in the main flow and passed down to every subflow and processor. This keeps per-run state separate from environment configuration.
+
+`RunContext` is user-extensible the same way `SETTINGS` is: a project-specific per-run field goes in **`custom/run_context.py`**, scaffolded empty by `pangolin init`. Get an instance with `get_run_context()` instead of instantiating `RunContext()` directly — it auto-detects your subclass, same pattern as `get_settings()`.
 
 | Property | Example | Description |
 | --- | --- | --- |
 | `CTX.RUN_ID` | `"20260324_185705"` | Unique timestamp for the current run — lives on `RunContext` |
+| `CTX.GIT_BRANCH` | `"develop"` | Git branch the code was run from — env var `GIT_BRANCH` (baked into Docker images) if set, else read from the local working tree |
+| `CTX.GIT_SHA` | `"4f38b25"` / `"4f38b25-dirty"` | Short commit SHA, same resolution as `GIT_BRANCH`; `-dirty` suffix when the local working tree has uncommitted changes |
+| `CTX.summary()` | `"RUN_ID: ... \| branch: ... \| commit: ..."` | Convenience one-liner for logging at pipeline start |
 | `S.BASEPATH` / `S.DATAPATH` | `Path(...)` | Absolute paths, resolved at startup |
 | `S.PATH_REPORTS` | `Path(...)` | Computed: `DATAPATH / REPORTS_FOLDER_NAME` |
 

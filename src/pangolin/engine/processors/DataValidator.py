@@ -165,13 +165,18 @@ class Validator(BaseProcessor):
                 output_relative_path = self.fs.join(relative_path_obj, output_filename) if relative_path_obj else output_filename
                 output_path = self.write_file(dataset, output_relative_path)
                 self.log.info(f"Valid file saved to {output_relative_path}")
+                messages.append(f"\nFile saved to {output_relative_path}")
             else:
-                # Validation failed - generate report with all issues
+                # Validation failed
                 messages.append("\nFile NOT saved due to validation errors")
                 self.log.warning(f"Validation failed for {relative_path} - file not saved")
-                # Write report using relative path to maintain folder structure
-                self.reporter.write_report(relative_path, messages)
-                
+
+            # Write a per-file report either way (pass or fail) — using
+            # relative path to maintain folder structure. Previously this
+            # only happened on failure, so a fully-passing run left no
+            # report artifact anywhere confirming what was actually checked.
+            self.reporter.write_report(relative_path, messages)
+
         if not validation_results:
             raise NoInputFilesError(self.name, str(self.input_node.path))
 
@@ -184,6 +189,16 @@ class Validator(BaseProcessor):
             self.log.info("PASSED:\n   - " + "\n   - ".join(passed))
         if failed:
             self.log.warning("FAILED:\n   - " + "\n   - ".join(failed))
+
+        # Persist the same pass/fail overview as a report artifact, not
+        # just a log line — so it survives after the run, browsable on disk
+        # like every per-file report.
+        summary_lines = [f"{len(passed)} passed, {len(failed)} failed out of {len(validation_results)} file(s)", ""]
+        if passed:
+            summary_lines += ["PASSED:"] + [f"  - {name}" for name in passed]
+        if failed:
+            summary_lines += ["FAILED:"] + [f"  - {name}" for name in failed]
+        self.reporter.write_report("validation_summary", summary_lines)
 
         if len(passed) == 0:
             raise AllFilesFailedError(

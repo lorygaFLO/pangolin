@@ -21,13 +21,14 @@ The project supports multiple deployment modes: you can run it **locally**, depl
 * **DataFacility** — YAML-driven data access layer mapping folder structure into a navigable Python object tree
 * **Extensible with decorators** — add custom validators/transformers with `@register_validator` / `@register_transformer`
 * **Extensible settings** — subclass `SETTINGS` in your project's `custom/settings.py` to add your own fields (e.g. `S.TRAINING_EPOCHS`), auto-detected with no library changes
+* **Extensible run context** — subclass `RunContext` in your project's `custom/run_context.py` to add your own per-run fields (e.g. `CTX.TRIGGERED_BY`), alongside the built-in `RUN_ID` / `GIT_BRANCH` / `GIT_SHA`
 
 ## Installation & Usage
 
 Pangolin is a library + CLI, not a repo you fork. Install it, then scaffold a project anywhere else:
 
 ```bash
-pip install pangolin           # or, until published: pip install git+https://github.com/lorygaFLO/pangolin.git
+pip install git+https://github.com/lorygaFLO/pangolin.git
 pangolin init my-project        # scaffold config/, pipelines/, custom/, .env, README.md
 pangolin init my-project -d     # also scaffold the Docker deployment stack (docker/, docker-compose.yml, Makefile, make.ps1)
 cd my-project

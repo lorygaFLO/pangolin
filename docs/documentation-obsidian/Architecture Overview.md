@@ -15,7 +15,7 @@ pangolin/                          # this repo — the library, nothing else
 │   ├── _scaffold/
 │   │   └── project_template/      # Project skeleton copied by `pangolin init`
 │   │       ├── config/            # data_structure.yaml + registries/ (example)
-│   │       ├── custom/            # example validators/transformers/processor
+│   │       ├── custom/            # example validators/transformers/processor/run_context
 │   │       ├── pipelines/         # example_pipeline.py
 │   │       ├── example_input/     # sample CSV, copied into data/input/
 │   │       ├── template.env, template.gitignore   # renamed to .env / .gitignore on copy
@@ -61,7 +61,8 @@ my-project/
 │   ├── validators.py               # project-specific validators
 │   ├── transformers.py             # project-specific transformers
 │   ├── processors/                 # project-specific processor classes
-│   └── settings.py                 # project-specific SETTINGS fields (e.g. S.TRAINING_EPOCHS)
+│   ├── settings.py                 # project-specific SETTINGS fields (e.g. S.TRAINING_EPOCHS)
+│   └── run_context.py              # project-specific RunContext fields (e.g. CTX.TRIGGERED_BY)
 ├── pipelines/
 │   ├── __init__.py                 # auto-discovery: scans this folder, builds PIPELINES dict
 │   └── example_pipeline.py         # backup → validate → transform → audit → dispatch
@@ -150,7 +151,7 @@ Everything needed to run a project as a containerised stack is scaffolded into `
 | `worker` | project image | Runs `pangolin deploy` — registers every pipeline in `pipelines/` and serves runs |
 | `caddy` | `caddy:2` | Reverse proxy — exposes UI on `localhost` and `<project>.localhost` |
 
-The project's `docker/Dockerfile` installs the `pangolin` library itself (`pip install pangolin`, currently via git since it isn't published yet — see the generated `docker/README.md`) and copies the project on top. Runtime config is declared in `docker/prefect_manifest.yaml` (committable) and secrets live in `docker/.env.docker` (gitignored). See [[Docker Deployment]].
+The project's `docker/Dockerfile` installs the `pangolin` library itself (`pip install git+https://github.com/lorygaFLO/pangolin.git` — not published to a package index — see the generated `docker/README.md`) and copies the project on top. Runtime config is declared in `docker/prefect_manifest.yaml` (committable) and secrets live in `docker/.env.docker` (gitignored). See [[Docker Deployment]].
 
 ---
 

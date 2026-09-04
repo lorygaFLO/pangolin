@@ -116,6 +116,12 @@ pangolin deploy                    # serve every pipeline as a Prefect deploymen
 pangolin bootstrap                 # apply docker/prefect_manifest.yaml to a Prefect server
 ```
 
+`pangolin restore` writes into a *fresh* RUN_ID's input folder, same as any
+other run. Chaining it into `pangolin step <pipeline> <next_step>` to
+reprocess that data is a separate CLI call with its own fresh RUN_ID by
+default — set `DEBUG=True` in `.env` *before* running `restore` too, so
+both calls agree on the same `DEBUG_RUN_ID` folder.
+
 ## Settings reference (`.env`)
 
 Every field below can be set in `.env` or as an environment variable of the

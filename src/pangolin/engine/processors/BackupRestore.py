@@ -44,19 +44,11 @@ class BackupRestore:
         self.D = get_project_data(run_id=CTX.RUN_ID)
 
         self.input_folder = input_folder
-        self.input_node = self._get_node_by_path(input_folder)
-        self.output_node = self._get_node_by_path(output_folder or "backup")
+        self.input_node = self.D.get_node(input_folder)
+        self.output_node = self.D.get_node(output_folder or "backup")
 
         if not self.fs.exists(str(self.input_node.path)):
             self.fs.makedirs(str(self.input_node.path), exist_ok=True)
-
-    def _get_node_by_path(self, path_str: str):
-        """Navigate to a node in DataFacility using dot notation."""
-        parts = path_str.split('.')
-        node = self.D
-        for part in parts:
-            node = getattr(node, part)
-        return node
 
     def _get_backup_base_path(self) -> str:
         """Get the parent backup folder path (without run_id timestamp)."""

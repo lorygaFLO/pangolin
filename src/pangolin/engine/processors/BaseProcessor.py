@@ -112,8 +112,8 @@ class BaseProcessor:
             )
         
         # Setup input/output paths using DataFacility
-        self.input_node = self._get_node_by_path(input_folder)
-        self.output_node = self._get_node_by_path(self.output_folder) if self.output_folder else None
+        self.input_node = self.D.get_node(input_folder)
+        self.output_node = self.D.get_node(self.output_folder) if self.output_folder else None
 
         # Ensure input folder exists
         if not self.fs.exists(str(self.input_node.path)):
@@ -122,14 +122,6 @@ class BaseProcessor:
         # Ensure output folder exists if specified
         if self.output_node and not self.fs.exists(str(self.output_node.path)):
             self.fs.makedirs(str(self.output_node.path), exist_ok=True)
-
-    def _get_node_by_path(self, path_str: str):
-        """Navigate to a node in DataFacility using dot notation."""
-        parts = path_str.split('.')
-        node = self.D
-        for part in parts:
-            node = getattr(node, part)
-        return node
 
     def _resolve_registry_path(self) -> str:
         """

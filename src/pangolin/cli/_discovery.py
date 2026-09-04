@@ -64,7 +64,11 @@ def pipeline_steps(pipeline_name: str) -> dict:
 
 
 def new_run_context():
-    """Instantiate a RunContext (needed to run a step standalone)."""
-    from pangolin.config.run_context import RunContext
+    """Instantiate a RunContext (needed to run a step standalone).
 
-    return RunContext()
+    Uses `get_run_context()` so the project's `custom/run_context.py`
+    subclass (if any) is honored here too, not just in the pipeline.
+    """
+    from pangolin.config.run_context import get_run_context
+
+    return get_run_context()

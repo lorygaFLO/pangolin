@@ -176,6 +176,20 @@ Docker does **not** check out branches itself — you do that; the image just re
 
 ---
 
+## Persistence: Does Rebuilding Wipe Run History?
+
+**No — not by itself.** The Prefect database (run history, deployments, logs) lives on the named volume `prefect-data`, which is independent of the image. `make build` / `make up` / `git checkout <branch> && make build` never touch it — only these do:
+
+- `make clean` / `.\make.ps1 clean` (`docker compose down -v`)
+- `make nuke` / `.\make.ps1 nuke`
+- Manually running `docker volume rm ...` or `docker compose down -v`
+
+So you can freely rebuild the image (including after switching git branches, e.g. back onto `master`) with `make build && make up` and the volume — and every past run recorded in it — is reused, not recreated. Use `make down` (no `-v`) between sessions, never `clean`/`nuke`, unless you explicitly want a fresh DB.
+
+**Isolation between projects:** the Compose project name (which namespaces containers, networks, and volume names as `<project>_<volume>`) is derived from `PROJECT_NAME` in `docker/.env.docker` (defaults to `pangolin`). Two different pangolin projects scaffolded on the same machine must use **different `PROJECT_NAME` values** in their respective `docker/.env.docker`, or they will collide on the same volume names (`pangolin_prefect-data`, etc.) and appear to "reset" or mix run history when you spin up the other project's stack.
+
+---
+
 ## Configuration: `docker/prefect_manifest.yaml`
 
 Single source of truth for everything Pangolin expects in Prefect. Three value sources:
