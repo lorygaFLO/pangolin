@@ -53,13 +53,9 @@ The rest of this guide covers the concepts in more depth. The last section cover
 
 ```ini
 # Project identity. Change per project — namespaces this project's local
-# Prefect state (PREFECT_HOME) away from every other pangolin project on
-# this machine. See "Running via the Prefect UI" below.
+# Prefect state away from every other pangolin project on this machine.
+# See "Running via the Prefect UI" below.
 PROJECT_NAME=my-project
-
-# Local Prefect state directory (server DB + profile), derived from
-# PROJECT_NAME above so it stays unique per project.
-PREFECT_HOME=.prefect/${PROJECT_NAME}
 
 # Backend engine (only "polars" is supported)
 BACKEND_ENGINE=polars
