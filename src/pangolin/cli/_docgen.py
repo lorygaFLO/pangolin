@@ -105,6 +105,13 @@ freely.
    auto-detected by `get_settings()` — no library changes needed. See
    "Adding your own settings" below.
 
+> [!tip]
+> Working with an AI coding agent on this project? See
+> `docs/pangolin-agents/AGENTS.md` — a framework-level orientation doc
+> scaffolded alongside this README, kept separate so it never collides with
+> any project-specific `AGENTS.md`/`CLAUDE.md` your team keeps at the repo
+> root.
+
 ## Running it
 
 ```bash
