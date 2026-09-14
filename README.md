@@ -8,7 +8,7 @@
 
 Pangolin started as a simple data validation tool. Solving one problem at a time, it gradually grew into something more structured — a framework that gives data specialists a solid foundation to build on, instead of ending up buried in messy, hard-to-maintain scripts.
 
-The current implementation targets a **data preboarding** use case: inspecting incoming data from third-party sources, applying validation rules, transforming values, and delivering clean, compliant datasets. However, the underlying architecture is generic and reusable — you can build entirely different workflows on top of the same structure for any project that involves staged data processing.
+Pangolin isn't built around one specific use case. Think of it as a **starting point for new data projects**: a minimal, already-working infrastructure — orchestration, data access, validation/transformation hooks, deployment — that you extend with your own pipeline logic instead of wiring all of that up from scratch. The architecture is generic and reusable for any project that involves staged data processing.
 
 The project supports multiple deployment modes: you can run it **locally**, deploy it on an **on-premise server**, or containerize it via **Docker** and point it at cloud storage — in all cases triggering pipeline runs directly from the **Prefect UI**. That said, Pangolin is currently scoped for **small enterprise applications** and has not yet been extensively tested in larger or more demanding environments. Use it accordingly.
 
