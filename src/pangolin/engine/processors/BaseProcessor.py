@@ -38,6 +38,10 @@ class FileOperations:
 
 
 class BaseProcessor:
+    # Reserved registry key providing a fallback rule for files that match no
+    # explicit pattern. See match_file() / is_default_match().
+    DEFAULT_PATTERN = "_default"
+
     def __init__(self, CTX: RunContext, name: str, input_folder: str, output_folder: str = None,
                  registry: Optional[Union[dict, str]] = None):
         """
@@ -188,19 +192,35 @@ class BaseProcessor:
         Match a file path to patterns in registry.
         Uses the relative path including subfolder structure for pattern matching.
 
+        If the registry declares the reserved '_default' key (DEFAULT_PATTERN),
+        it acts as a fallback rule: a file that matches none of the explicit
+        glob patterns resolves to '_default' instead of failing pattern
+        matching. Callers should check `is_default_match(matched_pattern)` and
+        flag the fallback in their report — '_default' is typically wired to
+        a no-op validator/transformer (e.g. 'always_true_validator' / 'blank')
+        that leaves the file untouched, but still surfaces that no explicit
+        keyword/pattern was found for it.
+
         Returns:
             Tuple of (matched_pattern, error_message)
         """
-        # Use the full relative path for matching (including subfolders)
-        matches = [pattern for pattern in self.registry.keys() 
-                  if fnmatch.fnmatch(relative_path, pattern)]
-        
+        # Use the full relative path for matching (including subfolders).
+        # The '_default' key is never itself matched as a glob.
+        matches = [pattern for pattern in self.registry.keys()
+                  if pattern != self.DEFAULT_PATTERN and fnmatch.fnmatch(relative_path, pattern)]
+
         if len(matches) > 1:
             return None, f"Multiple matches found for {relative_path}: {matches}"
         elif matches:
             return matches[0], None
+        elif self.DEFAULT_PATTERN in self.registry:
+            return self.DEFAULT_PATTERN, None
         else:
             return None, f"No matching pattern found in registry for: {relative_path}"
+
+    def is_default_match(self, pattern: Optional[str]) -> bool:
+        """True when `pattern` is the '_default' fallback rather than an explicit match."""
+        return pattern == self.DEFAULT_PATTERN
 
     def get_input_files(self, include_subfolders: bool = True) -> List[Tuple[str, str]]:
         """

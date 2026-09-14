@@ -124,7 +124,15 @@ class DataTransformer(BaseProcessor):
 
             self.log.info(f"Transforming {relative_path}")
             messages = []
-            
+
+            used_default = self.is_default_match(pattern)
+            if used_default:
+                self.log.warning(f"No explicit pattern matched '{relative_path}'; applying '_default' fallback")
+                messages.append(
+                    f"No explicit pattern matched '{relative_path}' in the registry; "
+                    f"applied the '_default' fallback rule instead of failing pattern matching."
+                )
+
             transforms = self.registry[pattern]["transforms"]
             sorted_transforms = sorted(transforms, key=lambda x: x["order"])
             
@@ -182,7 +190,12 @@ class DataTransformer(BaseProcessor):
                 self.log.warning(f"Transformation failed for {relative_path} - file not saved")
             
             self.reporter.write_report(relative_path, messages)
-            transformation_results[full_path] = {"overall_success": all_success, "transform_log": transform_log, "messages": messages}
+            transformation_results[full_path] = {
+                "overall_success": all_success,
+                "transform_log": transform_log,
+                "messages": messages,
+                "used_default": used_default,
+            }
 
         if not transformation_results:
             raise NoInputFilesError(self.name, str(self.input_node.path))
@@ -190,12 +203,15 @@ class DataTransformer(BaseProcessor):
         # ---- Final summary ----
         passed = [self.fs.basename(p) for p, r in transformation_results.items() if r.get("overall_success")]
         failed = [self.fs.basename(p) for p, r in transformation_results.items() if not r.get("overall_success")]
+        defaulted = [self.fs.basename(p) for p, r in transformation_results.items() if r.get("used_default")]
 
         self.log.info(f"Transformation complete: {len(passed)} passed, {len(failed)} failed out of {len(transformation_results)} files")
         if passed:
             self.log.info("TRANSFORMED:\n   - " + "\n   - ".join(passed))
         if failed:
             self.log.warning("FAILED:\n   - " + "\n   - ".join(failed))
+        if defaulted:
+            self.log.warning("DEFAULTED (no explicit pattern matched — '_default' fallback applied):\n   - " + "\n   - ".join(defaulted))
 
         if len(passed) == 0:
             raise AllFilesFailedError(
