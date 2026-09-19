@@ -143,7 +143,7 @@ def deploy(
     """Serve a Prefect deployment for every pipeline in the current project.
 
     Meant to run inside the deployment worker (e.g. the container started by
-    the scaffolded docker-compose.yml, see `pangolin init --dockerization`).
+    the scaffolded docker-compose.yml, see `pangolin init --containerization`).
     """
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     os.environ.setdefault("PREFECT_LOGGING_EXTRA_LOGGERS", "pangolin")

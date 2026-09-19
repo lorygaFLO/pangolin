@@ -68,7 +68,7 @@ my-project/
 │   └── example_pipeline.py         # backup → validate → transform → audit → dispatch
 ├── data/                            # NOT committed (gitignored); created by `pangolin init`
 │   ├── input/, staging/<RUN_ID>/, delivery/<RUN_ID>/, reports/<RUN_ID>/, static/, backup/
-└── docker/, docker-compose.yml, Makefile, make.ps1   # only with `pangolin init --dockerization`
+└── docker/, docker-compose.yml, Makefile, make.ps1   # only with `pangolin init --containerization`
     ├── Dockerfile                  # installs the `pangolin` package + copies this project
     ├── Caddyfile                   # reverse-proxy config (*.localhost / cloud hostname)
     ├── prefect_manifest.yaml       # declares all Prefect Variables and Blocks
@@ -76,7 +76,7 @@ my-project/
     └── .env.docker.example         # template — copy to .env.docker and fill in
 ```
 
-`pangolin init` writes a `README.md` (mandatory setup steps + a settings table generated live from `pangolin.config.settings.SETTINGS`) and, with `--dockerization`, a `docker/README.md` on top of this — read those first in a freshly scaffolded project.
+`pangolin init` writes a `README.md` (mandatory setup steps + a settings table generated live from `pangolin.config.settings.SETTINGS`) and, with `--containerization`, a `docker/README.md` on top of this — read those first in a freshly scaffolded project.
 
 ---
 
@@ -141,8 +141,8 @@ Decorated Python functions registered at import time. The registry YAML referenc
 ### 6. FSWrapper (`utils/fs_wrapper.py`)
 An `fsspec`-based abstraction that makes all file operations work on local disk, S3, GCS, or Azure — controlled by `FS_PROTOCOL` in `.env`.
 
-### 7. Docker Layer (`docker/`, project-side, only with `pangolin init --dockerization`)
-Everything needed to run a project as a containerised stack is scaffolded into `docker/`. Four services are orchestrated by `docker-compose.yml`:
+### 7. Container Layer (`docker/`, project-side, only with `pangolin init --containerization`)
+Everything needed to run a project as a containerised stack is scaffolded into `docker/`. The `Dockerfile`/`docker-compose.yml` are engine-agnostic (Docker or Podman — pick with `--engine` at init time); only the generated `Makefile`/`make.ps1` are pinned to that choice. Four services are orchestrated by `docker-compose.yml`:
 
 | Service | Image | Role |
 |---------|-------|------|

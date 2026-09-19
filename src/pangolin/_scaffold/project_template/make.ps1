@@ -29,6 +29,7 @@ $git = Get-GitInfo
 $env:GIT_BRANCH = $git.Branch
 $env:GIT_SHA    = $git.Sha
 
+$engine = '__ENGINE__'
 $composePrefix = @('compose', '--env-file', 'docker/.env.docker')
 
 function Invoke-Compose {
@@ -37,13 +38,13 @@ function Invoke-Compose {
     $flat = @()
     foreach ($a in $ComposeArgs) { $flat += $a }
     $all = $composePrefix + $flat
-    & docker @all
-    if ($LASTEXITCODE -ne 0) { throw "docker compose failed with exit code $LASTEXITCODE" }
+    & $engine @all
+    if ($LASTEXITCODE -ne 0) { throw "$engine compose failed with exit code $LASTEXITCODE" }
 }
 
 switch ($Target) {
     'help' {
-        Write-Host "Pangolin docker helper (PowerShell). Targets:" -ForegroundColor Cyan
+        Write-Host "Pangolin container helper (PowerShell, engine: $engine). Targets:" -ForegroundColor Cyan
         Write-Host "  build      Build image, baking GIT_BRANCH=$($git.Branch) GIT_SHA=$($git.Sha)"
         Write-Host "  up         Start the full stack"
         Write-Host "  down       Stop the stack (keep volumes)"
@@ -69,6 +70,6 @@ switch ($Target) {
     'clean'     { Invoke-Compose @('down', '-v') }
     'nuke' {
         Invoke-Compose @('down', '-v')
-        docker image rm "pangolin:$($git.Branch)" 2>$null
+        & $engine image rm "pangolin:$($git.Branch)" 2>$null
     }
 }

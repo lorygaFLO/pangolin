@@ -57,22 +57,24 @@ def _folder_settings_table(structure_path: Path) -> str:
     return "\n".join(lines)
 
 
-def render_readme(target: Path, dockerization: bool) -> str:
+def render_readme(target: Path, containerization: bool) -> str:
     """Build the README.md content for a freshly scaffolded project."""
     structure_path = target / "config" / "data_structure.yaml"
 
-    if dockerization:
+    if containerization:
         docker_section = (
-            "## Running it in Docker\n\n"
-            "See [`docker/README.md`](docker/README.md) for the full Docker "
-            "deployment stack (Prefect server + worker + bootstrap + reverse proxy).\n"
+            "## Running it in a container\n\n"
+            "See [`docker/README.md`](docker/README.md) for the full container "
+            "deployment stack (Prefect server + worker + bootstrap + reverse proxy). "
+            "Works with Docker or Podman — see `--engine` in `pangolin init --help`.\n"
         )
     else:
         docker_section = (
-            "## Running it in Docker\n\n"
-            "Not scaffolded for this project. Re-run `pangolin init --dockerization` "
-            "(or `-d`) in this same folder to add it — existing files are left untouched "
-            "unless you also pass `--force`.\n"
+            "## Running it in a container\n\n"
+            "Not scaffolded for this project. Re-run `pangolin init --containerization` "
+            "(or `-c`) in this same folder to add it — pass `--engine podman` to target "
+            "Podman instead of Docker. Existing files are left untouched unless you also "
+            "pass `--force`.\n"
         )
 
     return f"""\

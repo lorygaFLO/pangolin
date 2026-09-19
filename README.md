@@ -30,7 +30,8 @@ Pangolin is a library + CLI, not a repo you fork. Install it, then scaffold a pr
 ```bash
 pip install git+https://github.com/lorygaFLO/pangolin.git
 pangolin init my-project        # scaffold config/, pipelines/, custom/, .env, README.md
-pangolin init my-project -d     # also scaffold the Docker deployment stack (docker/, docker-compose.yml, Makefile, make.ps1)
+pangolin init my-project -c     # also scaffold the container deployment stack (docker/, docker-compose.yml, Makefile, make.ps1)
+pangolin init my-project -c --engine podman  # same, but target Podman instead of Docker
 cd my-project
 pangolin run                    # run the default pipeline
 pangolin list                   # list pipelines and their debuggable steps
@@ -58,7 +59,7 @@ pangolin --version               # show the installed pangolin version
 │   ├── config/                # Settings loader, run context (SETTINGS, get_settings())
 │   └── _scaffold/project_template/  # Files copied into a project by `pangolin init`
 │       ├── config/, pipelines/, custom/, data/  (example_input)
-│       └── docker/, docker-compose.yml, Makefile, make.ps1  (only with -d/--dockerization)
+│       └── docker/, docker-compose.yml, Makefile, make.ps1  (only with -c/--containerization)
 └── docs/                      # Documentation (Obsidian vault)
 ```
 

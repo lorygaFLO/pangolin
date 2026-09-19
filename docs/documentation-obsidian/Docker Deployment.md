@@ -3,15 +3,20 @@
 > [!warning] AI-Generated
 > This Docker setup (Dockerfile, docker-compose, bootstrap, deploy scripts) is for the most part AI-generated and has not been battle-tested in production. It likely requires refinements — treat it as a working starting point, not a hardened deployment.
 
-This guide covers running a pangolin **project** inside Docker using the 4-service stack scaffolded by `pangolin init --dockerization` (Prefect server, bootstrap, worker, reverse proxy). It doesn't apply to the `pangolin` library repo itself — only to a project generated from it.
+This guide covers running a pangolin **project** inside a container using the 4-service stack scaffolded by `pangolin init --containerization` (Prefect server, bootstrap, worker, reverse proxy). It doesn't apply to the `pangolin` library repo itself — only to a project generated from it.
+
+The `Dockerfile`/`docker-compose.yml` are plain OCI/Compose-spec files, so the same scaffold runs on either engine — pick which one the generated `Makefile`/`make.ps1` target with `--engine {docker,podman}` at init time (default: `docker`).
 
 ---
 
 ## Prerequisites
 
-- A project scaffolded with `pangolin init --dockerization` (or `-d`) — see [[Getting Started]]
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running (whale icon steady in the system tray)
+- A project scaffolded with `pangolin init --containerization` (or `-c`) — see [[Getting Started]]
+- Either [Docker Desktop](https://www.docker.com/products/docker-desktop/) (whale icon steady in the system tray), or [Podman](https://podman.io/) with a compose provider (`podman-compose`, or Podman >= 4.7's built-in `podman compose`) if you scaffolded with `--engine podman` — see the Windows/WSL2 caveat below
 - Git (to capture the branch name at build time)
+
+> [!warning] Podman on Windows/WSL2: known kernel limitation, not battle-tested
+> The `--engine podman` path has only been validated statically so far (the generated `Makefile`/`make.ps1` correctly target `podman`) — actually starting the stack on a Windows/WSL2 machine hit a kernel limitation: the WSL2 kernel doesn't compile NAT/masquerade support for `nftables`, so netavark (Podman's network backend) can't create the bridge network every container needs for outbound connectivity (`netavark: nftables error ... Could not process rule: No such file or directory`). This is a WSL2 kernel bug, not a pangolin or Podman configuration issue — it's open and unresolved upstream (see [microsoft/WSL#9772](https://github.com/microsoft/WSL/issues/9772)). It does **not** affect real Linux hosts (bare metal, cloud VM, on-prem), only Podman machine on Windows via WSL2. Recent Podman/netavark versions have also dropped the `firewall_driver = "iptables"` fallback that used to work around this. **The Podman path still needs to be validated end-to-end on an actual Linux environment before relying on it in production** — on Windows, use Docker Desktop instead.
 
 ---
 

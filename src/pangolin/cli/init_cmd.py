@@ -9,6 +9,7 @@ config/data_structure.yaml. The data/ folder is git-ignored by the generated
 from __future__ import annotations
 
 import shutil
+from enum import Enum
 from importlib import resources
 from pathlib import Path
 
@@ -35,23 +36,36 @@ SKIPPED_DIRS = {"__pycache__", "data"}
 # so the example pipeline is runnable right after init.
 EXAMPLE_INPUT_DIR = "example_input"
 
-# Top-level template entries only copied with --dockerization (checked
-# against the on-disk template name, before RENAMED_FILES is applied).
-DOCKER_ENTRIES = {"docker", "docker-compose.yml", "Makefile", "make.ps1", "template.dockerignore"}
+# Top-level template entries only copied with --containerization (checked
+# against the on-disk template name, before RENAMED_FILES is applied). The
+# folder is still called docker/ regardless of --engine: the Dockerfile and
+# docker-compose.yml are plain OCI/Compose-spec files that Podman reads
+# unchanged, only the Makefile/make.ps1 invocation differs (see
+# _ENGINE_TEMPLATED_FILES below).
+CONTAINER_ENTRIES = {"docker", "docker-compose.yml", "Makefile", "make.ps1", "template.dockerignore"}
+
+# Template files containing an __ENGINE__ placeholder to substitute with the
+# chosen --engine value, given as paths relative to the template root.
+_ENGINE_TEMPLATED_FILES = {"Makefile", "make.ps1", "docker/README.md"}
+
+
+class ContainerEngine(str, Enum):
+    docker = "docker"
+    podman = "podman"
 
 
 def _template_root() -> Path:
     return Path(str(resources.files(TEMPLATE_PACKAGE))) / TEMPLATE_DIR_NAME
 
 
-def _iter_template_files(root: Path, dockerization: bool = False):
+def _iter_template_files(root: Path, containerization: bool = False):
     for path in sorted(root.rglob("*")):
         if not path.is_file():
             continue
         rel = path.relative_to(root)
         if any(part in SKIPPED_DIRS for part in rel.parts):
             continue
-        if not dockerization and rel.parts[0] in DOCKER_ENTRIES:
+        if not containerization and rel.parts[0] in CONTAINER_ENTRIES:
             continue
         yield path, rel
 
@@ -74,11 +88,17 @@ def init(
         "-f",
         help="Overwrite files that already exist in the target directory.",
     ),
-    dockerization: bool = typer.Option(
+    containerization: bool = typer.Option(
         False,
-        "--dockerization",
-        "-d",
-        help="Also scaffold the Docker deployment stack (docker/, docker-compose.yml, Makefile).",
+        "--containerization",
+        "-c",
+        help="Also scaffold the container deployment stack (docker/, docker-compose.yml, Makefile).",
+    ),
+    engine: ContainerEngine = typer.Option(
+        ContainerEngine.docker,
+        "--engine",
+        help="Container engine the scaffolded Makefile/make.ps1 targets.",
+        case_sensitive=False,
     ),
 ) -> None:
     """Scaffold a new pangolin project (config, pipelines, custom code, data folders)."""
@@ -96,18 +116,22 @@ def init(
 
     copied: list[Path] = []
     skipped: list[Path] = []
-    for src, rel in _iter_template_files(template_root, dockerization=dockerization):
+    for src, rel in _iter_template_files(template_root, containerization=containerization):
         if rel.parts[0] == EXAMPLE_INPUT_DIR:
-            rel = Path("data", "input", *rel.parts[1:])
+            dest_rel = Path("data", "input", *rel.parts[1:])
         else:
-            rel = rel.with_name(RENAMED_FILES.get(rel.name, rel.name))
-        dest = target / rel
+            dest_rel = rel.with_name(RENAMED_FILES.get(rel.name, rel.name))
+        dest = target / dest_rel
         if dest.exists() and not force:
-            skipped.append(rel)
+            skipped.append(dest_rel)
             continue
         dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(src, dest)
-        copied.append(rel)
+        if rel.as_posix() in _ENGINE_TEMPLATED_FILES:
+            text = src.read_text(encoding="utf-8").replace("__ENGINE__", engine.value)
+            dest.write_text(text, encoding="utf-8")
+        else:
+            shutil.copyfile(src, dest)
+        copied.append(dest_rel)
 
     # Runtime data folders: created on disk, ignored by the generated .gitignore.
     data_root = target / "data"
@@ -122,7 +146,7 @@ def init(
     if readme_dest.exists() and not force:
         skipped.append(Path("README.md"))
     else:
-        readme_dest.write_text(render_readme(target, dockerization=dockerization), encoding="utf-8")
+        readme_dest.write_text(render_readme(target, containerization=containerization), encoding="utf-8")
         copied.append(Path("README.md"))
 
     for rel in copied:
@@ -138,10 +162,11 @@ def init(
     typer.echo("  2. Describe your project layout in config/data_structure.yaml.")
     typer.echo("  3. Fill the step registries in config/registries/.")
     typer.echo("  4. Add custom processors in custom/processors/ and pipelines in pipelines/.")
-    if dockerization:
+    if containerization:
         typer.echo("  5. Copy docker/.env.docker.example to docker/.env.docker and fill it in.")
-        typer.echo("  6. make build && make up   (see docker-compose.yml)")
+        typer.echo(f"  6. make build && make up   (see docker-compose.yml, engine: {engine.value})")
     else:
         typer.echo(
-            "  (Re-run with --dockerization / -d to also scaffold the Docker deployment stack.)"
+            "  (Re-run with --containerization / -c to also scaffold the container deployment "
+            "stack; add --engine podman to target Podman instead of Docker.)"
         )

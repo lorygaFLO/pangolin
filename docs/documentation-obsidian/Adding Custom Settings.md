@@ -126,7 +126,7 @@ Everything above works for a sensitive value too — `DATABASE_URL: str` in `cus
 
 `.env` is git-ignored by the `.gitignore` `pangolin init` scaffolds — never committed. That's the whole story for local dev.
 
-### Docker / cloud (`pangolin init --dockerization`)
+### Docker / Podman / cloud (`pangolin init --containerization`)
 
 `.env` doesn't travel with the image, and you don't want a real password baked into a committed file anyway. Use a Prefect **secret Block** in `docker/prefect_manifest.yaml` instead — see [[Docker Deployment]] for the full mechanism, in short:
 

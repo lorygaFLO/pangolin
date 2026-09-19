@@ -1,6 +1,21 @@
-# Docker deployment
+# Container deployment (engine: __ENGINE__)
 
-Four services (see `docker-compose.yml`):
+Four services (see `docker-compose.yml`). `docker-compose.yml`/`Dockerfile` are
+plain OCI/Compose-spec files — Docker and Podman both read them unchanged;
+only the `make`/`make.ps1` invocation below is pinned to the engine chosen at
+`pangolin init --engine`. For Podman, make sure a compose provider is
+installed (`podman-compose`, or Podman >= 4.7's built-in `podman compose`).
+
+> [!warning] Podman on Windows/WSL2
+> Starting this stack with Podman on a Windows/WSL2 machine may fail with
+> `netavark: nftables error ... Could not process rule: No such file or
+> directory` — a known, still-open WSL2 kernel limitation (NAT/masquerade
+> support for `nftables` isn't compiled in; see
+> [microsoft/WSL#9772](https://github.com/microsoft/WSL/issues/9772)), not a
+> bug in this scaffold. It does not affect real Linux hosts. The Podman path
+> has only been validated statically so far — **test end-to-end on an actual
+> Linux environment** before relying on it in production; on Windows, use
+> Docker Desktop instead.
 
 | Service | What it does |
 | --- | --- |
@@ -50,7 +65,7 @@ since pangolin isn't published to PyPI/a private index yet). Override at
 build time, e.g.:
 
 ```bash
-docker compose build --build-arg PANGOLIN_REF=v0.2.0
+__ENGINE__ compose build --build-arg PANGOLIN_REF=v0.2.0
 ```
 
 Once pangolin is published, switch `PANGOLIN_INSTALL_SPEC` in the Dockerfile

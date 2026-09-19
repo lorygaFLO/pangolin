@@ -1,15 +1,15 @@
 # =====================================================================
-# Pangolin Makefile
+# Pangolin Makefile (engine: __ENGINE__)
 #
 # Run from a POSIX shell (Git Bash, WSL, macOS, Linux). On bare PowerShell
-# use:  docker compose --env-file .env.docker up -d
+# use:  __ENGINE__ compose --env-file .env.docker up -d
 # =====================================================================
 
 SHELL := /bin/sh
 
 GIT_BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)
 GIT_SHA    ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
-COMPOSE    ?= docker compose --env-file docker/.env.docker
+COMPOSE    ?= __ENGINE__ compose --env-file docker/.env.docker
 
 export GIT_BRANCH
 export GIT_SHA
@@ -61,4 +61,4 @@ clean:
 	$(COMPOSE) down -v
 
 nuke: clean
-	docker image rm pangolin:$(GIT_BRANCH) 2>/dev/null || true
+	__ENGINE__ image rm pangolin:$(GIT_BRANCH) 2>/dev/null || true

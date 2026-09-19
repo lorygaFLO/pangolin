@@ -74,11 +74,11 @@ pangolin bootstrap           # apply docker/prefect_manifest.yaml to a Prefect s
   library, not this project — don't edit it. A project-specific setting
   goes in `custom/settings.py` instead; `get_settings()` picks up that
   subclass automatically when it exists.
-- **Docker mode** — only relevant if `docker/` exists in this project
-  (re-run `pangolin init --dockerization` to add it). Isolation between
-  Docker projects on the same host uses the same `PROJECT_NAME`, this time
-  read from `docker/.env.docker` (namespaces containers/volumes instead of
-  a local folder).
+- **Container mode** — only relevant if `docker/` exists in this project
+  (re-run `pangolin init --containerization` to add it; `--engine podman`
+  targets Podman instead of Docker). Isolation between projects on the same
+  host uses the same `PROJECT_NAME`, this time read from `docker/.env.docker`
+  (namespaces containers/volumes instead of a local folder).
 
 ## Full reference
 
