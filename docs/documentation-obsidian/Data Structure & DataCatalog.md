@@ -1,6 +1,6 @@
-# Data Structure & DataFacility
+# Data Structure & DataCatalog
 
-Pangolin uses a single YAML file (`config/data_structure.yaml`) to declare every folder and file the pipeline works with. The `DataFacility` class then maps this schema onto the real filesystem, giving you a navigable Python object tree with built-in I/O.
+Pangolin uses a single YAML file (`config/data_structure.yaml`) to declare every folder and file the pipeline works with. The `DataCatalog` class then maps this schema onto the real filesystem, giving you a navigable Python object tree with built-in I/O.
 
 ---
 
@@ -89,7 +89,7 @@ Keys starting with `_` are metadata directives:
 | `_required` | `bool` | Can be bulk-checked with `D.validate_required()`. |
 | `_description` | `str` | Human-readable description. Exposed as `node.description`. |
 | `_path` | `str` | Explicit path relative to `DATAPATH` (overrides name-based resolution). |
-| `_pattern_matching` | `bool` | Marks the folder as following the **pattern-matching approach**. Can be used standalone — DataFacility is not limited to processor steps. |
+| `_pattern_matching` | `bool` | Marks the folder as following the **pattern-matching approach**. Can be used standalone — DataCatalog is not limited to processor steps. |
 | `_registry` | `str` | Path to the registry YAML used for pattern matching. Requires `_pattern_matching: true`. Processors named after the node resolve their registry from here (no `registry_path` parameter). |
 
 Any other `_`-prefixed key is exposed as a Python attribute with the leading underscore stripped:
@@ -104,7 +104,7 @@ node.registry          # "config/registries/0_raw_validation.yaml"
 
 ## Path Resolution Rules
 
-DataFacility resolves paths in this priority order:
+DataCatalog resolves paths in this priority order:
 
 1. **`_settings_key`** — folder name comes from `SETTINGS`:
    ```yaml
@@ -136,12 +136,12 @@ data/staging/  →  data/staging/20260324_185705/
 
 ---
 
-## Using DataFacility in Code
+## Using DataCatalog in Code
 
 ### Getting the Instance
 
 ```python
-from pangolin.engine.DataFacility import get_project_data
+from pangolin.engine.DataCatalog import get_project_data
 
 D = get_project_data()
 ```
@@ -285,7 +285,7 @@ if missing:
 
 ## Adding a New Folder or File
 
-To make a new folder/file accessible via DataFacility, add it to `data_structure.yaml`:
+To make a new folder/file accessible via DataCatalog, add it to `data_structure.yaml`:
 
 ### New folder under staging:
 

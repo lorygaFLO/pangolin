@@ -8,13 +8,13 @@
 
 | Tier | Where it's declared | Who reads it | Example |
 | --- | --- | --- | --- |
-| **Core** | `pangolin.config.settings.SETTINGS` (library) | pangolin's engine itself (`DataFacility`, `FSWrapper`, `BaseProcessor`, ...) | `BASEPATH`, `BACKEND_ENGINE`, `CSV_DELIMITER`, `OUTPUT_FORMAT` |
+| **Core** | `pangolin.config.settings.SETTINGS` (library) | pangolin's engine itself (`DataCatalog`, `FSWrapper`, `BaseProcessor`, ...) | `BASEPATH`, `BACKEND_ENGINE`, `CSV_DELIMITER`, `OUTPUT_FORMAT` |
 | **Folder** | your project's `config/data_structure.yaml` (`_settings_key`) | pangolin's engine (`SETTINGS._resolve_paths`) | `INPUT_FOLDER_NAME`, `STAGING_FOLDER_NAME` |
 | **Custom** | your project's `custom/settings.py` | only your own code (pipelines, custom processors/validators/transformers) | `TRAINING_EPOCHS`, an API key, a feature flag |
 
 The test for where a new setting belongs: **does pangolin's engine need to read this to do its job, or only your own code?** If only your code cares, it's custom — it doesn't belong in the library, and there's no reason to wait for a pangolin release to add it.
 
-(`BACKEND_ENGINE` is a good example of why "configurable" and "custom" aren't the same thing: it's already read from `.env` like everything else, but it's core because `DataFacility`/`FSWrapper` — engine code — read it directly. It's currently validated to accept only `"polars"` because that's the only backend the engine actually implements, not because the field is locked down; see [[Future Developments]] item 8.)
+(`BACKEND_ENGINE` is a good example of why "configurable" and "custom" aren't the same thing: it's already read from `.env` like everything else, but it's core because `DataCatalog`/`FSWrapper` — engine code — read it directly. It's currently validated to accept only `"polars"` because that's the only backend the engine actually implements, not because the field is locked down; see [[Future Developments]] item 8.)
 
 ---
 
@@ -156,4 +156,4 @@ If the same custom setting keeps showing up in every project you build, that's a
 
 ---
 
-Next: [[Getting Started]] · [[Data Structure & DataFacility]]
+Next: [[Getting Started]] · [[Data Structure & DataCatalog]]

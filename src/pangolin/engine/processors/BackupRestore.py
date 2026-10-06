@@ -8,7 +8,7 @@ Supports restoring files from a previous backup run.
 from typing import List, Tuple, Optional
 from pangolin.config.settings import get_settings
 from pangolin.config.run_context import RunContext
-from pangolin.engine.DataFacility import get_project_data
+from pangolin.engine.DataCatalog import get_project_data
 from pangolin.engine.common.logger import ProcessorLogger
 from pangolin.engine.common.exceptions import NoInputFilesError
 from pangolin.utils.fs_wrapper import FSWrapper

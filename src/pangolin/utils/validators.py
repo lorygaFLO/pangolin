@@ -33,8 +33,8 @@ import polars as pl
 import numpy as np
 import re
 from typing import List
-from pangolin.engine.DataFacility import DataFacility
-D = DataFacility()
+from pangolin.engine.DataCatalog import DataCatalog
+D = DataCatalog()
 
 VALIDATORS_DICT = {}
 

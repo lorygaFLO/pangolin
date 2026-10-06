@@ -172,10 +172,10 @@ Called as: `check_null_values(df, messages, {"columns": [...], "custom_null_valu
 - **Raise `ValueError`** only for fatal errors that should prevent further validation of the file (e.g. mandatory columns missing, empty file). For non-fatal issues, return `False` and let the pipeline continue checking all validators.
 - **Always append to `messages`** when returning `False` — the message list is what gets written to the report file.
 - Validators run **in the order they appear** in the registry YAML. If `required_columns` raises `ValueError`, subsequent validators for that file are skipped.
-- You can access `DataFacility` from inside a validator — it is already imported at module level as `D`:
+- You can access `DataCatalog` from inside a validator — it is already imported at module level as `D`:
   ```python
-  from pangolin.engine.DataFacility import DataFacility
-  D = DataFacility()
+  from pangolin.engine.DataCatalog import DataCatalog
+  D = DataCatalog()
   ```
 
 ---

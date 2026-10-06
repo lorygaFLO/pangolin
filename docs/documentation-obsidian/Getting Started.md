@@ -79,7 +79,7 @@ CSV_DELIMITER=;
 OUTPUT_FORMAT=parquet
 ```
 
-Folder-name settings (`INPUT_FOLDER_NAME`, `STAGING_FOLDER_NAME`, ...) are **not fixed** — every project declares its own by adding a `_settings_key` to a top-level node in `config/data_structure.yaml`. The example project ships with `INPUT_FOLDER_NAME`, `STAGING_FOLDER_NAME`, `DELIVERY_FOLDER_NAME`, `REPORTS_FOLDER_NAME`, `BACKUP_FOLDER_NAME`. Your generated project's `README.md` lists the exact set for your `data_structure.yaml`, and the full field list (with defaults and descriptions) for every core setting. See [[Data Structure & DataFacility]] for how `_settings_key` works.
+Folder-name settings (`INPUT_FOLDER_NAME`, `STAGING_FOLDER_NAME`, ...) are **not fixed** — every project declares its own by adding a `_settings_key` to a top-level node in `config/data_structure.yaml`. The example project ships with `INPUT_FOLDER_NAME`, `STAGING_FOLDER_NAME`, `DELIVERY_FOLDER_NAME`, `REPORTS_FOLDER_NAME`, `BACKUP_FOLDER_NAME`. Your generated project's `README.md` lists the exact set for your `data_structure.yaml`, and the full field list (with defaults and descriptions) for every core setting. See [[Data Structure & DataCatalog]] for how `_settings_key` works.
 
 > [!tip]
 > On Linux/macOS, use forward slashes for paths. On Windows, both `\` and `/` work.
@@ -112,7 +112,7 @@ FS_OPTIONS={"key": "AKIAIOSFODNN7EXAMPLE", "secret": "wJalrXUtnFEMI/K7MDENG/bPxR
 
 `SETTINGS` (in `pangolin.config.settings`, part of the library) is a `pydantic-settings` `BaseSettings` class with two kinds of fields:
 
-- **Core fields** — `BASEPATH`, `DATAPATH`, `BACKEND_ENGINE`, `CSV_DELIMITER`, `OUTPUT_FORMAT`, `DEBUG`, `FS_PROTOCOL`, `FS_OPTIONS`, etc. Fixed, declared once in the library, the same across every project — because pangolin's own engine (`DataFacility`, `FSWrapper`, `BaseProcessor`) reads them directly to do its job. Your project's generated `README.md` has the full table.
+- **Core fields** — `BASEPATH`, `DATAPATH`, `BACKEND_ENGINE`, `CSV_DELIMITER`, `OUTPUT_FORMAT`, `DEBUG`, `FS_PROTOCOL`, `FS_OPTIONS`, etc. Fixed, declared once in the library, the same across every project — because pangolin's own engine (`DataCatalog`, `FSWrapper`, `BaseProcessor`) reads them directly to do its job. Your project's generated `README.md` has the full table.
 - **Folder fields** — `INPUT_FOLDER_NAME`, `STAGING_FOLDER_NAME`, and whatever else you declare. **Not fixed** — one per top-level node in *your* `config/data_structure.yaml` that has a `_settings_key`, resolved dynamically by the engine. Two projects can have entirely different folder settings.
 
 You do **not** edit `pangolin.config.settings` for normal usage — it lives inside the installed `pangolin` package now, not in your project. A project-specific setting your own code needs (`TRAINING_EPOCHS`, an API key, a feature flag) — something only *your* code reads, not pangolin's engine — goes in **`custom/settings.py`** instead, scaffolded empty by `pangolin init`. See [[Adding Custom Settings]] for the full guide (adding fields, validation, computed fields).

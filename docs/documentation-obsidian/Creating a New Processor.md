@@ -13,7 +13,7 @@ This page explains the `BaseProcessor` API and how to create your own custom pro
 | Feature | Method / Attribute |
 |---------|--------------------|
 | Registry loading | resolved from `data_structure.yaml` via `_registry` → `self.registry_path`, `self.registry` |
-| DataFacility integration | `self.D` — the project data tree |
+| DataCatalog integration | `self.D` — the project data tree |
 | File I/O | `read_file(path)`, `write_file(data, relative_path)` |
 | Input discovery | `get_input_files()` → list of `(full_path, relative_path)` |
 | Pattern matching | `match_file(relative_path)` → `(pattern, error)` |

@@ -18,7 +18,7 @@ The project supports multiple deployment modes: you can run it **locally**, depl
 * **Declarative YAML registries** — define validation, transformation, and routing rules without writing Python
 * **Polars backend** — fast, memory-efficient dataframe processing
 * **fsspec integration** — swap local storage for S3, GCS, or Azure with a one-line config change
-* **DataFacility** — YAML-driven data access layer mapping folder structure into a navigable Python object tree
+* **DataCatalog** — YAML-driven data access layer mapping folder structure into a navigable Python object tree
 * **Extensible with decorators** — add custom validators/transformers with `@register_validator` / `@register_transformer`
 * **Extensible settings** — subclass `SETTINGS` in your project's `custom/settings.py` to add your own fields (e.g. `S.TRAINING_EPOCHS`), auto-detected with no library changes
 * **Extensible run context** — subclass `RunContext` in your project's `custom/run_context.py` to add your own per-run fields (e.g. `CTX.TRIGGERED_BY`), alongside the built-in `RUN_ID` / `GIT_BRANCH` / `GIT_SHA`
@@ -50,7 +50,7 @@ pangolin --version               # show the installed pangolin version
 │   ├── cli/                   # Typer CLI: init, run, list, step, restore, deploy, bootstrap
 │   │   └── _docgen.py         # Generates a scaffolded project's README.md at init time
 │   ├── engine/
-│   │   ├── DataFacility.py    # YAML-driven data access layer
+│   │   ├── DataCatalog.py    # YAML-driven data access layer
 │   │   ├── reporter.py        # Report generation
 │   │   ├── common/            # Exceptions, logging
 │   │   └── processors/        # BaseProcessor, Validator, Transformer, Dispatcher, BackupRestore

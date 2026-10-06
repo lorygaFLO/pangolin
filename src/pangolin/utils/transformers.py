@@ -30,8 +30,8 @@ Registration — decorate every new transformer with @register_transformer if yo
 """
 import polars as pl
 from typing import List, Union
-from pangolin.engine.DataFacility import DataFacility
-D = DataFacility()
+from pangolin.engine.DataCatalog import DataCatalog
+D = DataCatalog()
 
 TRANSFORMERS_DICT = {}
 
@@ -56,13 +56,13 @@ def enrich_with_mapping(
 
     Parameters:
     df: Input DataFrame (polars)
-    mapping_file: DataFacility path (e.g. "static.mapping.product_mapping")
+    mapping_file: DataCatalog path (e.g. "static.mapping.product_mapping")
     df_join_column: Column(s) in the DataFrame to join on
     mapping_key_column: Column(s) in the mapping file to join on
     columns_to_add: List of columns to add from the mapping
     messages: Optional list to append messages
     """
-    # Get the DataFacility node passed in the parameters
+    # Get the DataCatalog node passed in the parameters
     mapping_node = D.get_node(mapping_file)
     
     # Check if it exists
@@ -430,7 +430,7 @@ def drop_columns(
 @register_transformer
 def save_inventory_snapshot(
     df: pl.DataFrame,
-    snapshot_file: str,  # DataFacility path (e.g. "static.inventory.product_snapshot")
+    snapshot_file: str,  # DataCatalog path (e.g. "static.inventory.product_snapshot")
     product_id_column: str,  # Column name containing product IDs
     messages: list = None
     ) -> pl.DataFrame:
@@ -439,7 +439,7 @@ def save_inventory_snapshot(
     
     Parameters:
     df: Input DataFrame (polars)
-    snapshot_file: DataFacility path for the snapshot file
+    snapshot_file: DataCatalog path for the snapshot file
     product_id_column: Column name containing product IDs
     messages: Optional list to append messages
     
@@ -452,7 +452,7 @@ def save_inventory_snapshot(
     if product_id_column not in df.columns:
         raise ValueError(f"Column '{product_id_column}' not found in DataFrame")
     
-    # Get the DataFacility node
+    # Get the DataCatalog node
     snapshot_node = D.get_node(snapshot_file)
     
     # Get distinct product IDs from current DataFrame

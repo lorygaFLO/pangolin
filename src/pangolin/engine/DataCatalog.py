@@ -1,8 +1,8 @@
 """
-DataFacility — Declarative, YAML-driven data access layer for Pangolin.
+DataCatalog — Declarative, YAML-driven data access layer for Pangolin.
 =========================================================================
 
-DataFacility maps a YAML schema (``config/data_structure.yaml``) onto the
+DataCatalog maps a YAML schema (``config/data_structure.yaml``) onto the
 filesystem so that every file and folder in the project can be accessed as
 a navigable Python object tree.  Path resolution, timestamping, versioning,
 and multi-format I/O are handled transparently.
@@ -13,7 +13,7 @@ Quick-start
 
 .. code-block:: python
 
-    from pangolin.engine.DataFacility import get_project_data
+    from pangolin.engine.DataCatalog import get_project_data
 
     D = get_project_data()          # loads config/data_structure.yaml
     print(D)                        # overview: base path, data path, RUN_ID
@@ -175,7 +175,7 @@ Deleting files
 Path resolution rules
 ---------------------
 
-DataFacility resolves each node's filesystem path using the following
+DataCatalog resolves each node's filesystem path using the following
 priority order:
 
 1. **_settings_key** — the node's folder name is read from Settings at
@@ -234,7 +234,7 @@ transformer/validator parameter stored as a string):
 Switching between pipeline runs
 --------------------------------
 
-By default DataFacility uses the current ``RUN_ID`` from Settings.
+By default DataCatalog uses the current ``RUN_ID`` from Settings.
 You can temporarily switch to a previous run to read its outputs:
 
 .. code-block:: python
@@ -294,7 +294,7 @@ Full pipeline example
 
 .. code-block:: python
 
-    from pangolin.engine.DataFacility import get_project_data
+    from pangolin.engine.DataCatalog import get_project_data
 
     D = get_project_data()
 
@@ -323,7 +323,7 @@ Full pipeline example
 
 Notes
 -----
-- ``DataFacility`` is **not** a singleton; call ``get_project_data()`` to
+- ``DataCatalog`` is **not** a singleton; call ``get_project_data()`` to
   obtain a fresh instance.  However, the underlying ``Settings`` object
   *is* a singleton, so all instances share the same ``RUN_ID`` and paths.
 - The YAML schema is loaded once at construction.  If you change
@@ -353,7 +353,7 @@ _local_fs = FSWrapper(protocol="file")  # always local — for loading repo conf
 class DataNode:
     """Nodo navigabile con supporto Settings integration."""
     
-    def __init__(self, name: str, config: Dict, parent_path: str, d_root: 'DataFacility'):
+    def __init__(self, name: str, config: Dict, parent_path: str, d_root: 'DataCatalog'):
         self.name = name
         self.config = config
         self.parent_path = parent_path
@@ -610,9 +610,9 @@ class DataNode:
         return self._children
 
 
-class DataFacility:
+class DataCatalog:
     """
-    Facility D per navigazione struttura dati.
+    Catalog D per navigazione struttura dati.
     
     RUN_ID viene da RunContext, passato esplicitamente.
     """
@@ -647,7 +647,7 @@ class DataFacility:
         raise AttributeError(f"No data node '{key}'. Available: {list(self._nodes.keys())}")
     
     def __repr__(self) -> str:
-        return f"<DataFacility>\n  Base: {self.base_path}\n  Data: {self.data_path}\n  RUN_ID: {self.run_id}"
+        return f"<DataCatalog>\n  Base: {self.base_path}\n  Data: {self.data_path}\n  RUN_ID: {self.run_id}"
     
     def switch_to_run(self, run_ref: Union[str, int]) -> str:
         """
@@ -731,7 +731,7 @@ class DataFacility:
             DataNode object on which you can call .read(), .exists(), etc.
         
         Example:
-            D = DataFacility()
+            D = DataCatalog()
             node = D.get_node("static.mapping.product_mapping")
             if node.exists():
                 data = node.read()
@@ -766,8 +766,8 @@ class DataFacility:
         return results
 
 
-def get_project_data(structure_file: str = 'config/data_structure.yaml', run_id: str = None) -> DataFacility:  # Use forward slash
+def get_project_data(structure_file: str = 'config/data_structure.yaml', run_id: str = None) -> DataCatalog:  # Use forward slash
     """Factory function."""
-    return DataFacility(structure_file, run_id=run_id)
+    return DataCatalog(structure_file, run_id=run_id)
 
  

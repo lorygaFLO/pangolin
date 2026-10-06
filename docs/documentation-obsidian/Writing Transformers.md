@@ -128,9 +128,9 @@ So each key in `params` must match a parameter name in your function signature.
 
 ---
 
-## Using DataFacility in Transformers
+## Using DataCatalog in Transformers
 
-DataFacility (`D`) is available at module level. You can reference DataFacility paths as string parameters in the registry:
+DataCatalog (`D`) is available at module level. You can reference DataCatalog paths as string parameters in the registry:
 
 ```yaml
 params:
@@ -140,8 +140,8 @@ params:
 Then resolve it in the transformer:
 
 ```python
-from pangolin.engine.DataFacility import DataFacility
-D = DataFacility()
+from pangolin.engine.DataCatalog import DataCatalog
+D = DataCatalog()
 
 @register_transformer
 def my_transformer(df, mapping_file, messages=None):

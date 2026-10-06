@@ -1,7 +1,7 @@
 """Example custom processor.
 
 A processor is a pipeline step. Subclass pangolin's BaseProcessor to get
-registry pattern matching, DataFacility IO and logging for free; implement
+registry pattern matching, DataCatalog IO and logging for free; implement
 `execute()` and write one report per file (traceability convention).
 
 This AuditProcessor reports row/column counts (and null counts when enabled
