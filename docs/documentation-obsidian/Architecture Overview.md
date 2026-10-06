@@ -24,7 +24,7 @@ pangolin/                          # this repo — the library, nothing else
 │   │   ├── settings.py            # pydantic-settings SETTINGS class
 │   │   └── run_context.py         # RunContext (per-run dynamic state)
 │   ├── engine/
-│   │   ├── DataFacility.py        # YAML-driven data access layer
+│   │   ├── DataCatalog.py        # YAML-driven data access layer
 │   │   ├── reporter.py            # Per-step report writer
 │   │   ├── common/
 │   │   │   ├── exceptions.py      # Pipeline exception hierarchy
@@ -119,8 +119,8 @@ A `pydantic-settings` `BaseSettings` class that provides paths, backend engine, 
 
 In **local** mode it reads `.env` directly. In **docker-local / cloud** mode, `pangolin deploy` (which replaced the old `docker/deploy.py` script) writes values from Prefect Variables and Blocks into `os.environ` *before* the settings class is ever instantiated, so `SETTINGS` receives them transparently — no code change needed. See [[Docker Deployment]].
 
-### 2. DataFacility (`src/pangolin/engine/DataFacility.py`)
-A YAML-driven data access layer that maps `data_structure.yaml` onto the filesystem. It provides a navigable Python object tree (e.g. `D.static.mappings.product_mapping.read()`) with built-in I/O, versioning, and timestamped folders. See [[Data Structure & DataFacility]].
+### 2. DataCatalog (`src/pangolin/engine/DataCatalog.py`)
+A YAML-driven data access layer that maps `data_structure.yaml` onto the filesystem. It provides a navigable Python object tree (e.g. `D.static.mappings.product_mapping.read()`) with built-in I/O, versioning, and timestamped folders. See [[Data Structure & DataCatalog]].
 
 ### 3. Processors (`src/pangolin/engine/processors/`)
 Each processor inherits from `BaseProcessor`, which handles:
@@ -128,7 +128,7 @@ Each processor inherits from `BaseProcessor`, which handles:
 - Discovering input files
 - Pattern-matching files to registry entries
 - Reading/writing via `FSWrapper`
-- Integrating with `DataFacility`
+- Integrating with `DataCatalog`
 
 Three concrete processors exist: `Validator`, `DataTransformer`, `FileDispatcher`. See [[Creating a New Processor]].
 

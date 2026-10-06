@@ -141,7 +141,7 @@ Input and output folders use **dot-notation** to navigate the `data_structure.ya
 - `S.INPUT_FOLDER_NAME` → `"input"` → `data/input/`
 - `S.DELIVERY_FOLDER_NAME` → `"delivery"` → `data/delivery/<RUN_ID>/`
 
-See [[Data Structure & DataFacility]] for the complete path resolution rules.
+See [[Data Structure & DataCatalog]] for the complete path resolution rules.
 
 ---
 
@@ -365,4 +365,4 @@ To debug a different step:
 
 ---
 
-Next: [[Data Structure & DataFacility]] →
+Next: [[Data Structure & DataCatalog]] →

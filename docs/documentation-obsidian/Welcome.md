@@ -15,7 +15,7 @@ Use the sidebar or the links below to explore each topic:
 | [[Getting Started]]               | Environment setup, `.env` configuration, and running the pipeline locally                                |
 | [[Docker Deployment]]             | Running with Docker (local, docker-local, cloud modes), security warning on UI access                    |
 | [[Pipeline Configuration]]        | How pipelines are auto-discovered from `pipelines/`, and how to wire or add stages                        |
-| [[Data Structure & DataFacility]] | How `data_structure.yaml` maps folders/files and how to use `DataFacility` in code to do data operations |
+| [[Data Structure & DataCatalog]] | How `data_structure.yaml` maps folders/files and how to use `DataCatalog` in code to do data operations |
 | [[Registry Reference]]            | Full guide on writing registry YAML files for each step                                                  |
 | [[Writing Validators]]            | How to create and register a new validator function                                                      |
 | [[Writing Transformers]]          | How to create and register a new transformer function                                                    |
@@ -53,7 +53,7 @@ Each step is driven by a **YAML registry** file (in `config/registries/`) that d
 
 - **Registry** — A YAML file that maps file-name patterns to rules (validators, transforms, or dispatch targets).
 - **Processor** — A Python class that reads a registry and applies its rules to input files (`Validator`, `DataTransformer`, `FileDispatcher`, `BackupRestore`).
-- **DataFacility** — A navigable Python object tree that mirrors `data_structure.yaml`, giving you `D.input`, `D.staging`, `D.static.mappings.product_mapping`, etc.
+- **DataCatalog** — A navigable Python object tree that mirrors `data_structure.yaml`, giving you `D.input`, `D.staging`, `D.static.mappings.product_mapping`, etc.
 - **RUN_ID** — A timestamp (`YYYYMMDD_HHMMSS`) that isolates each pipeline execution into its own subfolder.
 
 Start with [[Getting Started]] to set up your environment, or jump to [[Architecture Overview]] for the big picture.

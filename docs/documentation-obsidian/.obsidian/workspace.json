@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Data Structure & DataFacility.md",
+                "file": "Data Structure & DataCatalog.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Data Structure & DataFacility"
+              "title": "Data Structure & DataCatalog"
             }
           }
         ]
@@ -197,11 +197,11 @@
     "Welcome.md",
 <<<<<<< HEAD
     "Registry Reference.md",
-    "Data Structure & DataFacility.md",
+    "Data Structure & DataCatalog.md",
     "Creating a New Processor.md"
 =======
     "Creating a New Processor.md",
-    "Data Structure & DataFacility.md"
+    "Data Structure & DataCatalog.md"
 >>>>>>> develop
   ]
 }

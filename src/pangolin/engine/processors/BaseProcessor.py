@@ -1,7 +1,7 @@
 """
 BaseProcessor Class:
 Base class for all pipeline processors. Provides:
-- Integration with DataFacility for file operations
+- Integration with DataCatalog for file operations
 - Pattern matching against registry
 - Common file processing functionality
 """
@@ -13,7 +13,7 @@ from typing import Dict, List, Tuple, Optional, Any, Callable, Union
 from pangolin.config.settings import get_settings
 from pangolin.config.run_context import RunContext
 import yaml
-from pangolin.engine.DataFacility import get_project_data
+from pangolin.engine.DataCatalog import get_project_data
 from pangolin.engine.common.logger import ProcessorLogger
 from pangolin.utils.fs_wrapper import FSWrapper
 _local_fs = FSWrapper(protocol="file")  # always local — for loading repo config files
@@ -85,7 +85,7 @@ class BaseProcessor:
             **getattr(S, "FS_OPTIONS", {})
         )
         
-        # Initialize DataFacility with run_id from CTX
+        # Initialize DataCatalog with run_id from CTX
         self.D = get_project_data(run_id=CTX.RUN_ID)
         
         # Get registry — a custom 'registry' parameter (dict or YAML path)
@@ -115,7 +115,7 @@ class BaseProcessor:
                 f"or a valid '_registry' file in data_structure.yaml."
             )
         
-        # Setup input/output paths using DataFacility
+        # Setup input/output paths using DataCatalog
         self.input_node = self.D.get_node(input_folder)
         self.output_node = self.D.get_node(self.output_folder) if self.output_folder else None
 
@@ -224,7 +224,7 @@ class BaseProcessor:
 
     def get_input_files(self, include_subfolders: bool = True) -> List[Tuple[str, str]]:
         """
-        Get all files from input folder using DataFacility.
+        Get all files from input folder using DataCatalog.
         
         Returns:
             List of tuples (full_path, relative_path) where relative_path maintains folder structure
@@ -296,7 +296,7 @@ class BaseProcessor:
 
     def write_file(self, data: pl.DataFrame, relative_path: str, folder_node=None):
         """
-        Write data to output using DataFacility, preserving folder structure.
+        Write data to output using DataCatalog, preserving folder structure.
         
         Args:
             data: DataFrame to write

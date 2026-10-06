@@ -1,13 +1,13 @@
 from pangolin.utils.fs_wrapper import FSWrapper
 from pangolin.config.settings import get_settings
 from pangolin.config.run_context import RunContext
-from pangolin.engine.DataFacility import get_project_data
+from pangolin.engine.DataCatalog import get_project_data
 from pangolin.engine.common.logger import ProcessorLogger
 
 class Reporter:
     def __init__(self, CTX: RunContext, report_folder: str = None, step_name: str = None):
         """
-        Initialize the Reporter with DataFacility integration.
+        Initialize the Reporter with DataCatalog integration.
 
         Args:
             CTX: RunContext with runtime state (RUN_ID)
@@ -31,7 +31,7 @@ class Reporter:
         self.step_name = step_name
         self.log = ProcessorLogger(step_name or 'reporter')
         
-        # Navigate to report node using DataFacility
+        # Navigate to report node using DataCatalog
         try:
             self.report_node = self.D.get_node(self.report_folder)
         except AttributeError as e:
@@ -87,7 +87,7 @@ class Reporter:
             self.fs.remove(report_file)
         self.log.info(f"Cleared all reports from {self.report_path}")
 
-# Example usage with DataFacility
+# Example usage with DataCatalog
 if __name__ == "__main__":
     # Using dot notation to specify report location in data structure with step name
     reporter = Reporter('reports.validation', step_name='dispatcher_step')

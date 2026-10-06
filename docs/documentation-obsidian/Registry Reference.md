@@ -231,7 +231,7 @@ A richer example, showing a mapping-file enrichment and string cleanup chained b
 ### Important Notes
 
 - `params` are passed as `**kwargs` to the transformer function (along with `df` and `messages`).
-- DataFacility paths like `"D.static.mappings.product_mapping"` can be used as parameter values — the transformer function resolves them via `D.get_node()`.
+- DataCatalog paths like `"D.static.mappings.product_mapping"` can be used as parameter values — the transformer function resolves them via `D.get_node()`.
 - If **any** transform fails, the file is **not saved** and reported as failed.
 
 See [[Writing Transformers]] for the list of built-in transformers and how to create your own.
