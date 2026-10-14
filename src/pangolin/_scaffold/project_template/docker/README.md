@@ -75,6 +75,14 @@ default. This stack opts out (`PREFECT_SERVER_ANALYTICS_ENABLED=false` on
 `prefect-server`, `DO_NOT_TRACK=1` on `bootstrap`/`worker`), so it stays fully
 self-hosted once the images are built.
 
+## One image, built once
+
+`bootstrap` and `worker` share one image and only `worker` builds it
+(both have `pull_policy: never`: the image exists only locally, never on a
+registry); two services building the same tag in parallel could fail with
+`image ... already exists`. Build first (`make build`)
+— `make bootstrap` alone needs the image to exist already.
+
 ## Updating the pangolin version baked into the image
 
 `docker/Dockerfile` installs the `pangolin` library itself via

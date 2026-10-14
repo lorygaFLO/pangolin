@@ -189,6 +189,10 @@ Every image the stack uses is pinned to an exact version — no floating `latest
 
 Prefect sends "anonymous" usage statistics to a third party (Amplitude) by default. The stack opts out so that, once the images are pulled and built, nothing leaves your infrastructure: `PREFECT_SERVER_ANALYTICS_ENABLED=false` on `prefect-server` and `DO_NOT_TRACK=1` on `bootstrap` and `worker` (see `docker-compose.yml`). This covers the containerised stack only — a Prefect server/client you start outside it (e.g. local mode) keeps Prefect's default unless you set those variables there too.
 
+## One image, built once
+
+`bootstrap` and `worker` run the same image. Only `worker` declares `build:`; `bootstrap` reuses the tag. Both have `pull_policy: never`: `pangolin:<tag>` only ever exists locally, so compose must not try to pull it from Docker Hub (a failed pull is just noise, but a same-named image there would be used instead of your build). A missing image is still built by `worker`. Having both build the same tag in parallel could fail intermittently with `image "pangolin:<tag>": already exists`. Consequence: build before you start — `make build` / `.\make.ps1 build`, or let `up` build it on first run. `make bootstrap` on its own needs the image to exist already.
+
 ---
 
 ## Persistence: Does Rebuilding Wipe Run History?

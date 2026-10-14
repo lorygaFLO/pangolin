@@ -7,9 +7,12 @@ name: ${PROJECT_NAME:-pangolin}
 #   prefect-server : Prefect 3 server + UI, persistent SQLite on a volume
 #   bootstrap      : one-shot, idempotent — creates Blocks/Variables from
 #                    docker/prefect_manifest.yaml via `pangolin bootstrap`;
-#                    re-runs are safe
+#                    re-runs are safe. Reuses the image built by `worker`.
 #   worker         : runs `pangolin deploy` (flow.serve() for every pipeline
-#                    in this project's pipelines/ package)
+#                    in this project's pipelines/ package). Owns the image
+#                    build: bootstrap and worker share one image, and two
+#                    services building the same tag in parallel race on the
+#                    image export ("image ... already exists").
 #   caddy          : reverse proxy so the UI is reachable on
 #                    http://localhost:${PROXY_PORT}
 #                    http://${PROJECT_NAME}.localhost:${PROXY_PORT}
@@ -57,8 +60,11 @@ services:
     restart: unless-stopped
 
   bootstrap:
-    build: *pangolin-build
+    # No `build:` here on purpose — the image is built once, by `worker`.
+    # `pull_policy: never` stops compose from trying to pull `pangolin:<tag>`
+    # from a registry before that build has produced it.
     <<: *pangolin-image
+    pull_policy: never
     depends_on:
       prefect-server:
         condition: service_healthy
@@ -76,6 +82,11 @@ services:
   worker:
     build: *pangolin-build
     <<: *pangolin-image
+    # The image only exists locally. Without this, `up` first tries to pull
+    # `pangolin:<tag>` from Docker Hub ("pull access denied", then falls back
+    # to the local build) — and would use a same-named image from there if one
+    # ever existed. A missing image is still built by compose.
+    pull_policy: never
     depends_on:
       prefect-server:
         condition: service_healthy
