@@ -32,7 +32,9 @@ x-pangolin-image: &pangolin-image
 services:
 
   prefect-server:
-    image: prefecthq/prefect:3-latest
+    # Keep in lockstep with the `prefect==` pin of the pangolin library that
+    # the pangolin image installs (the client warns on a server/client mismatch).
+    image: prefecthq/prefect:3.6.26-python3.11
     command: prefect server start --host 0.0.0.0 --port 4200
     environment:
       PREFECT_HOME: /data/prefect
@@ -91,7 +93,7 @@ services:
     restart: unless-stopped
 
   caddy:
-    image: caddy:2-alpine
+    image: caddy:2.11.2-alpine
     depends_on:
       - prefect-server
     environment:

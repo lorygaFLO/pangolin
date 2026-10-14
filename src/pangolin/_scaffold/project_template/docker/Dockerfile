@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1.6
-FROM python:3.11-slim AS base
+# Base image pinned to an exact Python patch + Debian release (this also pins
+# the bundled pip). Bump it deliberately, never via a floating tag.
+FROM python:3.11.17-slim-trixie AS base
 
 # Build-time identity (filled by `make build` or `docker build --build-arg ...`)
 ARG GIT_BRANCH=unknown
@@ -20,7 +22,7 @@ ENV GIT_BRANCH=${GIT_BRANCH} \
     PIP_NO_CACHE_DIR=1
 
 # OS deps (curl is used by compose healthchecks; build-essential covers wheels
-# that don't ship a manylinux build for python:3.11-slim)
+# that don't ship a manylinux build for the pinned python base image)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl ca-certificates git \
     && rm -rf /var/lib/apt/lists/*
@@ -28,8 +30,7 @@ RUN apt-get update \
 WORKDIR /app
 
 # Install the pangolin library + CLI first to leverage layer cache
-RUN pip install --upgrade pip \
-    && pip install "pangolin @ ${PANGOLIN_INSTALL_SPEC}"
+RUN pip install "pangolin @ ${PANGOLIN_INSTALL_SPEC}"
 
 # Project source: config/, pipelines/, custom/ (this repo, NOT the pangolin
 # library — that came from PANGOLIN_INSTALL_SPEC above)

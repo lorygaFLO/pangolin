@@ -63,6 +63,11 @@ The project image is tagged `pangolin:<branch>`, with the branch made
 tag-safe (`feature/x` → `pangolin:feature-x`); `make` / `make.ps1` compute it
 as `IMAGE_TAG`. Plain `docker compose` falls back to `pangolin:local`.
 
+All images are pinned to exact versions (Python base in `docker/Dockerfile`;
+`prefecthq/prefect` and `caddy` in `docker-compose.yml`). Keep the Prefect
+server tag aligned with the `prefect==` pin of the pangolin library the image
+installs, and bump versions deliberately.
+
 ## Updating the pangolin version baked into the image
 
 `docker/Dockerfile` installs the `pangolin` library itself via

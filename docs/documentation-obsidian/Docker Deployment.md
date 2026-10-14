@@ -181,6 +181,10 @@ The image itself is tagged `pangolin:<branch>`, with the branch made tag-safe: c
 
 Docker does **not** check out branches itself — you do that; the image just records what it was built from.
 
+## Pinned Versions
+
+Every image the stack uses is pinned to an exact version — no floating `latest` / major-only tags: the Python base image in `docker/Dockerfile`, and `prefecthq/prefect` and `caddy` in `docker-compose.yml`. The Prefect server tag must match the `prefect==` pin of the pangolin library installed in the image (a mismatch only logs a warning, but keep them aligned). Bump versions deliberately, in a commit of their own.
+
 ---
 
 ## Persistence: Does Rebuilding Wipe Run History?
