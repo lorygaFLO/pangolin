@@ -66,7 +66,9 @@ def render_readme(target: Path, containerization: bool) -> str:
             "## Running it in a container\n\n"
             "See [`docker/README.md`](docker/README.md) for the full container "
             "deployment stack (Prefect server + worker + bootstrap + reverse proxy). "
-            "Works with Docker or Podman — see `--engine` in `pangolin init --help`.\n"
+            "Works with Docker or Podman — see `--engine` in `pangolin init --help`. "
+            "Python packages your `custom/` or `pipelines/` code needs beyond pangolin "
+            "itself go in `docker/requirements.txt`.\n"
         )
     else:
         docker_section = (

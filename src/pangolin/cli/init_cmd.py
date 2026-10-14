@@ -164,7 +164,8 @@ def init(
     typer.echo("  4. Add custom processors in custom/processors/ and pipelines in pipelines/.")
     if containerization:
         typer.echo("  5. Copy docker/.env.docker.example to docker/.env.docker and fill it in.")
-        typer.echo(f"  6. make build && make up   (see docker-compose.yml, engine: {engine.value})")
+        typer.echo("  6. List any extra Python packages your project imports in docker/requirements.txt.")
+        typer.echo(f"  7. make build && make up   (see docker-compose.yml, engine: {engine.value})")
     else:
         typer.echo(
             "  (Re-run with --containerization / -c to also scaffold the container deployment "

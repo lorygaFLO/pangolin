@@ -193,6 +193,15 @@ Prefect sends "anonymous" usage statistics to a third party (Amplitude) by defau
 
 `bootstrap` and `worker` run the same image. Only `worker` declares `build:`; `bootstrap` reuses the tag. Both have `pull_policy: never`: `pangolin:<tag>` only ever exists locally, so compose must not try to pull it from Docker Hub (a failed pull is just noise, but a same-named image there would be used instead of your build). A missing image is still built by `worker`. Having both build the same tag in parallel could fail intermittently with `image "pangolin:<tag>": already exists`. Consequence: build before you start — `make build` / `.\make.ps1 build`, or let `up` build it on first run. `make bootstrap` on its own needs the image to exist already.
 
+## Project dependencies (`docker/requirements.txt`)
+
+The image gets pangolin and its pinned dependencies from the Dockerfile. Anything else your `custom/` or `pipelines/` code imports (a data-source client, an ML library, …) must be listed — exact versions — in `docker/requirements.txt`, which the Dockerfile installs into the image. If it's missing the worker dies at startup with `ModuleNotFoundError`, because `pangolin deploy` imports every pipeline.
+
+- No local or editable paths (`-e ../pangolin`): the build context is the project folder only.
+- It's separate from a `requirements.txt` you may use for local development — keep the two in sync.
+- Layer order is arranged so the (often heavy) dependency layer doesn't depend on the git branch/SHA: a new commit doesn't reinstall your packages, editing `docker/requirements.txt` does.
+- The pangolin install layer is cached too: with a floating ref (`PANGOLIN_REF=main`) a plain rebuild keeps the pangolin already in the image. Rebuild with `--no-cache` to pick up new commits of the ref, or pin `PANGOLIN_REF` to a tag/commit for reproducible builds.
+
 ---
 
 ## Persistence: Does Rebuilding Wipe Run History?
