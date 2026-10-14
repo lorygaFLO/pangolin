@@ -1,5 +1,6 @@
-# Data structure of the project. Folder names marked with `_settings_key`
-# are resolved from Settings (overridable via .env).
+# Data structure of the project. A node marked with `_settings_key` exposes its
+# folder name (the node's key, e.g. `input`) as SETTINGS.<that key>. The name is
+# defined here only — an env var / .env entry with that name is ignored.
 # Staging step nodes declare both `_pattern_matching: true` and `_registry`
 # (the registry YAML driving that step).
 

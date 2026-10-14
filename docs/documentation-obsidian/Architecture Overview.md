@@ -47,7 +47,7 @@ pangolin/                          # this repo — the library, nothing else
 
 ```
 my-project/
-├── .env                            # BASEPATH/DATAPATH, folder names, IO options
+├── .env                            # BASEPATH/DATAPATH, IO options (folder names live in data_structure.yaml)
 ├── README.md                       # generated: mandatory setup + settings reference (see below)
 ├── config/
 │   ├── constants.py
