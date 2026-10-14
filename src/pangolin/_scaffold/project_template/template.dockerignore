@@ -1,17 +1,22 @@
+# NOTE: unlike .gitignore, a .dockerignore pattern only matches at the build
+# context root. Use `**/` to match at any depth — otherwise e.g.
+# `docker/.env.docker` (real secrets) would be baked into the image by
+# `COPY . /app`.
 .git
 .venv
 venv
-__pycache__
-*.pyc
-*.pyo
+**/__pycache__
+**/*.pyc
+**/*.pyo
 .pytest_cache
 .mypy_cache
 .ruff_cache
 data/
-.env
-.env.*
+.prefect/
+**/.env
+**/.env.*
 !docker/.env.docker.example
-*.log
+**/*.log
 .vscode
 .idea
-.DS_Store
+**/.DS_Store
