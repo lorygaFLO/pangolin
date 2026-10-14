@@ -68,6 +68,13 @@ All images are pinned to exact versions (Python base in `docker/Dockerfile`;
 server tag aligned with the `prefect==` pin of the pangolin library the image
 installs, and bump versions deliberately.
 
+## Telemetry
+
+Prefect sends "anonymous" usage statistics to a third party (Amplitude) by
+default. This stack opts out (`PREFECT_SERVER_ANALYTICS_ENABLED=false` on
+`prefect-server`, `DO_NOT_TRACK=1` on `bootstrap`/`worker`), so it stays fully
+self-hosted once the images are built.
+
 ## Updating the pangolin version baked into the image
 
 `docker/Dockerfile` installs the `pangolin` library itself via

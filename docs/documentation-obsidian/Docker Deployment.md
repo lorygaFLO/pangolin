@@ -185,6 +185,10 @@ Docker does **not** check out branches itself — you do that; the image just re
 
 Every image the stack uses is pinned to an exact version — no floating `latest` / major-only tags: the Python base image in `docker/Dockerfile`, and `prefecthq/prefect` and `caddy` in `docker-compose.yml`. The Prefect server tag must match the `prefect==` pin of the pangolin library installed in the image (a mismatch only logs a warning, but keep them aligned). Bump versions deliberately, in a commit of their own.
 
+## Telemetry
+
+Prefect sends "anonymous" usage statistics to a third party (Amplitude) by default. The stack opts out so that, once the images are pulled and built, nothing leaves your infrastructure: `PREFECT_SERVER_ANALYTICS_ENABLED=false` on `prefect-server` and `DO_NOT_TRACK=1` on `bootstrap` and `worker` (see `docker-compose.yml`). This covers the containerised stack only — a Prefect server/client you start outside it (e.g. local mode) keeps Prefect's default unless you set those variables there too.
+
 ---
 
 ## Persistence: Does Rebuilding Wipe Run History?

@@ -40,6 +40,9 @@ services:
       PREFECT_HOME: /data/prefect
       PREFECT_SERVER_API_HOST: 0.0.0.0
       PREFECT_SERVER_API_PORT: "4200"
+      # Prefect sends "anonymous" usage statistics to a third party (Amplitude)
+      # unless told not to. Keep the stack fully self-hosted: opt out.
+      PREFECT_SERVER_ANALYTICS_ENABLED: "false"
       # URL that the BROWSER uses to talk to the API. Must be reachable
       # from outside the container network.
       PREFECT_UI_API_URL: ${PREFECT_UI_API_URL:-http://localhost:8080/api}
@@ -61,6 +64,7 @@ services:
         condition: service_healthy
     environment:
       PREFECT_API_URL: http://prefect-server:4200/api
+      DO_NOT_TRACK: "1"   # opt out of Prefect SDK telemetry (see prefect-server)
       PANGOLIN_MANIFEST: ${PANGOLIN_MANIFEST:-docker/prefect_manifest.yaml}
       GIT_BRANCH: ${GIT_BRANCH:-unknown}
       GIT_SHA: ${GIT_SHA:-unknown}
@@ -79,6 +83,7 @@ services:
         condition: service_completed_successfully
     environment:
       PREFECT_API_URL: http://prefect-server:4200/api
+      DO_NOT_TRACK: "1"   # opt out of Prefect SDK telemetry (see prefect-server)
       PANGOLIN_MODE: ${PANGOLIN_MODE:-docker-local}
       PANGOLIN_MANIFEST: ${PANGOLIN_MANIFEST:-docker/prefect_manifest.yaml}
       PANGOLIN_CRON: ${PANGOLIN_CRON:-}
