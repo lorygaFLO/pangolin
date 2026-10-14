@@ -230,6 +230,8 @@ Single source of truth for everything Pangolin expects in Prefect. Three value s
 | `value: "${ENV_VAR}"` | Resolved from container env (from `docker/.env.docker`) |
 | `value: null` | Created empty — user fills it via the Prefect UI |
 
+**Variable names are lowercase.** Prefect rejects anything but lowercase letters, digits, `-` and `_` in a Variable name (`CSV_DELIMITER` as a Variable name fails bootstrap). To make a Variable feed the settings, give its env var name with `expose_as_env` — `csv_delimiter` with `expose_as_env: CSV_DELIMITER`. `pangolin deploy` exports it before the settings class is imported; a Variable without `expose_as_env` is only stored in Prefect. The same key is used by secret Blocks. Only real `SETTINGS` fields belong here: the data folder names (`INPUT_FOLDER_NAME`, …) are read from `config/data_structure.yaml` and ignore env vars, so don't add Variables for them.
+
 **Idempotency rule:** if the manifest entry is `null` and a non-empty value already exists in Prefect (e.g. edited via UI), bootstrap leaves it untouched. Your UI edits survive rebuilds.
 
 This file is **safe to commit to git** — it contains no plaintext secrets, only `${VAR}` references or `null`.

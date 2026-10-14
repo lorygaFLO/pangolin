@@ -29,6 +29,9 @@ def _hydrate_from_prefect(manifest_path: Path, settings_block: str) -> None:
     """Pull Prefect Blocks and export them to os.environ.
 
     - JSON block named `settings_block`: every key/value becomes an env var.
+    - Every Variable whose manifest entry has `expose_as_env: <NAME>` is
+      exported under that env var name (Prefect Variable names must be
+      lowercase, so the env var name can't be derived from the Variable's).
     - Every Secret block whose manifest entry has `expose_as_env: <NAME>` is
       exported under that env var name.
     """
@@ -76,7 +79,7 @@ def _hydrate_from_prefect(manifest_path: Path, settings_block: str) -> None:
     except Exception as exc:
         LOG.warning("Could not load JSON block %r: %s", settings_block, exc)
 
-    # 2) Prefect Variables whose names look like settings keys (UPPER_CASE)
+    # 2) Prefect Variables listed in the manifest with expose_as_env
     manifest_for_vars: dict = {}
     if manifest_path.exists():
         try:
@@ -85,16 +88,17 @@ def _hydrate_from_prefect(manifest_path: Path, settings_block: str) -> None:
         except Exception:
             manifest_for_vars = {}
         for entry in manifest_for_vars.get("variables", []) or []:
-            var_name = entry.get("name", "")
-            if not var_name.isupper():
+            env_name = entry.get("expose_as_env")
+            if not env_name:
                 continue
+            var_name = entry.get("name", "")
             try:
                 from prefect.variables import Variable
 
                 value = Variable.get(var_name)
                 if value not in (None, ""):
-                    os.environ.setdefault(var_name, str(value))
-                    LOG.info("env <- variable[%s]", var_name)
+                    os.environ.setdefault(env_name, str(value))
+                    LOG.info("env <- variable[%s] -> %s", var_name, env_name)
             except Exception as exc:
                 LOG.warning("Could not load Variable %r: %s", var_name, exc)
 
