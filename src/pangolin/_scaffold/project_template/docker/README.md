@@ -57,6 +57,12 @@ make down         # stop the stack (keeps volumes)
 make clean        # stop the stack AND drop volumes (wipes the Prefect DB)
 ```
 
+## Image tags and pinned versions
+
+The project image is tagged `pangolin:<branch>`, with the branch made
+tag-safe (`feature/x` → `pangolin:feature-x`); `make` / `make.ps1` compute it
+as `IMAGE_TAG`. Plain `docker compose` falls back to `pangolin:local`.
+
 ## Updating the pangolin version baked into the image
 
 `docker/Dockerfile` installs the `pangolin` library itself via

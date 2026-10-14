@@ -23,8 +23,11 @@ x-pangolin-build: &pangolin-build
     GIT_BRANCH: ${GIT_BRANCH:-unknown}
     GIT_SHA: ${GIT_SHA:-unknown}
 
+# IMAGE_TAG is GIT_BRANCH sanitised into a valid image tag (branches like
+# `feature/x` contain characters tags can't have). The Makefile / make.ps1
+# compute it; raw `docker compose` falls back to `local`.
 x-pangolin-image: &pangolin-image
-  image: pangolin:${GIT_BRANCH:-local}
+  image: pangolin:${IMAGE_TAG:-local}
 
 services:
 

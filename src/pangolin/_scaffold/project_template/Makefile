@@ -9,10 +9,14 @@ SHELL := /bin/sh
 
 GIT_BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)
 GIT_SHA    ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
+# Image tag = GIT_BRANCH made tag-safe (tags allow only [A-Za-z0-9_.-], so
+# `feature/x` or `fix#12` become `feature-x` / `fix-12`).
+IMAGE_TAG  ?= $(shell printf '%s' '$(GIT_BRANCH)' | tr -c 'A-Za-z0-9_.-' '-' | sed 's/^[-.]*//' | cut -c1-128)
 COMPOSE    ?= __ENGINE__ compose --env-file docker/.env.docker
 
 export GIT_BRANCH
 export GIT_SHA
+export IMAGE_TAG
 
 .PHONY: help build up down logs ps restart bootstrap shell clean nuke
 
@@ -61,4 +65,4 @@ clean:
 	$(COMPOSE) down -v
 
 nuke: clean
-	__ENGINE__ image rm pangolin:$(GIT_BRANCH) 2>/dev/null || true
+	__ENGINE__ image rm pangolin:$(IMAGE_TAG) 2>/dev/null || true

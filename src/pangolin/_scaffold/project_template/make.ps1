@@ -26,8 +26,14 @@ function Get-GitInfo {
 }
 
 $git = Get-GitInfo
+# Image tag = branch made tag-safe (tags allow only [A-Za-z0-9_.-], so
+# `feature/x` or `fix#12` become `feature-x` / `fix-12`).
+$imageTag = ($git.Branch -replace '[^A-Za-z0-9_.-]', '-').TrimStart('-', '.')
+if ($imageTag.Length -gt 128) { $imageTag = $imageTag.Substring(0, 128) }
+if (-not $imageTag) { $imageTag = 'local' }
 $env:GIT_BRANCH = $git.Branch
 $env:GIT_SHA    = $git.Sha
+$env:IMAGE_TAG  = $imageTag
 
 $engine = '__ENGINE__'
 $composePrefix = @('compose', '--env-file', 'docker/.env.docker')
@@ -70,6 +76,6 @@ switch ($Target) {
     'clean'     { Invoke-Compose @('down', '-v') }
     'nuke' {
         Invoke-Compose @('down', '-v')
-        & $engine image rm "pangolin:$($git.Branch)" 2>$null
+        & $engine image rm "pangolin:$imageTag" 2>$null
     }
 }

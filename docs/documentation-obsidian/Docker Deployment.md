@@ -177,6 +177,8 @@ git checkout my-feature-branch
 .\make.ps1 up
 ```
 
+The image itself is tagged `pangolin:<branch>`, with the branch made tag-safe: characters Docker tags don't allow (e.g. `/` in `feature/x`) become `-`, so `feature/x` builds `pangolin:feature-x`. `GIT_BRANCH` (the Variable, the log line, the Prefect tag) keeps the raw name. `make` / `make.ps1` compute the tag; if you call `docker compose` directly the tag falls back to `pangolin:local`.
+
 Docker does **not** check out branches itself — you do that; the image just records what it was built from.
 
 ---
