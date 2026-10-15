@@ -98,6 +98,8 @@ make up
 make logs
 ```
 
+`make up` / `.\make.ps1 up` ends by printing the address (`Prefect UI: http://localhost:8080`, from `PREFECT_UI_URL` in `docker/.env.docker`); the same address is used for the "View at ..." links in the worker's logs.
+
 Open the UI at:
 - http://localhost:8080
 - http://pangolin.localhost:8080 (or `http://<PROJECT_NAME>.localhost:8080` if you changed `PROJECT_NAME` in `docker/.env.docker`)
@@ -131,6 +133,7 @@ PANGOLIN_MODE=cloud
 PROJECT_NAME=pangolin
 PUBLIC_HOSTNAME=pangolin.mycompany.com
 PREFECT_UI_API_URL=http://pangolin.mycompany.com/api
+PREFECT_UI_URL=http://pangolin.mycompany.com
 PROXY_PORT=80
 # Real secrets:
 AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=...
