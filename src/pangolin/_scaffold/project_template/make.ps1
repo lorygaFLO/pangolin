@@ -38,6 +38,21 @@ $env:IMAGE_TAG  = $imageTag
 $engine = '__ENGINE__'
 $composePrefix = @('compose', '--env-file', 'docker/.env.docker')
 
+function Get-UiUrl {
+    # PREFECT_UI_URL from docker/.env.docker (same value the worker uses for its
+    # log links); older env files without it fall back to the proxy port.
+    $vals = @{}
+    if (Test-Path 'docker/.env.docker') {
+        foreach ($line in Get-Content 'docker/.env.docker') {
+            if ($line -match '^\s*([A-Z_]+)\s*=\s*(.*?)\s*$') { $vals[$Matches[1]] = $Matches[2] }
+        }
+    }
+    if ($vals['PREFECT_UI_URL']) { return $vals['PREFECT_UI_URL'] }
+    $port = '8080'
+    if ($vals['PROXY_PORT']) { $port = $vals['PROXY_PORT'] }
+    return "http://localhost:$port"
+}
+
 function Invoke-Compose {
     param([Parameter(ValueFromRemainingArguments = $true)]$ComposeArgs)
     # Flatten in case the caller passed an array literal as one positional arg
@@ -66,7 +81,7 @@ switch ($Target) {
         Write-Host "    git checkout <branch>; .\make.ps1 build"
     }
     'build'     { $env:BUILDX_NO_DEFAULT_ATTESTATIONS = '1'; Invoke-Compose @('build', '--build-arg', "GIT_BRANCH=$($git.Branch)", '--build-arg', "GIT_SHA=$($git.Sha)") }
-    'up'        { Invoke-Compose @('up', '-d') }
+    'up'        { Invoke-Compose @('up', '-d'); Write-Host ""; Write-Host "Prefect UI: $(Get-UiUrl)" -ForegroundColor Green }
     'down'      { Invoke-Compose @('down') }
     'restart'   { Invoke-Compose @('restart', 'worker') }
     'logs'      { Invoke-Compose @('logs', '-f', '--tail=100') }

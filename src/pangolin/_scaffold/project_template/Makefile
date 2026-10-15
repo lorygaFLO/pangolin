@@ -42,6 +42,9 @@ build:
 
 up:
 	$(COMPOSE) up -d
+	@url=$$(sed -n 's/^PREFECT_UI_URL=//p' docker/.env.docker | tr -d '\r'); \
+	port=$$(sed -n 's/^PROXY_PORT=//p' docker/.env.docker | tr -d '\r'); \
+	echo ""; echo "Prefect UI: $${url:-http://localhost:$${port:-8080}}"
 
 down:
 	$(COMPOSE) down

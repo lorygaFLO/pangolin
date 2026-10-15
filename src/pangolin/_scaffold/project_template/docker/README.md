@@ -45,6 +45,11 @@ The Prefect UI is **not** exposed directly on the `prefect-server` container
 Both variables come from `docker/.env.docker`. For a public deployment, set
 `PUBLIC_HOSTNAME` there instead (see the comments in `docker/Caddyfile`).
 
+`make up` ends by printing the address (`Prefect UI: http://localhost:8080`),
+taken from `PREFECT_UI_URL` in `docker/.env.docker`. The worker uses the same
+value for the "View at ..." links in its logs, so keep it matching the port /
+public hostname.
+
 ## Other Makefile targets
 
 ```bash

@@ -95,6 +95,9 @@ services:
     environment:
       PREFECT_API_URL: http://prefect-server:4200/api
       DO_NOT_TRACK: "1"   # opt out of Prefect SDK telemetry (see prefect-server)
+      # Public UI address for the links Prefect prints in the logs; otherwise
+      # they point at http://prefect-server:4200, unreachable from a browser.
+      PREFECT_UI_URL: ${PREFECT_UI_URL:-http://localhost:8080}
       PANGOLIN_MODE: ${PANGOLIN_MODE:-docker-local}
       PANGOLIN_MANIFEST: ${PANGOLIN_MANIFEST:-docker/prefect_manifest.yaml}
       PANGOLIN_CRON: ${PANGOLIN_CRON:-}
