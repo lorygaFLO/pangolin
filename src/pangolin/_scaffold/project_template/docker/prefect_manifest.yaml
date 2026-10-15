@@ -7,6 +7,12 @@
 #                           on the server it is preserved (so user UI edits
 #                           survive rebuilds)
 #
+# Variable names: Prefect only accepts lowercase letters, digits, "-" and "_".
+# To feed a Variable into the settings, say which env var it becomes with
+# `expose_as_env` (same key the secret blocks below use). `pangolin deploy`
+# exports it before the SETTINGS class is imported; a Variable without
+# `expose_as_env` is just stored in Prefect.
+#
 # DO NOT commit plaintext secrets here. Use ${ENV_VAR} or null.
 
 variables:
@@ -15,23 +21,17 @@ variables:
   - name: pangolin_notes
     value: null            # created empty, user fills via UI
 
-  # Pipeline folder names — visible and editable directly in the Prefect UI
-  - name: INPUT_FOLDER_NAME
-    value: input
-  - name: STAGING_FOLDER_NAME
-    value: staging
-  - name: DELIVERY_FOLDER_NAME
-    value: delivery
-  - name: REPORTS_FOLDER_NAME
-    value: reports
-  - name: BACKUP_FOLDER_NAME
-    value: backup
+  # NOTE: folder names (INPUT_FOLDER_NAME, DELIVERY_FOLDER_NAME, ...) are NOT
+  # configured here. They come only from config/data_structure.yaml (every
+  # node with a `_settings_key`); an env var of that name is ignored.
 
-  # IO options
-  - name: CSV_DELIMITER
+  # IO options — real SETTINGS fields, editable in the Prefect UI
+  - name: csv_delimiter
     value: ";"
-  - name: OUTPUT_FORMAT
+    expose_as_env: CSV_DELIMITER
+  - name: output_format
     value: parquet
+    expose_as_env: OUTPUT_FORMAT
 
 blocks:
   # Main settings block. Every key is exported as an env var by

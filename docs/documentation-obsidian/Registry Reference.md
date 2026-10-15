@@ -27,7 +27,65 @@ When a processor reads a file, it matches the file's **relative path** (includin
 | `SALES/*sales*` | Files with "sales" inside the `SALES/` subfolder |
 
 > [!warning]
-> Each file must match **exactly one** pattern. Zero matches or multiple matches are errors.
+> Each file must match **exactly one** pattern. Multiple matches are always an
+> error. Zero matches are an error too — *unless* the registry declares a
+> `_default` fallback (see below).
+
+---
+
+## Fallback Rule for Unmatched Files (`_default`)
+
+`_default` is a reserved registry key (`BaseProcessor.DEFAULT_PATTERN`), not a
+glob pattern — it's never matched against filenames. When a file matches
+**none** of the explicit patterns, `match_file()` falls back to `_default`
+instead of failing pattern matching, *if and only if* the registry declares
+it:
+
+```yaml
+"*sales*":
+  validators:
+    is_empty_dataframe:
+
+"_default":            # catches anything "*sales*" (or other explicit
+  validators:           # patterns) doesn't match
+    always_true_validator:   # no-op: leaves the file untouched
+```
+
+Same idea for a transformation registry, using the built-in no-op transformer:
+
+```yaml
+"_default":
+  transforms:
+    - name: "no_op"
+      function: "blank"   # leaves the dataframe untouched
+      order: 1
+```
+
+And for a dispatch registry, `_default` is just another destination folder:
+
+```yaml
+"_default": "UNROUTED"
+```
+
+In every case, a file resolved via `_default` is still visibly flagged —
+never silently processed as if it had matched normally:
+
+- Its per-file report gets a message stating no explicit pattern matched and
+  the `_default` fallback was applied.
+- `Validator` and `DataTransformer` list it under a `DEFAULTED` bucket in both
+  the step log and (for `Validator`) the persisted `validation_summary`
+  report, alongside `PASSED`/`FAILED`.
+- `FileDispatcher` lists it under `DEFAULTED` in the step log and writes a
+  per-file report for it (normally only failures get one).
+
+In practice `_default` is almost always wired to a validator/transformer that
+leaves the data as-is (`always_true_validator`, `blank`) — the point isn't to
+apply real business rules to unclassified files, but to avoid hard-failing
+the whole batch on them while still making it obvious, from the report, that
+they fell through every explicit keyword/pattern.
+
+If `_default` is absent, behavior is unchanged from before: zero matches is
+an error and the file fails pattern matching.
 
 ---
 
@@ -209,7 +267,7 @@ Files matching `*sales*` are copied/moved into a `SALES/` subfolder under the ou
 
 ## Non-Standard Registry Formats (Custom Processors)
 
-The three formats above are conventions followed by pangolin's three built-in processors — nothing in the engine enforces them. A custom processor (see [[Creating a New Processor]]) can define its own registry shape entirely. The example project's audit step (`2_audit.yaml`, consumed by `custom/processors/example_processor.py`'s `AuditProcessor`) is one such case:
+The three formats above are conventions followed by pangolin's three built-in processors — nothing in the engine enforces them. A custom processor (see [[Creating a New Processor]]) can define its own registry shape entirely. `_default` still works for a custom processor "for free" — it's handled in `match_file()` on `BaseProcessor`, below the pattern-shape layer — as long as `self.registry["_default"]` is shaped the same way as every other entry the custom processor reads. The example project's audit step (`2_audit.yaml`, consumed by `custom/processors/example_processor.py`'s `AuditProcessor`) is one such case:
 
 ```yaml
 "*sales*":

@@ -7,9 +7,12 @@ name: ${PROJECT_NAME:-pangolin}
 #   prefect-server : Prefect 3 server + UI, persistent SQLite on a volume
 #   bootstrap      : one-shot, idempotent — creates Blocks/Variables from
 #                    docker/prefect_manifest.yaml via `pangolin bootstrap`;
-#                    re-runs are safe
+#                    re-runs are safe. Reuses the image built by `worker`.
 #   worker         : runs `pangolin deploy` (flow.serve() for every pipeline
-#                    in this project's pipelines/ package)
+#                    in this project's pipelines/ package). Owns the image
+#                    build: bootstrap and worker share one image, and two
+#                    services building the same tag in parallel race on the
+#                    image export ("image ... already exists").
 #   caddy          : reverse proxy so the UI is reachable on
 #                    http://localhost:${PROXY_PORT}
 #                    http://${PROJECT_NAME}.localhost:${PROXY_PORT}
@@ -23,18 +26,26 @@ x-pangolin-build: &pangolin-build
     GIT_BRANCH: ${GIT_BRANCH:-unknown}
     GIT_SHA: ${GIT_SHA:-unknown}
 
+# IMAGE_TAG is GIT_BRANCH sanitised into a valid image tag (branches like
+# `feature/x` contain characters tags can't have). The Makefile / make.ps1
+# compute it; raw `docker compose` falls back to `local`.
 x-pangolin-image: &pangolin-image
-  image: pangolin:${GIT_BRANCH:-local}
+  image: pangolin:${IMAGE_TAG:-local}
 
 services:
 
   prefect-server:
-    image: prefecthq/prefect:3-latest
+    # Keep in lockstep with the `prefect==` pin of the pangolin library that
+    # the pangolin image installs (the client warns on a server/client mismatch).
+    image: prefecthq/prefect:3.6.26-python3.11
     command: prefect server start --host 0.0.0.0 --port 4200
     environment:
       PREFECT_HOME: /data/prefect
       PREFECT_SERVER_API_HOST: 0.0.0.0
       PREFECT_SERVER_API_PORT: "4200"
+      # Prefect sends "anonymous" usage statistics to a third party (Amplitude)
+      # unless told not to. Keep the stack fully self-hosted: opt out.
+      PREFECT_SERVER_ANALYTICS_ENABLED: "false"
       # URL that the BROWSER uses to talk to the API. Must be reachable
       # from outside the container network.
       PREFECT_UI_API_URL: ${PREFECT_UI_API_URL:-http://localhost:8080/api}
@@ -49,13 +60,17 @@ services:
     restart: unless-stopped
 
   bootstrap:
-    build: *pangolin-build
+    # No `build:` here on purpose — the image is built once, by `worker`.
+    # `pull_policy: never` stops compose from trying to pull `pangolin:<tag>`
+    # from a registry before that build has produced it.
     <<: *pangolin-image
+    pull_policy: never
     depends_on:
       prefect-server:
         condition: service_healthy
     environment:
       PREFECT_API_URL: http://prefect-server:4200/api
+      DO_NOT_TRACK: "1"   # opt out of Prefect SDK telemetry (see prefect-server)
       PANGOLIN_MANIFEST: ${PANGOLIN_MANIFEST:-docker/prefect_manifest.yaml}
       GIT_BRANCH: ${GIT_BRANCH:-unknown}
       GIT_SHA: ${GIT_SHA:-unknown}
@@ -67,6 +82,11 @@ services:
   worker:
     build: *pangolin-build
     <<: *pangolin-image
+    # The image only exists locally. Without this, `up` first tries to pull
+    # `pangolin:<tag>` from Docker Hub ("pull access denied", then falls back
+    # to the local build) — and would use a same-named image from there if one
+    # ever existed. A missing image is still built by compose.
+    pull_policy: never
     depends_on:
       prefect-server:
         condition: service_healthy
@@ -74,6 +94,7 @@ services:
         condition: service_completed_successfully
     environment:
       PREFECT_API_URL: http://prefect-server:4200/api
+      DO_NOT_TRACK: "1"   # opt out of Prefect SDK telemetry (see prefect-server)
       PANGOLIN_MODE: ${PANGOLIN_MODE:-docker-local}
       PANGOLIN_MANIFEST: ${PANGOLIN_MANIFEST:-docker/prefect_manifest.yaml}
       PANGOLIN_CRON: ${PANGOLIN_CRON:-}
@@ -88,7 +109,7 @@ services:
     restart: unless-stopped
 
   caddy:
-    image: caddy:2-alpine
+    image: caddy:2.11.2-alpine
     depends_on:
       - prefect-server
     environment:

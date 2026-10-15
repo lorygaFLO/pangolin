@@ -66,6 +66,7 @@ class FileDispatcher(BaseProcessor):
 
         passed = []
         failed = []
+        defaulted = []
         for full_path, relative_path in file_paths:
             filename = self.fs.basename(full_path)
 
@@ -78,6 +79,16 @@ class FileDispatcher(BaseProcessor):
                     self.reporter.write_report(relative_path, [match_error])
                 failed.append(filename)
                 continue
+
+            used_default = self.is_default_match(matched_pattern)
+            if used_default:
+                self.log.warning(f"No explicit pattern matched '{relative_path}'; applying '_default' fallback")
+                defaulted.append(filename)
+                if not self.S.DISABLE_REPORTS:
+                    self.reporter.write_report(relative_path, [
+                        f"No explicit pattern matched '{relative_path}' in the registry; "
+                        f"dispatched via the '_default' fallback rule instead of failing pattern matching."
+                    ])
 
             # Get target folder from registry
             target_folder = self.registry.get(matched_pattern, matched_pattern)
@@ -102,6 +113,8 @@ class FileDispatcher(BaseProcessor):
         self.log.info(f"Dispatch complete: {len(passed)} dispatched, {len(failed)} failed out of {total} files")
         if passed:
             self.log.info("DISPATCHED:\n   - " + "\n   - ".join(passed))
+        if defaulted:
+            self.log.warning("DEFAULTED (no explicit pattern matched — '_default' fallback applied):\n   - " + "\n   - ".join(defaulted))
         if failed:
             self.log.warning("FAILED:\n   - " + "\n   - ".join(failed))
 

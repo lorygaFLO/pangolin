@@ -134,7 +134,15 @@ class Validator(BaseProcessor):
 
             self.log.info(f"Validating {relative_path}")
             messages = []
-            
+
+            used_default = self.is_default_match(pattern)
+            if used_default:
+                self.log.warning(f"No explicit pattern matched '{relative_path}'; applying '_default' fallback")
+                messages.append(
+                    f"No explicit pattern matched '{relative_path}' in the registry; "
+                    f"applied the '_default' fallback rule instead of failing pattern matching."
+                )
+
             file_validation_results = {}
             validators = self.registry[pattern]['validators']
             all_passed = True
@@ -156,7 +164,11 @@ class Validator(BaseProcessor):
             for validator_name, result in file_validation_results.items():
                 messages.append(f"{validator_name}: {'Passed' if result else 'Failed'}")
             
-            validation_results[full_path] = {"overall_passed": all_passed, "details": file_validation_results}
+            validation_results[full_path] = {
+                "overall_passed": all_passed,
+                "details": file_validation_results,
+                "used_default": used_default,
+            }
             
             # Save only if ALL validations passed
             if all_passed:
@@ -183,12 +195,15 @@ class Validator(BaseProcessor):
         # ---- Final summary ----
         passed = [self.fs.basename(p) for p, r in validation_results.items() if r.get("overall_passed")]
         failed = [self.fs.basename(p) for p, r in validation_results.items() if not r.get("overall_passed")]
+        defaulted = [self.fs.basename(p) for p, r in validation_results.items() if r.get("used_default")]
 
         self.log.info(f"Validation complete: {len(passed)} passed, {len(failed)} failed out of {len(validation_results)} files")
         if passed:
             self.log.info("PASSED:\n   - " + "\n   - ".join(passed))
         if failed:
             self.log.warning("FAILED:\n   - " + "\n   - ".join(failed))
+        if defaulted:
+            self.log.warning("DEFAULTED (no explicit pattern matched — '_default' fallback applied):\n   - " + "\n   - ".join(defaulted))
 
         # Persist the same pass/fail overview as a report artifact, not
         # just a log line — so it survives after the run, browsable on disk
@@ -198,6 +213,8 @@ class Validator(BaseProcessor):
             summary_lines += ["PASSED:"] + [f"  - {name}" for name in passed]
         if failed:
             summary_lines += ["FAILED:"] + [f"  - {name}" for name in failed]
+        if defaulted:
+            summary_lines += ["", "DEFAULTED (no explicit pattern matched — '_default' fallback applied):"] + [f"  - {name}" for name in defaulted]
         self.reporter.write_report("validation_summary", summary_lines)
 
         if len(passed) == 0:

@@ -17,10 +17,11 @@ pangolin run                      # runs the bundled, fully working example pipe
 
 `pangolin init` generates a complete example: an example pipeline (backup → raw validation → transform → custom audit processor → delivery dispatch), custom validator/transformer stubs, filled-in registries, and a sample CSV in `data/input/`. It also writes a **`README.md`** in the new project listing the mandatory setup steps and a settings reference table generated live from your installed pangolin version — read that first, it's the authoritative reference for whatever version you have installed (this guide covers the concepts, that file covers the exact fields).
 
-Pass `--dockerization` (or `-d`) to also scaffold the Docker deployment stack:
+Pass `--containerization` (or `-c`) to also scaffold the container deployment stack (add `--engine podman` to target Podman instead of Docker):
 
 ```bash
-pangolin init my-project -d
+pangolin init my-project -c
+pangolin init my-project -c --engine podman
 ```
 
 See [[Docker Deployment]] for that flow.

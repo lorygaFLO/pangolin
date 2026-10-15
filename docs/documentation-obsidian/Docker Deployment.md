@@ -3,15 +3,20 @@
 > [!warning] AI-Generated
 > This Docker setup (Dockerfile, docker-compose, bootstrap, deploy scripts) is for the most part AI-generated and has not been battle-tested in production. It likely requires refinements — treat it as a working starting point, not a hardened deployment.
 
-This guide covers running a pangolin **project** inside Docker using the 4-service stack scaffolded by `pangolin init --dockerization` (Prefect server, bootstrap, worker, reverse proxy). It doesn't apply to the `pangolin` library repo itself — only to a project generated from it.
+This guide covers running a pangolin **project** inside a container using the 4-service stack scaffolded by `pangolin init --containerization` (Prefect server, bootstrap, worker, reverse proxy). It doesn't apply to the `pangolin` library repo itself — only to a project generated from it.
+
+The `Dockerfile`/`docker-compose.yml` are plain OCI/Compose-spec files, so the same scaffold runs on either engine — pick which one the generated `Makefile`/`make.ps1` target with `--engine {docker,podman}` at init time (default: `docker`).
 
 ---
 
 ## Prerequisites
 
-- A project scaffolded with `pangolin init --dockerization` (or `-d`) — see [[Getting Started]]
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running (whale icon steady in the system tray)
+- A project scaffolded with `pangolin init --containerization` (or `-c`) — see [[Getting Started]]
+- Either [Docker Desktop](https://www.docker.com/products/docker-desktop/) (whale icon steady in the system tray), or [Podman](https://podman.io/) with a compose provider (`podman-compose`, or Podman >= 4.7's built-in `podman compose`) if you scaffolded with `--engine podman` — see the Windows/WSL2 caveat below
 - Git (to capture the branch name at build time)
+
+> [!warning] Podman on Windows/WSL2: known kernel limitation, not battle-tested
+> The `--engine podman` path has only been validated statically so far (the generated `Makefile`/`make.ps1` correctly target `podman`) — actually starting the stack on a Windows/WSL2 machine hit a kernel limitation: the WSL2 kernel doesn't compile NAT/masquerade support for `nftables`, so netavark (Podman's network backend) can't create the bridge network every container needs for outbound connectivity (`netavark: nftables error ... Could not process rule: No such file or directory`). This is a WSL2 kernel bug, not a pangolin or Podman configuration issue — it's open and unresolved upstream (see [microsoft/WSL#9772](https://github.com/microsoft/WSL/issues/9772)). It does **not** affect real Linux hosts (bare metal, cloud VM, on-prem), only Podman machine on Windows via WSL2. Recent Podman/netavark versions have also dropped the `firewall_driver = "iptables"` fallback that used to work around this. **The Podman path still needs to be validated end-to-end on an actual Linux environment before relying on it in production** — on Windows, use Docker Desktop instead.
 
 ---
 
@@ -172,7 +177,30 @@ git checkout my-feature-branch
 .\make.ps1 up
 ```
 
+The image itself is tagged `pangolin:<branch>`, with the branch made tag-safe: characters Docker tags don't allow (e.g. `/` in `feature/x`) become `-`, so `feature/x` builds `pangolin:feature-x`. `GIT_BRANCH` (the Variable, the log line, the Prefect tag) keeps the raw name. `make` / `make.ps1` compute the tag; if you call `docker compose` directly the tag falls back to `pangolin:local`.
+
 Docker does **not** check out branches itself — you do that; the image just records what it was built from.
+
+## Pinned Versions
+
+Every image the stack uses is pinned to an exact version — no floating `latest` / major-only tags: the Python base image in `docker/Dockerfile`, and `prefecthq/prefect` and `caddy` in `docker-compose.yml`. The Prefect server tag must match the `prefect==` pin of the pangolin library installed in the image (a mismatch only logs a warning, but keep them aligned). Bump versions deliberately, in a commit of their own.
+
+## Telemetry
+
+Prefect sends "anonymous" usage statistics to a third party (Amplitude) by default. The stack opts out so that, once the images are pulled and built, nothing leaves your infrastructure: `PREFECT_SERVER_ANALYTICS_ENABLED=false` on `prefect-server` and `DO_NOT_TRACK=1` on `bootstrap` and `worker` (see `docker-compose.yml`). This covers the containerised stack only — a Prefect server/client you start outside it (e.g. local mode) keeps Prefect's default unless you set those variables there too.
+
+## One image, built once
+
+`bootstrap` and `worker` run the same image. Only `worker` declares `build:`; `bootstrap` reuses the tag. Both have `pull_policy: never`: `pangolin:<tag>` only ever exists locally, so compose must not try to pull it from Docker Hub (a failed pull is just noise, but a same-named image there would be used instead of your build). A missing image is still built by `worker`. Having both build the same tag in parallel could fail intermittently with `image "pangolin:<tag>": already exists`. Consequence: build before you start — `make build` / `.\make.ps1 build`, or let `up` build it on first run. `make bootstrap` on its own needs the image to exist already.
+
+## Project dependencies (`docker/requirements.txt`)
+
+The image gets pangolin and its pinned dependencies from the Dockerfile. Anything else your `custom/` or `pipelines/` code imports (a data-source client, an ML library, …) must be listed — exact versions — in `docker/requirements.txt`, which the Dockerfile installs into the image. If it's missing the worker dies at startup with `ModuleNotFoundError`, because `pangolin deploy` imports every pipeline.
+
+- No local or editable paths (`-e ../pangolin`): the build context is the project folder only.
+- It's separate from a `requirements.txt` you may use for local development — keep the two in sync.
+- Layer order is arranged so the (often heavy) dependency layer doesn't depend on the git branch/SHA: a new commit doesn't reinstall your packages, editing `docker/requirements.txt` does.
+- The pangolin install layer is cached too: with a floating ref (`PANGOLIN_REF=main`) a plain rebuild keeps the pangolin already in the image. Rebuild with `--no-cache` to pick up new commits of the ref, or pin `PANGOLIN_REF` to a tag/commit for reproducible builds.
 
 ---
 
@@ -201,6 +229,8 @@ Single source of truth for everything Pangolin expects in Prefect. Three value s
 | `value: input` | Inline literal — used as-is on every bootstrap |
 | `value: "${ENV_VAR}"` | Resolved from container env (from `docker/.env.docker`) |
 | `value: null` | Created empty — user fills it via the Prefect UI |
+
+**Variable names are lowercase.** Prefect rejects anything but lowercase letters, digits, `-` and `_` in a Variable name (`CSV_DELIMITER` as a Variable name fails bootstrap). To make a Variable feed the settings, give its env var name with `expose_as_env` — `csv_delimiter` with `expose_as_env: CSV_DELIMITER`. `pangolin deploy` exports it before the settings class is imported; a Variable without `expose_as_env` is only stored in Prefect. The same key is used by secret Blocks. Only real `SETTINGS` fields belong here: the data folder names (`INPUT_FOLDER_NAME`, …) are read from `config/data_structure.yaml` and ignore env vars, so don't add Variables for them.
 
 **Idempotency rule:** if the manifest entry is `null` and a non-empty value already exists in Prefect (e.g. edited via UI), bootstrap leaves it untouched. Your UI edits survive rebuilds.
 

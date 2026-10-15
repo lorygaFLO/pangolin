@@ -1,0 +1,16 @@
+# Extra Python dependencies your project needs INSIDE the container: whatever
+# custom/ and pipelines/ import that pangolin itself doesn't already install.
+# docker/Dockerfile runs `pip install -r` on this file when it builds the
+# image. Leave it empty if you need nothing extra.
+#
+# One requirement per line, pinned to an exact version:
+#   yfinance==1.7.0
+#
+# Do NOT list here:
+#   - pangolin or its own dependencies (prefect, polars, pandas, ...): they come
+#     from the Dockerfile — don't re-pin them, it could conflict with pangolin's;
+#   - editable/local installs such as `-e ../pangolin`: the image is built from
+#     this project folder only.
+#
+# This is separate from any requirements.txt you use for local development, so
+# keep the two in sync when you add a dependency.

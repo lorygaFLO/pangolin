@@ -26,9 +26,16 @@ function Get-GitInfo {
 }
 
 $git = Get-GitInfo
+# Image tag = branch made tag-safe (tags allow only [A-Za-z0-9_.-], so
+# `feature/x` or `fix#12` become `feature-x` / `fix-12`).
+$imageTag = ($git.Branch -replace '[^A-Za-z0-9_.-]', '-').TrimStart('-', '.')
+if ($imageTag.Length -gt 128) { $imageTag = $imageTag.Substring(0, 128) }
+if (-not $imageTag) { $imageTag = 'local' }
 $env:GIT_BRANCH = $git.Branch
 $env:GIT_SHA    = $git.Sha
+$env:IMAGE_TAG  = $imageTag
 
+$engine = '__ENGINE__'
 $composePrefix = @('compose', '--env-file', 'docker/.env.docker')
 
 function Invoke-Compose {
@@ -37,13 +44,13 @@ function Invoke-Compose {
     $flat = @()
     foreach ($a in $ComposeArgs) { $flat += $a }
     $all = $composePrefix + $flat
-    & docker @all
-    if ($LASTEXITCODE -ne 0) { throw "docker compose failed with exit code $LASTEXITCODE" }
+    & $engine @all
+    if ($LASTEXITCODE -ne 0) { throw "$engine compose failed with exit code $LASTEXITCODE" }
 }
 
 switch ($Target) {
     'help' {
-        Write-Host "Pangolin docker helper (PowerShell). Targets:" -ForegroundColor Cyan
+        Write-Host "Pangolin container helper (PowerShell, engine: $engine). Targets:" -ForegroundColor Cyan
         Write-Host "  build      Build image, baking GIT_BRANCH=$($git.Branch) GIT_SHA=$($git.Sha)"
         Write-Host "  up         Start the full stack"
         Write-Host "  down       Stop the stack (keep volumes)"
@@ -69,6 +76,6 @@ switch ($Target) {
     'clean'     { Invoke-Compose @('down', '-v') }
     'nuke' {
         Invoke-Compose @('down', '-v')
-        docker image rm "pangolin:$($git.Branch)" 2>$null
+        & $engine image rm "pangolin:$imageTag" 2>$null
     }
 }

@@ -126,7 +126,7 @@ Everything above works for a sensitive value too — `DATABASE_URL: str` in `cus
 
 `.env` is git-ignored by the `.gitignore` `pangolin init` scaffolds — never committed. That's the whole story for local dev.
 
-### Docker / cloud (`pangolin init --dockerization`)
+### Docker / Podman / cloud (`pangolin init --containerization`)
 
 `.env` doesn't travel with the image, and you don't want a real password baked into a committed file anyway. Use a Prefect **secret Block** in `docker/prefect_manifest.yaml` instead — see [[Docker Deployment]] for the full mechanism, in short:
 
@@ -144,6 +144,15 @@ blocks:
 4. From then on you can also edit the value straight from the Prefect UI (Blocks) — it survives image rebuilds, and `docker/.env.docker` is only needed again if the Block is ever wiped (e.g. `make clean`).
 
 This is the same mechanism the scaffolded `docker/prefect_manifest.yaml` already uses for `AZURE_STORAGE_CONNECTION_STRING` — copy that block, rename it, point `expose_as_env` at your own field name.
+
+For a **non-sensitive** setting you'd rather edit as a plain value in the Prefect UI, use a Variable instead of a secret Block. Prefect Variable names must be lowercase, so name the env var explicitly with `expose_as_env` — exactly like the scaffolded `csv_delimiter` / `output_format` entries:
+
+```yaml
+variables:
+  - name: my_batch_size            # lowercase: a-z, 0-9, "-" and "_" only
+    value: "500"
+    expose_as_env: MY_BATCH_SIZE   # the field name in custom/settings.py
+```
 
 > [!warning]
 > Never put a real secret value directly in `docker/prefect_manifest.yaml` (that file is meant to be committed) — always `${ENV_VAR}` or `null`, resolved from `docker/.env.docker` (git-ignored) or filled in later via the UI.
