@@ -105,7 +105,7 @@ since pangolin isn't published to PyPI/a private index yet). Override at
 build time, e.g.:
 
 ```bash
-__ENGINE__ compose build --build-arg PANGOLIN_REF=v0.2.0
+__ENGINE__ compose build --build-arg PANGOLIN_REF=v0.3.0
 ```
 
 Once pangolin is published, switch `PANGOLIN_INSTALL_SPEC` in the Dockerfile
